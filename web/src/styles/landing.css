@@ -1,0 +1,328 @@
+/* Landing page — hero, setup, steps */
+
+.landing-hero {
+  position: relative;
+  display: grid;
+  min-height: min(72vh, 640px);
+  margin: 0 -1.25rem;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.landing-hero-media {
+  position: absolute;
+  inset: 0;
+}
+
+.landing-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+}
+
+.landing-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      105deg,
+      rgba(12, 32, 24, 0.92) 0%,
+      rgba(12, 32, 24, 0.72) 42%,
+      rgba(12, 32, 24, 0.35) 100%
+    ),
+    linear-gradient(to top, rgba(12, 32, 24, 0.5), transparent 40%);
+}
+
+.landing-hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1.1rem;
+  max-width: 42rem;
+  padding: clamp(2rem, 6vw, 3.5rem) clamp(1.5rem, 4vw, 2.5rem);
+  color: #f4f0e8;
+}
+
+.landing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 232, 0.75);
+}
+
+.landing-eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow: 0 0 12px rgba(212, 168, 75, 0.6);
+}
+
+.landing-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 5.5vw, 3.35rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: #fff;
+}
+
+.landing-lead {
+  margin: 0;
+  font-size: clamp(1rem, 2.2vw, 1.12rem);
+  line-height: 1.55;
+  color: rgba(244, 240, 232, 0.82);
+  max-width: 38ch;
+  text-wrap: pretty;
+}
+
+.landing-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+.landing-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(8px);
+}
+
+.landing-stat-active {
+  background: rgba(212, 168, 75, 0.18);
+  border-color: rgba(212, 168, 75, 0.35);
+}
+
+.landing-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #fff;
+}
+
+.landing-stat-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(244, 240, 232, 0.65);
+}
+
+.landing-cta {
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: #f4f0e8;
+  border-radius: var(--radius-full);
+  transition:
+    transform 0.2s var(--ease-out),
+    background 0.2s var(--ease-out);
+}
+
+.landing-cta:hover {
+  background: #fff;
+  transform: translateY(-2px);
+}
+
+.landing-cta:active {
+  transform: translateY(0);
+}
+
+/* Workspace */
+
+.landing-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: -2.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.setup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.setup-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.setup-card-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.setup-card-header h2 {
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  text-wrap: balance;
+}
+
+.setup-card-header p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-muted);
+  max-width: 50ch;
+  line-height: 1.5;
+}
+
+.setup-card .location-fields {
+  margin-top: 0.25rem;
+}
+
+.setup-card .zone-help {
+  background: var(--bg);
+}
+
+/* Steps */
+
+.landing-steps {
+  padding: 0 0.25rem;
+}
+
+.landing-steps-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.landing-steps-header h2 {
+  font-size: 1.35rem;
+}
+
+.landing-steps-header p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+.landing-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-step-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  transition:
+    border-color 0.25s var(--ease-out),
+    transform 0.25s var(--ease-out);
+}
+
+.landing-step-card:hover {
+  border-color: rgba(30, 77, 56, 0.25);
+  transform: translateY(-3px);
+}
+
+.landing-step-num {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(30, 77, 56, 0.2);
+}
+
+.landing-step-card h3 {
+  font-size: 1.05rem;
+}
+
+.landing-step-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* Catalog bar (search + toolbar) */
+
+.catalog-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.catalog-bar .search-bar {
+  max-width: none;
+}
+
+.catalog-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.catalog-bar .active-filters {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .landing-steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero {
+    min-height: min(65vh, 520px);
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero {
+    margin: 0 -1.25rem;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  .landing-workspace {
+    margin-top: -1.5rem;
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "naturelover",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:all",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:web": "npm run dev --prefix web",
+    "dev:all": "concurrently -n api,web -c green,cyan \"npm run dev:api\" \"npm run dev:web\"",
+    "start": "tsx server/index.ts",
+    "db:seed": "tsx db/sync-trefle.ts",
+    "db:reset": "rm -f data/naturelover.db data/trefle-sync-state.json && TREFLE_CLEAR_DB=true tsx db/sync-trefle.ts",
+    "db:seed:status": "cat data/trefle-sync-state.json 2>/dev/null || echo 'No sync in progress'",
+    "db:backfill-edible": "tsx db/backfill-edible.ts",
+    "db:backfill-native": "tsx db/backfill-native-states.ts",
+    "db:backfill-us": "tsx db/backfill-us-scope.ts",
+    "enrich:trefle": "tsx scripts/enrich-from-trefle.ts",
+    "db:sync-seed": "tsx scripts/sync-seed-plants.ts",
+    "db:sync-seed:enrich": "tsx scripts/sync-seed-plants.ts --enrich",
+    "images:fetch": "tsx scripts/fetch-plant-images.ts --source=ifas",
+    "images:fetch:all": "tsx scripts/fetch-plant-images.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "better-sqlite3": "^11.9.1",
+    "hono": "^4.7.10"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

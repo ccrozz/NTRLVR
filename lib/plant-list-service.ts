@@ -1,0 +1,336 @@
+import type { Plant, PlantFilters, PlantSummary } from "../schema.js";
+import {
+  isFoodForestGroup,
+  plantMatchesFoodForestGroup,
+} from "./food-forest-groups.js";
+import { SEED_BY_ID, SEED_PLANTS } from "../data/plants.seed.js";
+import { stateByCode } from "./us-states.js";
+import {
+  listPlants,
+  plantToSummary,
+  getPlantById,
+  getPlantByTrefleSlug,
+} from "../db/plant-repository.js";
+import {
+  mapTrefleDetailToPlant,
+  mergeLocalWithTrefle,
+  searchTrefle,
+  summaryFromLocal,
+  summaryFromTrefle,
+  type PlantListItem,
+  getTreflePlant,
+  getTreflePlantBySlug,
+} from "./trefle-api.js";
+export function listLocalSummaries(filters: PlantFilters): {
+  data: PlantSummary[];
+  total: number;
+} {
+  const { data, total } = listPlants(filters);
+  return {
+    data: data.map((p) => ({
+      ...plantToSummary(p),
+      is_invasive_in_florida: p.is_invasive_in_florida,
+    })),
+    total,
+  };
+}
+
+function seedMatchesFilters(plant: Plant, filters: PlantFilters): boolean {
+  const searchText = filters.search?.trim();
+  if (searchText) {
+    const tokens = searchText.toLowerCase().split(/\s+/).filter(Boolean);
+    const hay = [
+      plant.common_name,
+      plant.scientific_name,
+      plant.category,
+      plant.canopy_layer,
+      plant.family ?? "",
+      plant.genus ?? "",
+      plant.care_summary,
+      ...plant.tags,
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (!tokens.every((t) => hay.includes(t))) return false;
+  }
+
+  if (filters.category) {
+    const cats = Array.isArray(filters.category)
+      ? filters.category
+      : [filters.category];
+    if (!cats.includes(plant.category)) return false;
+  }
+
+  if (filters.canopy_layer) {
+    const layers = Array.isArray(filters.canopy_layer)
+      ? filters.canopy_layer
+      : [filters.canopy_layer];
+    if (!layers.includes(plant.canopy_layer)) return false;
+  }
+
+  if (filters.florida_native_only && !plant.is_florida_native) return false;
+  if (filters.kitchen_essentials_only && !plant.is_kitchen_essential) return false;
+  if (filters.edible_only && !plant.is_edible) return false;
+  if (filters.exclude_invasive && plant.is_invasive_in_florida) return false;
+
+  if (
+    filters.food_forest_group &&
+    isFoodForestGroup(filters.food_forest_group) &&
+    !plantMatchesFoodForestGroup(plant, filters.food_forest_group)
+  ) {
+    return false;
+  }
+
+  if (filters.native_to_state_only && filters.native_state) {
+    const st = filters.native_state.toUpperCase();
+    const native =
+      plant.native_states.some((s) => s.toUpperCase() === st) ||
+      (st === "FL" &&
+        plant.is_florida_native &&
+        plant.native_states.length === 0);
+    if (!native) return false;
+  }
+
+  if (filters.for_my_area && filters.native_state) {
+    const st = filters.native_state.toUpperCase();
+    const state = stateByCode(st);
+    if (state?.hardiness_zones.length) {
+      const zones = plant.florida_hardiness_zones.map((z) => z.toLowerCase());
+      const inZone = state.hardiness_zones.some((z) =>
+        zones.includes(z.toLowerCase()),
+      );
+      const native =
+        plant.native_states.some((s) => s.toUpperCase() === st) ||
+        (st === "FL" &&
+          plant.is_florida_native &&
+          plant.native_states.length === 0);
+      if (!inZone && !native) return false;
+    }
+  }
+
+  if (filters.hardiness_zone) {
+    const z = filters.hardiness_zone.trim().toLowerCase();
+    const zones = plant.florida_hardiness_zones.map((x) => x.toLowerCase());
+    const whole = z.replace(/[ab]$/i, "");
+    if (
+      !zones.includes(z) &&
+      !zones.some((x) => x.startsWith(whole))
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function coalesceImageUrl(
+  ...candidates: (string | null | undefined)[]
+): string | null {
+  for (const url of candidates) {
+    const trimmed = url?.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+function listSeedSummaries(filters: PlantFilters): PlantListItem[] {
+  return SEED_PLANTS.filter((p) => seedMatchesFilters(p, filters)).map(
+    (seed) => {
+      const stored = getPlantById(seed.id);
+      const plant: Plant = stored
+        ? {
+            ...seed,
+            ...stored,
+            image_url: coalesceImageUrl(stored.image_url, seed.image_url),
+          }
+        : seed;
+      return summaryFromLocal({
+        ...plantToSummary(plant),
+        is_invasive_in_florida: plant.is_invasive_in_florida,
+      });
+    },
+  );
+}
+
+export async function listPlantsWithTrefle(
+  filters: PlantFilters,
+  opts: { trefleLive?: boolean; search?: string },
+): Promise<{ data: PlantListItem[]; total: number }> {
+  const search = opts.search?.trim() ?? filters.search?.trim();
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 100;
+
+  /** Designer catalog: curated food-forest plants only (no Trefle bulk). */
+  if (filters.food_forest_only) {
+    const seedFilters: PlantFilters = {
+      ...filters,
+      exclude_invasive: true,
+      search: search ?? filters.search,
+    };
+    const all = listSeedSummaries(seedFilters);
+    return {
+      data: all.slice(offset, offset + limit),
+      total: all.length,
+    };
+  }
+
+  if (opts.trefleLive && search) {
+    const hits = await searchTrefle(search);
+    const data = hits.slice(0, filters.limit ?? 50).map(summaryFromTrefle);
+    return { data, total: data.length };
+  }
+
+  const seeds = listSeedSummaries(filters);
+  const seedCount = seeds.length;
+  const seen = new Set<string>();
+  const items: PlantListItem[] = [];
+
+  let dbTotal = 0;
+
+  if (offset === 0) {
+    const dbLimit = Math.max(0, limit - seedCount);
+    const { data: local, total } = listLocalSummaries({
+      ...filters,
+      limit: dbLimit,
+      offset: 0,
+    });
+    dbTotal = total;
+    for (const seed of seeds) {
+      seen.add(seed.id);
+      items.push(seed);
+    }
+    for (const p of local) {
+      const row = summaryFromLocal({
+        ...p,
+        is_invasive_in_florida: p.is_invasive_in_florida ?? false,
+      });
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      items.push(row);
+    }
+  } else {
+    const dbOffset = Math.max(0, offset - seedCount);
+    const { data: local, total } = listLocalSummaries({
+      ...filters,
+      limit,
+      offset: dbOffset,
+    });
+    dbTotal = total;
+    for (const p of local) {
+      const row = summaryFromLocal({
+        ...p,
+        is_invasive_in_florida: p.is_invasive_in_florida ?? false,
+      });
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      items.push(row);
+    }
+  }
+
+  if (search && items.length < 3) {
+    const trefleHits = await searchTrefle(search);
+    for (const hit of trefleHits) {
+      const row = summaryFromTrefle(hit);
+      if (seen.has(row.trefle_slug ?? row.id)) continue;
+      seen.add(row.trefle_slug ?? row.id);
+      items.push(row);
+      if (items.length >= limit) break;
+    }
+  }
+
+  return { data: items, total: dbTotal + seedCount };
+}
+
+export async function resolvePlantById(id: string): Promise<Plant | null> {
+  const numeric = /^\d+$/.test(id);
+  if (numeric) {
+    try {
+      const detail = await getTreflePlant(parseInt(id, 10));
+      return mapTrefleDetailToPlant(detail);
+    } catch {
+      return null;
+    }
+  }
+
+  const local =
+    getPlantById(id) ??
+    getPlantByTrefleSlug(id) ??
+    (id.startsWith("trefle-")
+      ? getPlantByTrefleSlug(id.slice("trefle-".length))
+      : null) ??
+    SEED_BY_ID[id] ??
+    null;
+
+  if (local) {
+    if (local.trefle_id) {
+      try {
+        const detail = await getTreflePlant(local.trefle_id);
+        return mergeLocalWithTrefle(local, mapTrefleDetailToPlant(detail));
+      } catch {
+        return local;
+      }
+    }
+    return local;
+  }
+
+  try {
+    const detail = await getTreflePlantBySlug(
+      id.startsWith("trefle-") ? id.slice("trefle-".length) : id,
+    );
+    return mapTrefleDetailToPlant(detail);
+  } catch {
+    return null;
+  }
+}
+
+export async function enrichSeedPlant(localId: string): Promise<Plant | null> {
+  const seed = SEED_BY_ID[localId] ?? getPlantById(localId);
+  if (!seed) return null;
+
+  const { searchTrefleByScientificName } = await import("./trefle-api.js");
+  const detail = await searchTrefleByScientificName(seed.scientific_name);
+  if (!detail) return seed;
+
+  const mapped = mapTrefleDetailToPlant(detail);
+  return mergeLocalWithTrefle(
+    { ...seed, id: localId },
+    { ...mapped, id: localId },
+  );
+}
+
+export function plantSummaryFromPlant(plant: Plant): PlantListItem {
+  return summaryFromLocal({
+    ...plantToSummary(plant),
+    is_invasive_in_florida: plant.is_invasive_in_florida,
+  });
+}
+
+export function canvasPlantFromSummary(
+  item: PlantListItem,
+  x: number,
+  y: number,
+): {
+  canvasId: string;
+  plantId: string;
+  trefle_id?: number;
+  common_name: string;
+  canopy_layer: Plant["canopy_layer"];
+  canvas_radius_feet: number;
+  image_url: string | null;
+  is_invasive_in_florida: boolean;
+  x: number;
+  y: number;
+} {
+  return {
+    canvasId: crypto.randomUUID(),
+    plantId: item.id,
+    trefle_id: item.trefle_id,
+    common_name: item.common_name,
+    canopy_layer: item.canopy_layer,
+    canvas_radius_feet: item.canvas_radius_feet,
+    image_url: item.image_url,
+    is_invasive_in_florida: item.is_invasive_in_florida ?? false,
+    x,
+    y,
+  };
+}

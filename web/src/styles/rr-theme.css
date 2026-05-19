@@ -1,0 +1,188 @@
+/* NTR LVR — shared dark theme (catalog + detail) */
+
+body.rr-theme {
+  --color-bg: #0f1a14;
+  --color-surface: #1a2820;
+  --color-surface-2: #243529;
+  --color-border: #2d4a38;
+  --color-text: #e8f0e9;
+  --color-text-muted: #8aab90;
+  --color-accent: #7ec850;
+  --color-accent-warm: #e8a838;
+
+  --bg: var(--color-bg);
+  --bg-elevated: var(--color-surface);
+  --bg-muted: var(--color-surface-2);
+  --bg-brand: var(--color-surface);
+  --ink: var(--color-text);
+  --ink-muted: var(--color-text-muted);
+  --ink-faint: #6a8570;
+  --brand: var(--color-accent);
+  --brand-hover: #8ed65f;
+  --brand-soft: rgba(126, 200, 80, 0.12);
+  --accent: var(--color-accent-warm);
+  --accent-soft: rgba(232, 168, 56, 0.12);
+  --warn: #e07a5a;
+  --warn-soft: rgba(224, 122, 90, 0.12);
+  --line: var(--color-border);
+  --line-strong: #3a5c48;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --header-h: 3.75rem;
+  --focus-ring: 0 0 0 3px rgba(126, 200, 80, 0.35);
+
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-body);
+}
+
+body.rr-theme::before,
+body.rr-theme::after {
+  display: none;
+}
+
+.rr-app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(46, 106, 79, 0.2), transparent 50%),
+    radial-gradient(ellipse 60% 45% at 0% 100%, rgba(126, 200, 80, 0.06), transparent 45%),
+    var(--color-bg);
+}
+
+.rr-app-shell .designer-top-bar {
+  flex-shrink: 0;
+}
+
+.rr-app-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rr-app-main-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 4rem;
+}
+
+.rr-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: rgba(126, 200, 80, 0.1);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.rr-stat-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+/* Catalog scroll context */
+
+.rr-app-main .filters-panel {
+  top: 1rem;
+}
+
+body.rr-theme .btn-primary {
+  color: #0f1a14;
+}
+
+body.rr-theme .btn-zone-lookup {
+  color: #0f1a14;
+}
+
+body.rr-theme .search-bar input:hover {
+  border-color: rgba(126, 200, 80, 0.35);
+}
+
+body.rr-theme .search-bar input:focus {
+  border-color: var(--brand);
+}
+
+body.rr-theme .plant-card:hover {
+  border-color: rgba(126, 200, 80, 0.35);
+}
+
+body.rr-theme .plant-card-image,
+body.rr-theme .detail-image {
+  background: linear-gradient(160deg, #1a2820 0%, #243529 50%, #0f1a14 100%);
+}
+
+body.rr-theme .badge-accent {
+  color: var(--color-accent-warm);
+}
+
+body.rr-theme .badge-zone {
+  background: rgba(126, 200, 80, 0.15);
+  color: var(--color-accent);
+  border-color: rgba(126, 200, 80, 0.25);
+}
+
+body.rr-theme .badge-light {
+  background: rgba(26, 40, 32, 0.85);
+  color: var(--color-text);
+}
+
+body.rr-theme .meta-item:hover {
+  border-color: rgba(126, 200, 80, 0.3);
+}
+
+body.rr-theme .skeleton-image,
+body.rr-theme .skeleton-line {
+  background: linear-gradient(
+    90deg,
+    var(--bg-muted) 0%,
+    var(--color-surface-2) 50%,
+    var(--bg-muted) 100%
+  );
+  background-size: 200% 100%;
+}
+
+body.rr-theme .filter-chip {
+  color: var(--color-accent);
+  border-color: rgba(126, 200, 80, 0.2);
+}
+
+body.rr-theme .filter-toggle {
+  color: var(--color-accent);
+}
+
+body.rr-theme .filters-panel-header h2 {
+  color: var(--color-accent);
+}
+
+body.rr-theme .detail-section h2 {
+  color: var(--color-accent);
+}
+
+body.rr-theme .detail-back {
+  color: var(--color-accent);
+}
+
+body.rr-theme .detail-back:hover {
+  color: var(--color-text);
+}
+
+body.rr-theme .zone-region-chip:hover {
+  border-color: rgba(126, 200, 80, 0.4);
+}
+
+body.rr-theme .btn-zone-lookup:hover {
+  color: #0f1a14;
+}
