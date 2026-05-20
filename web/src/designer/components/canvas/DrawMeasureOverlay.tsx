@@ -20,9 +20,15 @@ function midpoint(
 type DrawMeasureOverlayProps = {
   points: { x: number; y: number }[];
   cursor: { x: number; y: number } | null;
+  /** Rubber-band to cursor only while pointer is over the canvas. */
+  showRubberBand: boolean;
 };
 
-export function DrawMeasureOverlay({ points, cursor }: DrawMeasureOverlayProps) {
+export function DrawMeasureOverlay({
+  points,
+  cursor,
+  showRubberBand,
+}: DrawMeasureOverlayProps) {
   if (points.length === 0 && !cursor) return null;
 
   const segments: { a: { x: number; y: number }; b: { x: number; y: number } }[] =
@@ -30,8 +36,11 @@ export function DrawMeasureOverlay({ points, cursor }: DrawMeasureOverlayProps) 
   for (let i = 1; i < points.length; i++) {
     segments.push({ a: points[i - 1]!, b: points[i]! });
   }
-  if (cursor && points.length > 0) {
+  if (showRubberBand && cursor && points.length > 0) {
     segments.push({ a: points[points.length - 1]!, b: cursor });
+  }
+  if (points.length >= 3) {
+    segments.push({ a: points[points.length - 1]!, b: points[0]! });
   }
 
   let totalFt = 0;
@@ -40,7 +49,7 @@ export function DrawMeasureOverlay({ points, cursor }: DrawMeasureOverlayProps) 
   }
 
   const previewFlat =
-    cursor && points.length > 0
+    showRubberBand && cursor && points.length > 0
       ? [...points.flatMap((p) => [p.x, p.y]), cursor.x, cursor.y]
       : null;
 
@@ -75,7 +84,7 @@ export function DrawMeasureOverlay({ points, cursor }: DrawMeasureOverlayProps) 
         />
       )}
 
-      {cursor && points.length > 0 && (
+      {showRubberBand && cursor && points.length > 0 && (
         <Circle
           x={cursor.x}
           y={cursor.y}
@@ -102,7 +111,7 @@ export function DrawMeasureOverlay({ points, cursor }: DrawMeasureOverlayProps) 
         />
       )}
 
-      {points.length >= 2 && cursor && (
+      {showRubberBand && points.length >= 2 && cursor && (
         <Text
           x={cursor.x + 10}
           y={cursor.y + 10}

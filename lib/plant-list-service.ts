@@ -21,6 +21,7 @@ import {
   getTreflePlant,
   getTreflePlantBySlug,
 } from "./trefle-api.js";
+import { applyDesignerProfile } from "./designer-plant-profiles.js";
 export function listLocalSummaries(filters: PlantFilters): {
   data: PlantSummary[];
   total: number;
@@ -152,6 +153,86 @@ function listSeedSummaries(filters: PlantFilters): PlantListItem[] {
   );
 }
 
+function plantToListItem(plant: Plant): PlantListItem {
+  return summaryFromLocal({
+    ...plantToSummary(plant),
+    is_invasive_in_florida: plant.is_invasive_in_florida,
+  });
+}
+
+function resolvePlantRecord(id: string): Plant | null {
+  return getPlantById(id) ?? SEED_BY_ID[id] ?? null;
+}
+
+function scoreCommonNameMatch(plantName: string, query: string): number {
+  const cn = plantName.trim().toLowerCase();
+  const q = query.trim().toLowerCase();
+  if (!cn || !q) return 0;
+  if (cn === q) return 100;
+  if (cn.endsWith(` ${q}`)) return 85;
+  const words = cn.split(/\s+/);
+  if (words.includes(q)) return 75;
+  if (cn.includes(q)) return 65;
+  if (q.includes(cn)) return 50;
+  return 0;
+}
+
+function findPlantByCommonName(name: string): Plant | null {
+  const target = name.trim().toLowerCase();
+  if (!target) return null;
+
+  let best: Plant | null = null;
+  let bestScore = 0;
+
+  const consider = (plant: Plant) => {
+    const score = scoreCommonNameMatch(plant.common_name, target);
+    if (score > bestScore) {
+      bestScore = score;
+      best = plant;
+    }
+  };
+
+  for (const seed of SEED_PLANTS) {
+    const stored = getPlantById(seed.id);
+    consider(stored ? { ...seed, ...stored } : seed);
+  }
+
+  const { data } = listPlants({ search: name.trim(), limit: 16 });
+  for (const row of data) {
+    consider(row);
+  }
+
+  return bestScore >= 65 ? best : null;
+}
+
+/** Batch lookup by id (designer companions). */
+export function listPlantsByIds(ids: string[]): PlantListItem[] {
+  const out: PlantListItem[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    const key = id.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const plant = resolvePlantRecord(key);
+    if (plant) out.push(plantToListItem(plant));
+  }
+  return out;
+}
+
+/** Batch lookup by display name (companion_plants strings). */
+export function listPlantsByCommonNames(names: string[]): PlantListItem[] {
+  const out: PlantListItem[] = [];
+  const seen = new Set<string>();
+  for (const name of names) {
+    const key = name.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const plant = findPlantByCommonName(name);
+    if (plant) out.push(plantToListItem(plant));
+  }
+  return out;
+}
+
 export async function listPlantsWithTrefle(
   filters: PlantFilters,
   opts: { trefleLive?: boolean; search?: string },
@@ -159,6 +240,16 @@ export async function listPlantsWithTrefle(
   const search = opts.search?.trim() ?? filters.search?.trim();
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 100;
+
+  if (filters.ids?.length) {
+    const data = listPlantsByIds(filters.ids);
+    return { data, total: data.length };
+  }
+
+  if (filters.names?.length) {
+    const data = listPlantsByCommonNames(filters.names);
+    return { data, total: data.length };
+  }
 
   /** Designer catalog: curated food-forest plants only (no Trefle bulk). */
   if (filters.food_forest_only) {
@@ -265,12 +356,14 @@ export async function resolvePlantById(id: string): Promise<Plant | null> {
     if (local.trefle_id) {
       try {
         const detail = await getTreflePlant(local.trefle_id);
-        return mergeLocalWithTrefle(local, mapTrefleDetailToPlant(detail));
+        return applyDesignerProfile(
+          mergeLocalWithTrefle(local, mapTrefleDetailToPlant(detail)),
+        );
       } catch {
-        return local;
+        return applyDesignerProfile(local);
       }
     }
-    return local;
+    return applyDesignerProfile(local);
   }
 
   try {

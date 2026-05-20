@@ -106,6 +106,7 @@ export interface PlantSummary {
   native_states: string[];
   growing_zones: string[];
   canvas_radius_feet: number;
+  mature_height_feet?: [number, number];
   image_url: string | null;
   tags: string[];
   data_source?: Plant["data_source"];
@@ -135,6 +136,10 @@ export interface PlantFilters {
   food_forest_group?: string;
   hardiness_zone?: string;
   guild_function?: GuildFunction;
+  /** Comma-separated plant ids (designer companion lookup). */
+  ids?: string[];
+  /** Comma-separated common names (companion lookup). */
+  names?: string[];
   limit?: number;
   offset?: number;
 }

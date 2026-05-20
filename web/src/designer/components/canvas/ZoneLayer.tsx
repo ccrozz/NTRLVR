@@ -181,6 +181,21 @@ export function ZoneLayer({
             dash={[6, 4]}
             listening={false}
           />
+          {drawPoints.length >= 3 && (
+            <Line
+              points={[
+                drawPoints[drawPoints.length - 1]!.x,
+                drawPoints[drawPoints.length - 1]!.y,
+                drawPoints[0]!.x,
+                drawPoints[0]!.y,
+              ]}
+              stroke="#7ec850"
+              strokeWidth={1.5}
+              dash={[4, 6]}
+              opacity={0.55}
+              listening={false}
+            />
+          )}
           {drawPoints.map((p, i) => (
             <Circle
               key={i}
@@ -200,7 +215,11 @@ export function ZoneLayer({
         <Text
           x={drawPoints[0]!.x}
           y={drawPoints[0]!.y - 20}
-          text="Click corners · Finish in panel"
+          text={
+            drawPoints.length >= 3
+              ? "Click first point or Finish below"
+              : "Click corners on the grid"
+          }
           fontSize={11}
           fill="#a8c4a8"
           listening={false}

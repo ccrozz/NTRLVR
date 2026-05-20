@@ -3,6 +3,7 @@
  * UF/IFAS EDIS, tropical fruit guides, and FL permaculture plant lists (zones 8a–11b).
  */
 import { compactSeeds } from "./seed-helpers.js";
+import { FL_IFAS_VH021_CULTIVARS } from "./fl-ifas-vh021-cultivars.js";
 
 const FRUIT_TREES = compactSeeds([
   // —— Mango cultivars ——
@@ -189,11 +190,7 @@ const KITCHEN_HERBS = compactSeeds([
 ]);
 
 const VEGETABLES_PERENNIALS = compactSeeds([
-  { id: "tomato-everglades", name: "Everglades Tomato", sci: "Solanum pimpinellifolium", cat: "Vegetable", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], nat: true, k: true, h: [3, 6], s: [3, 5] },
-  { id: "tomato-cherokee-purple", name: "Cherokee Purple Tomato", sci: "Solanum lycopersicum", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a"], k: true, h: [4, 6], s: [2, 3] },
-  { id: "pepper-bell", name: "Bell Pepper", sci: "Capsicum annuum", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [1.5, 2] },
-  { id: "pepper-habanero", name: "Habanero Pepper", sci: "Capsicum chinense", cat: "Vegetable", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], k: true, h: [2, 4], s: [2, 3] },
-  { id: "pepper-thai", name: "Thai Chili Pepper", sci: "Capsicum annuum", cat: "Vegetable", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], k: true, h: [2, 3], s: [1.5, 2] },
+  { id: "tomato-everglades", name: "Everglades Tomato", sci: "Solanum pimpinellifolium", cat: "Vegetable", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], nat: true, k: true, h: [3, 6], s: [3, 5], note: "Florida native currant tomato; not in VH021 cultivar list." },
   { id: "eggplant", name: "Eggplant", sci: "Solanum melongena", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 4], s: [2, 3] },
   { id: "okra", name: "Okra", sci: "Abelmoschus esculentus", cat: "Vegetable", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a", "10b"], k: true, h: [4, 7], s: [2, 3] },
   { id: "southern-pea-crowder", name: "Crowder Southern Pea", sci: "Vigna unguiculata", cat: "Vegetable", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer"] },
@@ -210,7 +207,6 @@ const VEGETABLES_PERENNIALS = compactSeeds([
   { id: "yuca-malanga", name: "Malanga (Taro family)", sci: "Xanthosoma sagittifolium", cat: "Vegetable", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], k: true, h: [3, 5], s: [3, 5] },
   { id: "winged-bean", name: "Winged Bean", sci: "Psophocarpus tetragonolobus", cat: "Vegetable", layer: "Vine", zones: ["10a", "10b", "11a"], k: true, h: [6, 10], s: [3, 5], guild: ["Nitrogen Fixer", "Food Producer"] },
   { id: "luffa", name: "Luffa Gourd", sci: "Luffa aegyptiaca", cat: "Vegetable", layer: "Vine", zones: ["9a", "9b", "10a", "10b"], k: true, h: [8, 15], s: [4, 8] },
-  { id: "calabaza", name: "Calabaza Squash", sci: "Cucurbita moschata", cat: "Vegetable", layer: "Groundcover", zones: ["9a", "9b", "10a", "10b"], k: true, h: [1, 2], s: [8, 15] },
   { id: "watermelon-sugar-baby", name: "Sugar Baby Watermelon", sci: "Citrullus lanatus", cat: "Vegetable", layer: "Groundcover", zones: ["9a", "9b", "10a"], k: true, h: [1, 1.5], s: [6, 10] },
   { id: "cantaloupe", name: "Cantaloupe", sci: "Cucumis melo", cat: "Vegetable", layer: "Groundcover", zones: ["9a", "9b", "10a"], k: true, h: [1, 1.5], s: [4, 8] },
   { id: "cucumber", name: "Cucumber", sci: "Cucumis sativus", cat: "Vegetable", layer: "Vine", zones: ["9a", "9b", "10a", "10b"], k: true, h: [1, 2], s: [3, 5] },
@@ -239,6 +235,48 @@ const VEGETABLES_PERENNIALS = compactSeeds([
   { id: "okinawa-spinach", name: "Okinawa Spinach", sci: "Gynura bicolor", cat: "Vegetable", layer: "Shrub", zones: ["9b", "10a", "10b", "11a"], k: true, h: [2, 4], s: [2, 3], sun: "Partial Shade" },
 ]);
 
+/** Beans, peas, and other nitrogen-fixing annuals for guild beds. */
+const LEGUMES = compactSeeds([
+  { id: "bush-bean-blue-lake", name: "Blue Lake Bush Bean", sci: "Phaseolus vulgaris", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [1.5, 2], s: [1, 2], guild: ["Nitrogen Fixer", "Food Producer"] },
+  { id: "pole-bean-kentucky", name: "Kentucky Wonder Pole Bean", sci: "Phaseolus vulgaris", cat: "Vegetable", layer: "Vine", zones: ["9a", "9b", "10a", "10b"], k: true, h: [6, 8], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer"] },
+  { id: "lima-bean-fordhook", name: "Fordhook Lima Bean", sci: "Phaseolus lunatus", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer"], note: "Heat-tolerant staple for Florida summer beds." },
+  { id: "butter-bean-speckled", name: "Speckled Butter Bean", sci: "Phaseolus lunatus", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer"] },
+  { id: "fava-bean", name: "Fava Bean", sci: "Vicia faba", cat: "Vegetable", layer: "Herbaceous", zones: ["8b", "9a"], k: true, h: [2, 4], s: [1, 2], guild: ["Nitrogen Fixer", "Food Producer"], note: "Cool-season in north/central FL." },
+  { id: "garden-pea", name: "Garden Pea", sci: "Pisum sativum", cat: "Vegetable", layer: "Herbaceous", zones: ["8b", "9a", "9b"], k: true, h: [2, 3], s: [1, 2], guild: ["Nitrogen Fixer", "Food Producer"], note: "Plant fall–winter in Florida." },
+  { id: "sugar-snap-pea", name: "Sugar Snap Pea", sci: "Pisum sativum", cat: "Vegetable", layer: "Vine", zones: ["8b", "9a", "9b"], k: true, h: [4, 6], s: [1, 2], guild: ["Nitrogen Fixer", "Food Producer"], note: "Cool-season; trellis in north FL." },
+  { id: "snow-pea", name: "Snow Pea", sci: "Pisum sativum", cat: "Vegetable", layer: "Vine", zones: ["8b", "9a", "9b"], k: true, h: [4, 6], s: [1, 2], guild: ["Nitrogen Fixer", "Food Producer"], note: "Cool-season flat pods." },
+  { id: "hyacinth-bean", name: "Hyacinth Bean", sci: "Lablab purpureus", cat: "Vegetable", layer: "Vine", zones: ["9a", "9b", "10a", "10b"], k: true, h: [8, 12], s: [3, 5], guild: ["Nitrogen Fixer", "Food Producer", "Pollinator Attractor"], note: "Cook beans thoroughly; showy purple flowers." },
+  { id: "scarlet-runner-bean", name: "Scarlet Runner Bean", sci: "Phaseolus coccineus", cat: "Vegetable", layer: "Vine", zones: ["9a", "9b", "10a"], k: true, h: [8, 10], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer", "Pollinator Attractor"] },
+  { id: "mung-bean", name: "Mung Bean", sci: "Vigna radiata", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [1.5, 2], s: [1, 2], guild: ["Nitrogen Fixer", "Food Producer"] },
+  { id: "edamame-soybean", name: "Edamame Soybean", sci: "Glycine max", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a"], k: true, h: [2, 3], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer"] },
+  { id: "pink-eyed-pea", name: "Pink-Eyed Purple Hull Pea", sci: "Vigna unguiculata", cat: "Vegetable", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [2, 3], guild: ["Nitrogen Fixer", "Food Producer"] },
+  { id: "pigeon-pea-perennial", name: "Pigeon Pea (Perennial)", sci: "Cajanus cajan", cat: "Vegetable", layer: "Shrub", zones: ["9b", "10a", "10b", "11a"], k: true, h: [6, 12], s: [4, 6], guild: ["Nitrogen Fixer", "Food Producer", "Dynamic Accumulator"], note: "Chop-and-drop mulch shrub for food forests." },
+]);
+
+/** Edible and pollinator flowers for guild edges and pollinator gardens. */
+const FLOWERS_POLLINATORS = compactSeeds([
+  { id: "zinnia", name: "Zinnia", sci: "Zinnia elegans", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b", "11a"], k: true, h: [2, 3], s: [1, 2], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "cosmos", name: "Cosmos", sci: "Cosmos bipinnatus", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [3, 5], s: [2, 3], guild: ["Pollinator Attractor"], tags: ["pollinator"] },
+  { id: "viola-pansy", name: "Pansy (Viola)", sci: "Viola × wittrockiana", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [0.5, 1], s: [0.5, 1], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"], note: "Cool-season color in north/central FL." },
+  { id: "dianthus", name: "Dianthus", sci: "Dianthus caryophyllus", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a"], k: true, h: [1, 2], s: [1, 1.5], guild: ["Pollinator Attractor"], tags: ["pollinator"] },
+  { id: "hollyhock", name: "Hollyhock", sci: "Alcea rosea", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], h: [5, 8], s: [2, 3], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "daylily-edible", name: "Daylily (Edible)", sci: "Hemerocallis fulva", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], eat: true, h: [2, 4], s: [2, 3], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"], note: "Buds and flowers edible when identified correctly." },
+  { id: "bee-balm", name: "Bee Balm", sci: "Monarda didyma", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [2, 4], s: [2, 3], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "bachelors-button", name: "Bachelor's Button", sci: "Centaurea cyanus", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], h: [2, 3], s: [1, 2], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "snapdragon", name: "Snapdragon", sci: "Antirrhinum majus", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a"], h: [1, 3], s: [1, 1.5], guild: ["Pollinator Attractor"], tags: ["pollinator"], note: "Winter–spring in Florida." },
+  { id: "celosia", name: "Celosia", sci: "Celosia argentea", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [1, 2], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "portulaca", name: "Portulaca (Moss Rose)", sci: "Portulaca grandiflora", cat: "Edible Flower", layer: "Groundcover", zones: ["9a", "9b", "10a", "10b", "11a"], h: [0.5, 0.75], s: [1, 1.5], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "pentas", name: "Pentas", sci: "Pentas lanceolata", cat: "Edible Flower", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], h: [2, 3], s: [2, 3], guild: ["Pollinator Attractor", "Wildlife Habitat"], tags: ["pollinator"], note: "UF/IFAS landscape pollinator favorite." },
+  { id: "tropical-sage", name: "Tropical Sage", sci: "Salvia coccinea", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a", "10b"], nat: true, h: [2, 4], s: [2, 3], guild: ["Pollinator Attractor", "Wildlife Habitat"], tags: ["pollinator", "native"] },
+  { id: "milkweed-butterfly", name: "Butterfly Milkweed", sci: "Asclepias tuberosa", cat: "Edible Flower", layer: "Herbaceous", zones: ["8a", "8b", "9a", "9b", "10a"], nat: true, h: [1, 2.5], s: [1, 2], guild: ["Pollinator Attractor", "Wildlife Habitat"], tags: ["pollinator", "native"], note: "Monarch host; north/central FL wildflower." },
+  { id: "cardinal-flower", name: "Cardinal Flower", sci: "Lobelia cardinalis", cat: "Edible Flower", layer: "Herbaceous", zones: ["8a", "8b", "9a", "9b", "10a"], nat: true, h: [2, 4], s: [1, 2], guild: ["Pollinator Attractor", "Wildlife Habitat"], tags: ["pollinator", "native"], sun: "Partial Shade", water: "High" },
+  { id: "porterweed-native", name: "Blue Porterweed", sci: "Stachytarpheta jamaicensis", cat: "Edible Flower", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], nat: true, h: [2, 4], s: [2, 3], guild: ["Pollinator Attractor", "Wildlife Habitat"], tags: ["pollinator", "native"] },
+  { id: "roselle", name: "Roselle (Hibiscus)", sci: "Hibiscus sabdariffa", cat: "Edible Flower", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], k: true, h: [4, 7], s: [3, 4], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"], note: "Calyxes for tea; summer bloomer in FL." },
+  { id: "lavender", name: "Lavender", sci: "Lavandula angustifolia", cat: "Edible Flower", layer: "Herbaceous", zones: ["8b", "9a"], k: true, h: [1, 2], s: [2, 3], guild: ["Pollinator Attractor", "Pest Repellent"], tags: ["pollinator"], note: "Best in north FL; needs sharp drainage." },
+  { id: "chrysanthemum-edible", name: "Garland Chrysanthemum", sci: "Glebionis coronaria", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a"], k: true, h: [1, 2], s: [1, 2], guild: ["Pollinator Attractor", "Food Producer"], tags: ["pollinator"] },
+  { id: "signet-marigold", name: "Signet Marigold", sci: "Tagetes tenuifolia", cat: "Edible Flower", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b", "11a"], k: true, h: [0.5, 1], s: [0.5, 1], guild: ["Pollinator Attractor", "Pest Repellent", "Food Producer"], tags: ["pollinator"] },
+]);
+
 /** All extended catalog entries (merged with base list in plants.seed.ts). */
 export const FL_FOOD_FOREST_COMPREHENSIVE = [
   ...FRUIT_TREES,
@@ -246,4 +284,7 @@ export const FL_FOOD_FOREST_COMPREHENSIVE = [
   ...BERRIES_AND_SMALL_FRUIT,
   ...KITCHEN_HERBS,
   ...VEGETABLES_PERENNIALS,
+  ...LEGUMES,
+  ...FLOWERS_POLLINATORS,
+  ...FL_IFAS_VH021_CULTIVARS,
 ];

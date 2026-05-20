@@ -126,6 +126,7 @@ export function plantToSummary(plant: Plant): PlantSummary & {
     tags: plant.tags,
     is_invasive_in_florida: plant.is_invasive_in_florida,
     data_source: plant.data_source,
+    mature_height_feet: plant.mature_height_feet,
   };
 }
 
@@ -153,8 +154,12 @@ ON CONFLICT(id) DO UPDATE SET
   common_name = excluded.common_name,
   scientific_name = excluded.scientific_name,
   image_url = COALESCE(NULLIF(trim(excluded.image_url), ''), plants.image_url),
-  trefle_id = excluded.trefle_id,
-  trefle_slug = excluded.trefle_slug,
+  trefle_id = CASE WHEN excluded.trefle_id != 0 THEN excluded.trefle_id ELSE plants.trefle_id END,
+  trefle_slug = CASE
+    WHEN excluded.trefle_id != 0 THEN excluded.trefle_slug
+    WHEN plants.trefle_id != 0 THEN plants.trefle_slug
+    ELSE excluded.trefle_slug
+  END,
   family = excluded.family,
   genus = excluded.genus,
   edible_part = excluded.edible_part,
@@ -199,7 +204,7 @@ export function plantToRow(plant: Plant) {
     scientific_name: plant.scientific_name,
     image_url: plant.image_url ?? null,
     trefle_id: plant.trefle_id ?? 0,
-    trefle_slug: plant.trefle_slug ?? plant.id.replace(/^trefle-/, ""),
+    trefle_slug: catalogTrefleSlug(plant),
     family: plant.family,
     genus: plant.genus,
     edible_part: plant.edible_part,
@@ -246,8 +251,69 @@ function mergeGrowingZones(existing: string[], incoming: string[]): string[] {
   return [...new Set([...existing, ...incoming])].sort();
 }
 
+/** Stable slug for SQLite UNIQUE(trefle_slug); IFAS ids must not steal Trefle slugs. */
+function catalogTrefleSlug(plant: Plant): string {
+  const explicit = plant.trefle_slug?.trim();
+  if (explicit) return explicit;
+  if (plant.id.startsWith("trefle-")) return plant.id.slice("trefle-".length);
+  return `local-${plant.id}`;
+}
+
+function mergeTrefleIntoCatalogRow(existing: Plant, incoming: Plant): Plant {
+  const keepCurated = existing.data_source === "ifas";
+  return {
+    ...incoming,
+    id: existing.id,
+    common_name: keepCurated ? existing.common_name : incoming.common_name,
+    image_url: existing.image_url ?? incoming.image_url,
+    is_florida_native: existing.is_florida_native || incoming.is_florida_native,
+    is_kitchen_essential:
+      existing.is_kitchen_essential || incoming.is_kitchen_essential,
+    is_edible: existing.is_edible || incoming.is_edible,
+    florida_hardiness_zones: mergeGrowingZones(
+      existing.florida_hardiness_zones,
+      incoming.florida_hardiness_zones,
+    ),
+    native_states: existing.native_states.length
+      ? existing.native_states
+      : incoming.native_states,
+    category: keepCurated ? existing.category : incoming.category,
+    canopy_layer: keepCurated ? existing.canopy_layer : incoming.canopy_layer,
+    guild_functions: [
+      ...new Set([
+        ...existing.guild_functions,
+        ...incoming.guild_functions,
+      ]),
+    ],
+    tags: [...new Set([...existing.tags, ...incoming.tags])],
+    companion_plants: existing.companion_plants.length
+      ? existing.companion_plants
+      : incoming.companion_plants,
+    avoid_planting_near: existing.avoid_planting_near.length
+      ? existing.avoid_planting_near
+      : incoming.avoid_planting_near,
+    data_source: keepCurated ? "ifas" : incoming.data_source,
+    trefle_json: incoming.trefle_json ?? existing.trefle_json,
+  };
+}
+
 export function upsertPlant(plant: Plant): void {
-  const existing = getPlantById(plant.id);
+  const incomingSlug = plant.trefle_slug?.trim();
+  if (incomingSlug && plant.id.startsWith("trefle-")) {
+    const bySlug = getPlantByTrefleSlug(incomingSlug);
+    if (bySlug && bySlug.id !== plant.id) {
+      plant = mergeTrefleIntoCatalogRow(bySlug, plant);
+    }
+  }
+
+  let existing = getPlantById(plant.id);
+  if (existing?.trefle_slug && !plant.trefle_slug) {
+    plant = { ...plant, trefle_slug: existing.trefle_slug };
+  }
+  const preservedTrefleId = existing?.trefle_id ?? 0;
+  if (preservedTrefleId > 0 && !(plant.trefle_id ?? 0)) {
+    plant = { ...plant, trefle_id: preservedTrefleId };
+  }
   if (existing?.florida_hardiness_zones.length) {
     plant = {
       ...plant,

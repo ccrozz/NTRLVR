@@ -4,7 +4,6 @@ import { useDesignerStore } from "../../store/useDesignerStore";
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "fruit_trees", label: "Fruit trees" },
   { key: "fruits_vegetables", label: "Fruits & veggies" },
-  { key: "vines", label: "Vines" },
   { key: "herbs", label: "Herbs" },
   { key: "flowers", label: "Flowers" },
   { key: "support", label: "Support" },

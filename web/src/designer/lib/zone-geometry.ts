@@ -9,6 +9,78 @@ export function pxToFeet(px: number): number {
   return px / PX_PER_FOOT;
 }
 
+/** Inner layout bounds in stage pixels (inset from zone edges). */
+export function zoneLayoutBoundsPx(
+  zone: WorkspaceZone,
+  marginFeet = 1.5,
+): { x0: number; y0: number; x1: number; y1: number } {
+  const margin = Math.max(0.5, marginFeet) * PX_PER_FOOT;
+
+  if (zone.shape === "rectangle") {
+    if (zone.x == null || zone.y == null) {
+      return { x0: 40, y0: 40, x1: 440, y1: 340 };
+    }
+    const w = feetToPx(zone.widthFeet ?? 20);
+    const h = feetToPx(zone.heightFeet ?? 20);
+    return {
+      x0: zone.x + margin,
+      y0: zone.y + margin,
+      x1: zone.x + w - margin,
+      y1: zone.y + h - margin,
+    };
+  }
+
+  if (zone.shape === "circle") {
+    if (zone.cx == null || zone.cy == null || zone.radiusFeet == null) {
+      return { x0: 40, y0: 40, x1: 440, y1: 340 };
+    }
+    const r = feetToPx(zone.radiusFeet);
+    return {
+      x0: zone.cx - r + margin,
+      y0: zone.cy - r + margin,
+      x1: zone.cx + r - margin,
+      y1: zone.cy + r - margin,
+    };
+  }
+
+  if (zone.shape === "polygon" && zone.points && zone.points.length >= 3) {
+    const xs = zone.points.map((p) => p.x);
+    const ys = zone.points.map((p) => p.y);
+    return {
+      x0: Math.min(...xs) + margin,
+      y0: Math.min(...ys) + margin,
+      x1: Math.max(...xs) - margin,
+      y1: Math.max(...ys) - margin,
+    };
+  }
+
+  return { x0: 40, y0: 40, x1: 440, y1: 340 };
+}
+
+/** Foot dimensions for layout API + plant count (from bounds or stored dims). */
+export function zoneLayoutDimensions(zone: WorkspaceZone): {
+  widthFeet: number;
+  heightFeet: number;
+  areaSqFt: number;
+} {
+  const area = zoneAreaSqFt(zone) ?? 400;
+  if (
+    zone.shape === "rectangle" &&
+    zone.widthFeet != null &&
+    zone.heightFeet != null
+  ) {
+    return {
+      widthFeet: zone.widthFeet,
+      heightFeet: zone.heightFeet,
+      areaSqFt: area,
+    };
+  }
+  const b = zoneLayoutBoundsPx(zone, 0);
+  const widthFeet = Math.max(6, Math.round((b.x1 - b.x0) / PX_PER_FOOT));
+  const heightFeet = Math.max(6, Math.round((b.y1 - b.y0) / PX_PER_FOOT));
+  return { widthFeet, heightFeet, areaSqFt: area };
+}
+
 export function zoneAreaSqFt(zone: WorkspaceZone): number | null {
   switch (zone.shape) {
     case "rectangle":

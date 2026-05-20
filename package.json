@@ -17,9 +17,13 @@
     "db:backfill-us": "tsx db/backfill-us-scope.ts",
     "enrich:trefle": "tsx scripts/enrich-from-trefle.ts",
     "db:sync-seed": "tsx scripts/sync-seed-plants.ts",
+    "db:backfill-profiles": "tsx scripts/backfill-designer-profiles.ts",
     "db:sync-seed:enrich": "tsx scripts/sync-seed-plants.ts --enrich",
     "images:fetch": "tsx scripts/fetch-plant-images.ts --source=ifas",
-    "images:fetch:all": "tsx scripts/fetch-plant-images.ts"
+    "images:fetch:inat": "tsx scripts/fetch-plant-images.ts --source=ifas --replace-non-inat --inat-only",
+    "images:fetch:all": "tsx scripts/fetch-plant-images.ts",
+    "images:fetch:vh021-fruit": "tsx scripts/fetch-cultivar-fruit-images.ts",
+    "build:vercel": "npm run db:sync-seed && tsx scripts/ensure-ifas-images.ts && npm run build --prefix web"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",

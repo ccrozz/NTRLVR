@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   DndContext,
@@ -7,6 +7,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { AutoPopulateWizard } from "../components/AutoPopulateWizard";
+import { DesignerHelpOverlay } from "../components/DesignerHelpOverlay";
 import { DesignerTopBar } from "../components/DesignerTopBar";
 import { PlantSidebar } from "../components/sidebar/PlantSidebar";
 import {
@@ -14,7 +16,13 @@ import {
   type DesignerCanvasHandle,
 } from "../components/canvas/DesignerCanvas";
 import { CanvasToolbar } from "../components/canvas/CanvasToolbar";
+import {
+  EDGE_RULER_LEFT,
+  EDGE_RULER_TOP,
+} from "../lib/canvas-ruler-insets";
 import { SelectionActionBar } from "../components/canvas/SelectionActionBar";
+import { DrawZoneDock } from "../components/workspace/DrawZoneDock";
+import { GardenPanel } from "../components/garden/GardenPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
 import { PlantDetailPanel } from "../components/detail/PlantDetailPanel";
 import { useDesignerStore } from "../store/useDesignerStore";
@@ -22,15 +30,56 @@ import { stagePoint } from "../lib/canvas-utils";
 import type { PlantListItem } from "../types";
 import "../styles/designer.css";
 
+const HELP_DISMISSED_KEY = "ntr-designer-help-dismissed";
+
 export function DesignerPage() {
   const [params] = useSearchParams();
   const canvasRef = useRef<DesignerCanvasHandle>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const addPlant = useDesignerStore((s) => s.addPlant);
+  const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
+  const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
+  const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
+  const detailOpen = Boolean(selectedPlantId || selectedCanvasPlantId);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [autoFillOpen, setAutoFillOpen] = useState(false);
+  const canvasPlants = useDesignerStore((s) => s.canvasPlants);
+  const zones = useDesignerStore((s) => s.zones);
+  const hasExistingLayout = canvasPlants.length > 0 || zones.length > 0;
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(HELP_DISMISSED_KEY) !== "1") {
+        setHelpOpen(true);
+      }
+    } catch {
+      setHelpOpen(true);
+    }
+  }, []);
+
+  function dismissHelp() {
+    setHelpOpen(false);
+    try {
+      localStorage.setItem(HELP_DISMISSED_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function toggleHelp() {
+    if (helpOpen) {
+      dismissHelp();
+    } else {
+      setHelpOpen(true);
+    }
+  }
   const setCanvasMode = useDesignerStore((s) => s.setCanvasMode);
   const stagePos = useDesignerStore((s) => s.stagePos);
   const zoom = useDesignerStore((s) => s.zoom);
+  const showRuler = useDesignerStore((s) => s.showRuler);
+  const workspaceTool = useDesignerStore((s) => s.workspaceTool);
+  const edgeRulersVisible = showRuler || workspaceTool === "draw-zone";
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -50,6 +99,12 @@ export function DesignerPage() {
       setCanvasMode("photo");
     }
   }, [params, setCanvasMode]);
+
+  useEffect(() => {
+    const open = () => setAutoFillOpen(true);
+    window.addEventListener("ntr-open-auto-fill", open);
+    return () => window.removeEventListener("ntr-open-auto-fill", open);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -103,16 +158,46 @@ export function DesignerPage() {
 
   return (
     <div className="designer-root">
-      <DesignerTopBar />
+      <DesignerTopBar
+        helpOpen={helpOpen}
+        onHelpClick={toggleHelp}
+        onAutoPopulateClick={() => setAutoFillOpen(true)}
+      />
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="designer-layout" ref={wrapRef}>
           <PlantSidebar />
-          <div className="designer-main">
+          <div
+            className={`designer-main${detailOpen ? " designer-main--detail-open" : ""}${edgeRulersVisible ? " has-edge-rulers" : ""}`}
+            style={
+              edgeRulersVisible
+                ? ({
+                    "--edge-ruler-top": `${EDGE_RULER_TOP}px`,
+                    "--edge-ruler-left": `${EDGE_RULER_LEFT}px`,
+                  } as React.CSSProperties)
+                : undefined
+            }
+          >
+            <GardenPanel />
             <WorkspacePanel />
+            <DrawZoneDock />
             <CanvasToolbar canvasRef={canvasRef} />
             <DesignerCanvas ref={canvasRef} />
             <SelectionActionBar />
+            {detailOpen && (
+              <button
+                type="button"
+                className="designer-detail-backdrop"
+                aria-label="Close plant details"
+                onClick={() => closeDetailPanel()}
+              />
+            )}
             <PlantDetailPanel />
+            {helpOpen && <DesignerHelpOverlay onClose={dismissHelp} />}
+            <AutoPopulateWizard
+              open={autoFillOpen}
+              onClose={() => setAutoFillOpen(false)}
+              hasExistingLayout={hasExistingLayout}
+            />
           </div>
         </div>
       </DndContext>

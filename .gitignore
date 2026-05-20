@@ -5,3 +5,7 @@ data/*.db
 data/*.db-*
 .env
 dist/
+.vercel
+tsconfig.tsbuildinfo
+test.json
+data/perenual-*.json

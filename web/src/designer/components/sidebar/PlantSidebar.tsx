@@ -4,7 +4,7 @@ import { useDesignerStore } from "../../store/useDesignerStore";
 import { usePlants } from "../../hooks/usePlants";
 import { FilterBar } from "./FilterBar";
 import { PlantCardDraggable } from "./PlantCardDraggable";
-import { CanopyLegend } from "./CanopyLegend";
+import { LayerVisibilityPanel } from "./LayerVisibilityPanel";
 
 export function PlantSidebar() {
   const searchQuery = useDesignerStore((s) => s.searchQuery);
@@ -52,32 +52,24 @@ export function PlantSidebar() {
 
   return (
     <aside className="designer-sidebar">
-      <header className="designer-sidebar-header">
-        <h1>Florida food forest</h1>
-        <p className="designer-sidebar-subtitle">
-          Curated trees, fruit, herbs &amp; support plants for your design
-        </p>
+      <div className="designer-sidebar-top">
         <input
           className="designer-search"
           type="search"
-          placeholder="Search food forest plants…"
+          placeholder="Find a plant…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Search plants"
         />
-      </header>
-      <FilterBar />
+        <FilterBar />
+      </div>
+
       <div className="designer-plant-list" ref={listRef}>
-        {isLoading && <p className="designer-section-label">Loading…</p>}
-        {!isLoading && plants.length > 0 && (
-          <p className="designer-section-label">
-            {plants.length.toLocaleString()}
-            {total > plants.length
-              ? ` of ${total.toLocaleString()}`
-              : ` plant${plants.length === 1 ? "" : "s"}`}
-          </p>
+        {isLoading && (
+          <p className="designer-plant-list-status">Loading plants…</p>
         )}
         {!isLoading && plants.length === 0 && (
-          <p className="designer-section-label">No plants match your filters.</p>
+          <p className="designer-plant-list-status">No plants match.</p>
         )}
         {plants.map((plant) => (
           <PlantCardDraggable
@@ -89,14 +81,22 @@ export function PlantSidebar() {
         ))}
         <div ref={sentinelRef} className="designer-list-sentinel" aria-hidden>
           {isFetchingNextPage && (
-            <p className="designer-section-label">Loading more…</p>
+            <p className="designer-plant-list-status">Loading more…</p>
           )}
         </div>
       </div>
+
       <footer className="designer-sidebar-footer">
-        <CanopyLegend />
-        <Link to="/catalog" className="designer-trefle-link">
-          Browse full plant catalog →
+        <LayerVisibilityPanel />
+        {!isLoading && total > 0 && (
+          <p className="designer-sidebar-count">
+            {plants.length < total
+              ? `${plants.length} of ${total}`
+              : `${total} plants`}
+          </p>
+        )}
+        <Link to="/catalog" className="designer-sidebar-catalog">
+          Full catalog
         </Link>
       </footer>
     </aside>

@@ -7,6 +7,17 @@ export type CanopyLayer =
   | "Root"
   | "Vine";
 
+export type GuildFunction =
+  | "Nitrogen Fixer"
+  | "Dynamic Accumulator"
+  | "Pollinator Attractor"
+  | "Pest Repellent"
+  | "Wind Break"
+  | "Groundcover/Mulch"
+  | "Food Producer"
+  | "Medicinal"
+  | "Wildlife Habitat";
+
 export type PlantCategory =
   | "Fruit Tree"
   | "Citrus"
@@ -37,6 +48,7 @@ export interface PlantSummary {
   image_url: string | null;
   tags: string[];
   data_source?: string;
+  mature_height_feet?: [number, number];
 }
 
 export interface Plant extends PlantSummary {
@@ -48,7 +60,7 @@ export interface Plant extends PlantSummary {
   vegetable: boolean;
   observations: string | null;
   synonyms: string[];
-  guild_functions: string[];
+  guild_functions: GuildFunction[];
   florida_hardiness_zones?: string[];
   source?: "local" | "trefle";
   mature_height_feet: [number, number];

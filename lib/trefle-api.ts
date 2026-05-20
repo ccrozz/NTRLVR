@@ -2,6 +2,7 @@
  * Server-side Trefle.io API — never import from the Vite client bundle.
  */
 import type { Plant, PlantSummary } from "../schema.js";
+import { applyDesignerProfile } from "./designer-plant-profiles.js";
 import { mapDetailToPlant, mapListToPlant, plantIdFromTrefle } from "../trefle/map-plant.js";
 import { TrefleClient } from "../trefle/client.js";
 import type { TrefleListPlant, TreflePlantDetail } from "../trefle/types.js";
@@ -112,7 +113,7 @@ export function mapTrefleListToSummary(item: TrefleListPlant): PlantSummary {
 }
 
 export function mapTrefleDetailToPlant(detail: TreflePlantDetail): Plant {
-  return mapDetailToPlant(detail, { storeJson: true });
+  return applyDesignerProfile(mapDetailToPlant(detail, { storeJson: true }));
 }
 
 export function mergeLocalWithTrefle(local: Plant, trefle: Plant): Plant {

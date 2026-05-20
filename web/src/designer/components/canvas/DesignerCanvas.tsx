@@ -1,130 +1,64 @@
-import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import {
+  useRef,
+  useEffect,
+  useState,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Stage, Layer, Circle, Text, Image as KonvaImage } from "react-konva";
+import { Stage, Layer, Image as KonvaImage } from "react-konva";
 import type Konva from "konva";
 import { useDesignerStore } from "../../store/useDesignerStore";
-import { canopyColor } from "../../lib/canopy-colors";
+import { CANOPY_LAYER_ORDER } from "../../lib/canopy-colors";
 import { radiusPx } from "../../lib/canvas-utils";
 import { plantInsideZones } from "../../lib/zone-geometry";
 import { ZoneLayer } from "./ZoneLayer";
+import { CanvasBackdropLayer } from "./CanvasBackdropLayer";
 import { ScaleGridLayer } from "./ScaleGridLayer";
+import { CanvasEdgeRulers } from "./CanvasEdgeRulers";
+import {
+  visibleStageBounds,
+  contentLayoutBounds,
+  stagePosToCenterBounds,
+} from "../../lib/viewport-bounds";
 import { DrawMeasureOverlay } from "./DrawMeasureOverlay";
+import { PlantCircle } from "./PlantCircle";
+import { CompanionSuggestions } from "./CompanionSuggestions";
+import { CrossSectionView } from "./CrossSectionView";
+import type { CanvasPlant } from "../../types";
 
 export type DesignerCanvasHandle = {
   exportPng: () => string | null;
+  centerOnContent: () => void;
 };
 
-function PlantOnCanvas({
-  cp,
-  selected,
-  outsideZone,
-  onSelect,
-  onDragEnd,
-}: {
-  cp: {
-    canvasId: string;
-    x: number;
-    y: number;
-    canvas_radius_feet: number;
-    image_url: string | null;
-    common_name: string;
-    canopy_layer: import("../../../types").CanopyLayer;
-    is_invasive_in_florida: boolean;
+/** Permaculture z-order, then smaller radii within a layer; hover/selection on top. */
+export function sortPlantsForRender(
+  plants: CanvasPlant[],
+  hoveredId: string | null,
+  selectedId: string | null,
+): CanvasPlant[] {
+  const sorted = [...plants].sort((a, b) => {
+    const layerDiff =
+      CANOPY_LAYER_ORDER[a.canopy_layer] - CANOPY_LAYER_ORDER[b.canopy_layer];
+    if (layerDiff !== 0) return layerDiff;
+    return (
+      radiusPx(a.canvas_radius_feet, 1) - radiusPx(b.canvas_radius_feet, 1)
+    );
+  });
+
+  const bringToFront = (id: string | null) => {
+    if (!id) return;
+    const idx = sorted.findIndex((p) => p.canvasId === id);
+    if (idx < 0) return;
+    const [plant] = sorted.splice(idx, 1);
+    sorted.push(plant);
   };
-  selected: boolean;
-  outsideZone: boolean;
-  onSelect: () => void;
-  onDragEnd: (x: number, y: number) => void;
-}) {
-  const colors = canopyColor(cp.canopy_layer);
-  const r = radiusPx(cp.canvas_radius_feet, 1);
-  const warnStroke = outsideZone ? "#e8a040" : colors.stroke;
-  const [img, setImg] = useState<HTMLImageElement | null>(null);
 
-  useEffect(() => {
-    if (!cp.image_url) {
-      setImg(null);
-      return;
-    }
-    const el = new window.Image();
-    el.crossOrigin = "anonymous";
-    el.onload = () => setImg(el);
-    el.src = cp.image_url;
-  }, [cp.image_url]);
-
-  return (
-    <>
-      <Circle
-        x={cp.x}
-        y={cp.y}
-        radius={r}
-        fill={img ? "#1a2820" : colors.fill}
-        opacity={img ? 1 : 0.45}
-        stroke={warnStroke}
-        strokeWidth={selected ? 3 : 2}
-        dash={outsideZone ? [6, 4] : undefined}
-        shadowColor={selected ? "#7ec850" : outsideZone ? "#e8a040" : "transparent"}
-        shadowBlur={selected || outsideZone ? 14 : 0}
-        draggable
-        onClick={onSelect}
-        onTap={onSelect}
-        onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
-      />
-      {img && (
-        <KonvaImage
-          image={img}
-          x={cp.x - r}
-          y={cp.y - r}
-          width={r * 2}
-          height={r * 2}
-          cornerRadius={r}
-          listening={false}
-        />
-      )}
-      {!img && (
-        <Text
-          x={cp.x}
-          y={cp.y}
-          text={cp.common_name.charAt(0).toUpperCase()}
-          fontSize={Math.min(r, 28)}
-          fill="#fff"
-          align="center"
-          offsetX={r * 0.2}
-          offsetY={r * 0.35}
-          listening={false}
-        />
-      )}
-      <Text
-        x={cp.x}
-        y={cp.y + r + 12}
-        text={cp.common_name}
-        fontSize={11}
-        fill="#e8f0e9"
-        align="center"
-        width={Math.max(80, r * 2.5)}
-        offsetX={Math.max(40, r * 1.25)}
-        listening={false}
-      />
-      {outsideZone && (
-        <Text
-          x={cp.x + r - 10}
-          y={cp.y - r + 2}
-          text="⚠️"
-          fontSize={14}
-          listening={false}
-        />
-      )}
-      {cp.is_invasive_in_florida && !outsideZone && (
-        <Text
-          x={cp.x + r - 10}
-          y={cp.y - r + 2}
-          text="⚠️"
-          fontSize={14}
-          listening={false}
-        />
-      )}
-    </>
-  );
+  bringToFront(selectedId);
+  bringToFront(hoveredId);
+  return sorted;
 }
 
 export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
@@ -135,12 +69,21 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
 
     const canvasPlants = useDesignerStore((s) => s.canvasPlants);
     const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
+    const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
+    const detailPanelOpen = Boolean(selectedPlantId ?? selectedCanvasPlantId);
+    const hiddenLayers = useDesignerStore((s) => s.hiddenLayers);
+    const canvasView = useDesignerStore((s) => s.canvasView);
     const zoom = useDesignerStore((s) => s.zoom);
     const stagePos = useDesignerStore((s) => s.stagePos);
     const backgroundImageUrl = useDesignerStore((s) => s.backgroundImageUrl);
     const canvasMode = useDesignerStore((s) => s.canvasMode);
     const showRuler = useDesignerStore((s) => s.showRuler);
     const selectCanvasPlant = useDesignerStore((s) => s.selectCanvasPlant);
+    const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
+    const placementFlashCanvasId = useDesignerStore(
+      (s) => s.placementFlashCanvasId,
+    );
+    const compactCanvasVisuals = useDesignerStore((s) => s.compactCanvasVisuals);
     const movePlant = useDesignerStore((s) => s.movePlant);
     const setStagePos = useDesignerStore((s) => s.setStagePos);
     const pushHistory = useDesignerStore((s) => s.pushHistory);
@@ -148,18 +91,43 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const activeZoneId = useDesignerStore((s) => s.activeZoneId);
     const workspaceTool = useDesignerStore((s) => s.workspaceTool);
     const drawPoints = useDesignerStore((s) => s.drawPoints);
+    const drawCursor = useDesignerStore((s) => s.drawCursor);
+    const setDrawCursor = useDesignerStore((s) => s.setDrawCursor);
     const addDrawPoint = useDesignerStore((s) => s.addDrawPoint);
     const zoneDragOrigin = useDesignerStore((s) => s.zoneDragOrigin);
 
-    const [drawCursor, setDrawCursor] = useState<{ x: number; y: number } | null>(
-      null,
+    const [hoveredCanvasPlantId, setHoveredCanvasPlantId] = useState<
+      string | null
+    >(null);
+
+    const plantsToRender = useMemo(
+      () =>
+        sortPlantsForRender(
+          canvasPlants,
+          hoveredCanvasPlantId,
+          selectedCanvasPlantId,
+        ),
+      [canvasPlants, hoveredCanvasPlantId, selectedCanvasPlantId],
+    );
+
+    const selectedPlant = useMemo(
+      () =>
+        canvasPlants.find((p) => p.canvasId === selectedCanvasPlantId) ?? null,
+      [canvasPlants, selectedCanvasPlantId],
     );
 
     const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
-    const stageW = size.w / zoom;
-    const stageH = size.h / zoom;
     const showScaleGrid = showRuler || workspaceTool === "draw-zone";
+
+    const gridBounds = useMemo(
+      () => visibleStageBounds(size.w, size.h, stagePos, zoom, 40),
+      [size.w, size.h, stagePos.x, stagePos.y, zoom],
+    );
+    const backdropBounds = useMemo(
+      () => visibleStageBounds(size.w, size.h, stagePos, zoom, 100),
+      [size.w, size.h, stagePos.x, stagePos.y, zoom],
+    );
 
     function pointerInStage(): { x: number; y: number } | null {
       const stage = stageRef.current;
@@ -172,9 +140,17 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       };
     }
 
-    useImperativeHandle(ref, () => ({
-      exportPng: () => stageRef.current?.toDataURL({ pixelRatio: 2 }) ?? null,
-    }));
+    useImperativeHandle(
+      ref,
+      () => ({
+        exportPng: () => stageRef.current?.toDataURL({ pixelRatio: 2 }) ?? null,
+        centerOnContent: () => {
+          const layout = contentLayoutBounds(zones, canvasPlants, 12);
+          setStagePos(stagePosToCenterBounds(layout, size.w, size.h, zoom));
+        },
+      }),
+      [zones, canvasPlants, size.w, size.h, zoom, setStagePos],
+    );
 
     useEffect(() => {
       const el = wrapRef.current;
@@ -206,6 +182,20 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       stage.batchDraw();
     }, [stagePos, zoom]);
 
+    if (canvasView === "cross-section") {
+      return (
+        <div
+          ref={(node) => {
+            setNodeRef(node);
+            wrapRef.current = node;
+          }}
+          className="designer-canvas-wrap designer-canvas-wrap--cross-section"
+        >
+          <CrossSectionView width={size.w} height={size.h} />
+        </div>
+      );
+    }
+
     return (
       <div
         ref={(node) => {
@@ -217,6 +207,20 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           outline: isOver ? "2px solid var(--color-accent)" : undefined,
         }}
       >
+        <CanvasEdgeRulers
+          viewportW={size.w}
+          viewportH={size.h}
+          stagePos={stagePos}
+          zoom={zoom}
+          visible={showScaleGrid}
+        />
+        {showScaleGrid && (
+          <div className="designer-canvas-scale-legend" aria-hidden>
+            <span className="designer-canvas-scale-bar" />
+            <span className="designer-canvas-scale-label">10 ft</span>
+            <span className="designer-canvas-scale-note">1 square = 1 ft</span>
+          </div>
+        )}
         <Stage
           ref={stageRef}
           width={size.w}
@@ -226,6 +230,11 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           x={stagePos.x}
           y={stagePos.y}
           draggable={workspaceTool !== "draw-zone" && !zoneDragOrigin}
+          onDragMove={(e) => {
+            if (e.target === stageRef.current) {
+              setStagePos({ x: e.target.x(), y: e.target.y() });
+            }
+          }}
           onDragEnd={(e) => {
             if (e.target === stageRef.current) {
               setStagePos({ x: e.target.x(), y: e.target.y() });
@@ -238,7 +247,10 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
             }
             setDrawCursor(pointerInStage());
           }}
-          onMouseLeave={() => setDrawCursor(null)}
+          onMouseLeave={() => {
+            setDrawCursor(null);
+            setHoveredCanvasPlantId(null);
+          }}
           onClick={(e) => {
             if (e.target !== stageRef.current) return;
             const pt = pointerInStage();
@@ -247,27 +259,23 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
               addDrawPoint(pt.x, pt.y);
               return;
             }
-            selectCanvasPlant(null);
-            useDesignerStore.getState().selectSidebarPlant(null);
+            closeDetailPanel();
           }}
         >
           <Layer>
+            <CanvasBackdropLayer bounds={backdropBounds} />
             {bgImg && (
               <KonvaImage
                 image={bgImg}
-                x={0}
-                y={0}
-                width={stageW}
-                height={stageH}
+                x={backdropBounds.x}
+                y={backdropBounds.y}
+                width={backdropBounds.width}
+                height={backdropBounds.height}
                 opacity={0.85}
                 listening={false}
               />
             )}
-            <ScaleGridLayer
-              width={stageW}
-              height={stageH}
-              visible={showScaleGrid}
-            />
+            <ScaleGridLayer bounds={gridBounds} visible={showScaleGrid} />
             <ZoneLayer
               zones={zones}
               activeZoneId={activeZoneId}
@@ -275,17 +283,37 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
               workspaceTool={workspaceTool}
             />
             {workspaceTool === "draw-zone" && (
-              <DrawMeasureOverlay points={drawPoints} cursor={drawCursor} />
+              <DrawMeasureOverlay
+                points={drawPoints}
+                cursor={drawCursor}
+                showRubberBand={drawCursor != null}
+              />
             )}
           </Layer>
           <Layer>
-            {canvasPlants.map((cp) => (
-              <PlantOnCanvas
+            {plantsToRender.map((cp) => (
+              <PlantCircle
                 key={cp.canvasId}
-                cp={cp}
+                canvasId={cp.canvasId}
+                plantId={cp.plantId}
+                x={cp.x}
+                y={cp.y}
+                canvas_radius_feet={cp.canvas_radius_feet}
+                image_url={cp.image_url}
+                common_name={cp.common_name}
+                category={cp.category}
+                canopy_layer={cp.canopy_layer}
+                is_invasive_in_florida={cp.is_invasive_in_florida}
                 selected={selectedCanvasPlantId === cp.canvasId}
+                hovered={hoveredCanvasPlantId === cp.canvasId}
                 outsideZone={
                   zones.length > 0 && !plantInsideZones(cp.x, cp.y, zones)
+                }
+                layerDimmed={hiddenLayers.includes(cp.canopy_layer)}
+                placementFlash={placementFlashCanvasId === cp.canvasId}
+                compactVisuals={compactCanvasVisuals}
+                onHover={(hovering) =>
+                  setHoveredCanvasPlantId(hovering ? cp.canvasId : null)
                 }
                 onSelect={() => {
                   selectCanvasPlant(cp.canvasId);
@@ -298,6 +326,17 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
               />
             ))}
           </Layer>
+          {selectedPlant && !detailPanelOpen && (
+            <Layer>
+              <CompanionSuggestions
+                hostCanvasId={selectedPlant.canvasId}
+                hostX={selectedPlant.x}
+                hostY={selectedPlant.y}
+                hostRadiusFeet={selectedPlant.canvas_radius_feet}
+                plantId={selectedPlant.plantId}
+              />
+            </Layer>
+          )}
         </Stage>
       </div>
     );

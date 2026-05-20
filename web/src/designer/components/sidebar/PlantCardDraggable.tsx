@@ -26,45 +26,36 @@ export function PlantCardDraggable({
     <button
       ref={setNodeRef}
       type="button"
-      className={`designer-plant-card${selected ? " selected" : ""}`}
-      style={{ opacity: isDragging ? 0.5 : 1 }}
+      className={`designer-plant-row${selected ? " selected" : ""}`}
+      style={{ opacity: isDragging ? 0.45 : 1 }}
       onClick={onSelect}
       {...listeners}
       {...attributes}
     >
-      <div className="designer-card-media" aria-hidden>
+      <div className="designer-plant-row-thumb" aria-hidden>
         {showPhoto ? (
           <img
             src={plant.image_url!}
             alt=""
-            className="designer-card-thumb"
             loading="lazy"
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <span className="designer-card-thumb designer-card-thumb--placeholder">
+          <span
+            className="designer-plant-row-thumb--empty"
+            style={{ color: layer.stroke }}
+          >
             {initial}
           </span>
         )}
-        <span
-          className="designer-layer-dot"
-          style={{ background: layer.stroke }}
-        />
       </div>
-      <div className="designer-card-body">
-        <h3>{plant.common_name}</h3>
-        <p className="sci">{plant.scientific_name}</p>
-        <div className="designer-badges">
-          {plant.is_florida_native && (
-            <span className="designer-badge designer-badge-native">Native</span>
-          )}
-          {plant.is_invasive_in_florida && (
-            <span className="designer-badge designer-badge-warn">Invasive</span>
-          )}
-          {plant.source === "trefle" && (
-            <span className="designer-badge designer-badge-trefle">Trefle</span>
-          )}
-        </div>
+      <div className="designer-plant-row-text">
+        <span className="designer-plant-row-name">{plant.common_name}</span>
+        <span className="designer-plant-row-meta">
+          {plant.canopy_layer}
+          {plant.is_florida_native && " · Native"}
+          {plant.is_invasive_in_florida && " · Invasive"}
+        </span>
       </div>
     </button>
   );

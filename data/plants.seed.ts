@@ -1,4 +1,5 @@
 import type { Plant } from "../schema.js";
+import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
 import { FL_FOOD_FOREST_COMPREHENSIVE } from "./fl-food-forest-comprehensive.js";
 import { FL_FOOD_FOREST_PLANTS } from "./fl-food-forest-plants.js";
 import { makeSeed } from "./seed-helpers.js";
@@ -297,7 +298,7 @@ export const SEED_PLANTS: Plant[] = mergeSeedCatalog(
   LEGACY_SEED_PLANTS,
   FL_FOOD_FOREST_PLANTS,
   FL_FOOD_FOREST_COMPREHENSIVE,
-);
+).map(applyDesignerProfile);
 
 export const SEED_BY_ID = Object.fromEntries(
   SEED_PLANTS.map((p) => [p.id, p]),

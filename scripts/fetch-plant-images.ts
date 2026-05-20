@@ -1,14 +1,19 @@
 /**
- * Fill missing plant image_url from Unsplash / iNaturalist / Wikimedia / Wikipedia.
+ * Fill plant image_url — iNaturalist-first (research-grade), Wikimedia/Wikipedia fallback.
  *
  * Usage:
- *   npx tsx scripts/fetch-plant-images.ts
- *   npx tsx scripts/fetch-plant-images.ts --source=ifas
+ *   npm run images:fetch              # IFAS food-forest, missing only
+ *   npm run images:fetch:inat         # replace non-iNat thumbnails in IFAS catalog
+ *   npm run images:fetch:all          # all plants, missing only
  *   npx tsx scripts/fetch-plant-images.ts --force
- *   UNSPLASH_ACCESS_KEY=xxx npx tsx scripts/fetch-plant-images.ts
  */
 import { loadEnv } from "../lib/load-env.js";
-import { fetchBestPlantImage, type ImageSource } from "../lib/plant-images.js";
+import {
+  fetchBestPlantImage,
+  fetchInaturalistOnlyPlantImage,
+  isInaturalistImageUrl,
+  type ImageSource,
+} from "../lib/plant-images.js";
 import {
   countPlants,
   getPlantById,
@@ -20,8 +25,10 @@ import type { Plant } from "../schema.js";
 
 loadEnv();
 
-const DELAY_MS = Number(process.env.IMAGE_FETCH_DELAY_MS ?? 450);
+const DELAY_MS = Number(process.env.IMAGE_FETCH_DELAY_MS ?? 500);
 const force = process.argv.includes("--force");
+const inatOnly = process.argv.includes("--inat-only");
+const replaceNonInat = process.argv.includes("--replace-non-inat");
 const sourceArg = process.argv.find((a) => a.startsWith("--source="));
 const sourceFilter = sourceArg?.split("=")[1];
 
@@ -38,7 +45,14 @@ function listTargets(): Plant[] {
     conditions.push("data_source = @source");
     params.source = sourceFilter;
   }
-  if (!force) {
+
+  if (force) {
+    /* all rows matching source filter */
+  } else if (replaceNonInat) {
+    conditions.push(
+      "(image_url IS NULL OR image_url = '' OR (image_url NOT LIKE '%inaturalist.org%' AND image_url NOT LIKE '%inaturalist-open-data.s3.amazonaws.com%'))",
+    );
+  } else {
     conditions.push("(image_url IS NULL OR image_url = '')");
   }
 
@@ -51,11 +65,8 @@ function listTargets(): Plant[] {
 }
 
 async function main() {
-  const hasUnsplash = Boolean(
-    process.env.UNSPLASH_ACCESS_KEY ?? process.env.UNSPLASH_CLIENT_ID,
-  );
   console.log(
-    `Image fetch — force=${force} source=${sourceFilter ?? "all"} unsplash=${hasUnsplash}`,
+    `Image fetch — iNaturalist-first | force=${force} inatOnly=${inatOnly} replaceNonInat=${replaceNonInat} source=${sourceFilter ?? "all"}`,
   );
 
   const targets = listTargets();
@@ -70,24 +81,61 @@ async function main() {
   let updated = 0;
   let skipped = 0;
   let failed = 0;
+  let alreadyInat = 0;
+
+  const fetchImage = inatOnly
+    ? fetchInaturalistOnlyPlantImage
+    : fetchBestPlantImage;
 
   for (let i = 0; i < targets.length; i++) {
     const row = targets[i]!;
     const existing = getPlantById(row.id) ?? row;
 
-    if (!force && existing.image_url) {
+    if (
+      !force &&
+      !replaceNonInat &&
+      existing.image_url &&
+      isInaturalistImageUrl(existing.image_url)
+    ) {
       skipped++;
       continue;
     }
 
+    if (
+      !force &&
+      !replaceNonInat &&
+      existing.image_url &&
+      !isInaturalistImageUrl(existing.image_url)
+    ) {
+      skipped++;
+      continue;
+    }
+
+    if (
+      replaceNonInat &&
+      !force &&
+      existing.image_url &&
+      isInaturalistImageUrl(existing.image_url)
+    ) {
+      alreadyInat++;
+      continue;
+    }
+
     try {
-      const result = await fetchBestPlantImage(
+      const result = await fetchImage(
         existing.common_name,
         existing.scientific_name,
       );
       if (!result) {
         failed++;
-        console.log(`  ⚠️  no image: ${existing.id}`);
+        if (failed <= 20 || i < 5) {
+          console.log(`  ⚠️  no image: ${existing.common_name} (${existing.id})`);
+        }
+      } else if (replaceNonInat && !isInaturalistImageUrl(result.image_url)) {
+        failed++;
+        console.log(
+          `  ⚠️  iNat only — skipped ${existing.common_name} (got ${result.source})`,
+        );
       } else {
         upsertPlant({ ...existing, image_url: result.image_url });
         bySource[result.source]++;
@@ -117,9 +165,21 @@ async function main() {
     )
     .get() as { c: number };
 
-  console.log(`\nDone. Updated: ${updated}, skipped: ${skipped}, no image: ${failed}`);
+  const foodForestInat = getDb()
+    .prepare(
+      `SELECT COUNT(*) AS c FROM plants
+       WHERE tags LIKE '%food-forest%'
+         AND image_url LIKE '%inaturalist%'`,
+    )
+    .get() as { c: number };
+
+  console.log(
+    `\nDone. Updated: ${updated}, skipped: ${skipped}, already iNat: ${alreadyInat}, no image: ${failed}`,
+  );
   console.log("By source:", bySource);
-  console.log(`DB total plants: ${countPlants()}, with images: ${withImages.c}`);
+  console.log(
+    `DB total: ${countPlants()} with images: ${withImages.c} | food-forest iNat URLs: ${foodForestInat.c}`,
+  );
 }
 
 main().catch((e) => {
