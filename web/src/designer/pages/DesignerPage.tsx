@@ -25,6 +25,8 @@ import { DrawZoneDock } from "../components/workspace/DrawZoneDock";
 import { GardenPanel } from "../components/garden/GardenPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
 import { PlantDetailPanel } from "../components/detail/PlantDetailPanel";
+import { MobileDesignerBar } from "../components/MobileDesignerBar";
+import { openBuildForMeSidebar } from "../lib/open-build-sidebar";
 import { useDesignerStore } from "../store/useDesignerStore";
 import { stagePoint } from "../lib/canvas-utils";
 import type { PlantListItem } from "../types";
@@ -42,7 +44,8 @@ export function DesignerPage() {
   const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
   const detailOpen = Boolean(selectedPlantId || selectedCanvasPlantId);
   const [helpOpen, setHelpOpen] = useState(false);
-  const setSidebarMode = useDesignerStore((s) => s.setSidebarMode);
+  const mobileSidebarOpen = useDesignerStore((s) => s.mobileSidebarOpen);
+  const setMobileSidebarOpen = useDesignerStore((s) => s.setMobileSidebarOpen);
 
   useEffect(() => {
     try {
@@ -103,10 +106,10 @@ export function DesignerPage() {
   }, [params, setCanvasMode]);
 
   useEffect(() => {
-    const open = () => setSidebarMode("build");
+    const open = () => openBuildForMeSidebar();
     window.addEventListener("ntr-open-auto-fill", open);
     return () => window.removeEventListener("ntr-open-auto-fill", open);
-  }, [setSidebarMode]);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -174,6 +177,7 @@ export function DesignerPage() {
 
     const pt = stagePoint(clientX, clientY, rect, stagePos, zoom);
     addPlant(plant, pt.x, pt.y);
+    setMobileSidebarOpen(false);
   }
 
   return (
@@ -181,10 +185,20 @@ export function DesignerPage() {
       <DesignerTopBar
         helpOpen={helpOpen}
         onHelpClick={toggleHelp}
-        onAutoPopulateClick={() => setSidebarMode("build")}
+        onAutoPopulateClick={openBuildForMeSidebar}
       />
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="designer-layout" ref={wrapRef}>
+        <div
+          className={`designer-layout${mobileSidebarOpen ? " designer-layout--sidebar-open" : ""}`}
+          ref={wrapRef}
+        >
+          <button
+            type="button"
+            className="designer-sidebar-backdrop"
+            aria-label="Close plants panel"
+            tabIndex={mobileSidebarOpen ? 0 : -1}
+            onClick={() => setMobileSidebarOpen(false)}
+          />
           <PlantSidebar />
           <div
             className={`designer-main${detailOpen ? " designer-main--detail-open" : ""}${edgeRulersVisible ? " has-edge-rulers" : ""}`}
@@ -215,6 +229,7 @@ export function DesignerPage() {
             {helpOpen && <DesignerHelpOverlay onClose={dismissHelp} />}
             <GardenPlanSheet />
           </div>
+          <MobileDesignerBar />
         </div>
       </DndContext>
     </div>

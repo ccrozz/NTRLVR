@@ -26,7 +26,10 @@ import { DrawMeasureOverlay } from "./DrawMeasureOverlay";
 import { PlantCircle } from "./PlantCircle";
 import { CompanionSuggestions } from "./CompanionSuggestions";
 import { CrossSectionView } from "./CrossSectionView";
+import { bindCanvasTouchViewport } from "../../lib/canvas-touch-viewport";
 import { handleCanvasWheel } from "../../lib/canvas-wheel";
+import { isMobileDesignerLayout, MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
+import { useMatchMedia } from "../../hooks/useMatchMedia";
 import type { CanvasPlant } from "../../types";
 
 export type DesignerCanvasHandle = {
@@ -88,6 +91,8 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const movePlant = useDesignerStore((s) => s.movePlant);
     const setZoom = useDesignerStore((s) => s.setZoom);
     const setStagePos = useDesignerStore((s) => s.setStagePos);
+    const canvasFitTick = useDesignerStore((s) => s.canvasFitTick);
+    const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
     const pushHistory = useDesignerStore((s) => s.pushHistory);
     const zones = useDesignerStore((s) => s.zones);
     const activeZoneId = useDesignerStore((s) => s.activeZoneId);
@@ -186,6 +191,22 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       return () => root.removeEventListener("wheel", onWheel);
     }, [canvasView, setZoom, setStagePos]);
 
+    useEffect(() => {
+      const root = wrapRef.current;
+      if (!root || canvasView !== "top-down") return;
+      return bindCanvasTouchViewport(
+        root,
+        () => {
+          const s = useDesignerStore.getState();
+          return { zoom: s.zoom, stagePos: s.stagePos };
+        },
+        ({ zoom: nextZoom, stagePos: nextPos }) => {
+          setZoom(nextZoom);
+          setStagePos(nextPos);
+        },
+      );
+    }, [canvasView, setZoom, setStagePos]);
+
     const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
     useEffect(() => {
       if (!backgroundImageUrl || canvasMode !== "photo") {
@@ -204,6 +225,43 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       stage.scale({ x: zoom, y: zoom });
       stage.batchDraw();
     }, [stagePos, zoom]);
+
+    useEffect(() => {
+      if (!canvasFitTick || canvasView !== "top-down") return;
+      const layout = contentLayoutBounds(zones, canvasPlants, 12);
+      let fitZoom = zoom;
+      if (
+        isMobileDesignerLayout() &&
+        layout.width > 0 &&
+        layout.height > 0 &&
+        size.w > 0 &&
+        size.h > 0
+      ) {
+        const pad = 40;
+        fitZoom = Math.min(
+          2.5,
+          Math.max(
+            0.4,
+            Math.min(
+              (size.w - pad) / layout.width,
+              (size.h - pad) / layout.height,
+            ),
+          ),
+        );
+        setZoom(fitZoom);
+      }
+      setStagePos(stagePosToCenterBounds(layout, size.w, size.h, fitZoom));
+    }, [
+      canvasFitTick,
+      canvasView,
+      zones,
+      canvasPlants,
+      size.w,
+      size.h,
+      zoom,
+      setZoom,
+      setStagePos,
+    ]);
 
     if (canvasView === "cross-section") {
       return (
@@ -252,7 +310,11 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           scaleY={zoom}
           x={stagePos.x}
           y={stagePos.y}
-          draggable={workspaceTool !== "draw-zone" && !zoneDragOrigin}
+          draggable={
+            !isMobile &&
+            workspaceTool !== "draw-zone" &&
+            !zoneDragOrigin
+          }
           onDragMove={(e) => {
             if (e.target === stageRef.current) {
               setStagePos({ x: e.target.x(), y: e.target.y() });

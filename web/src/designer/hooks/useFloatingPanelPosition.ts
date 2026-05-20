@@ -71,17 +71,14 @@ export function useFloatingPanelPosition(
   boundsRef: React.RefObject<HTMLElement | null>,
 ) {
   const panelRef = useRef<HTMLElement | null>(null);
-  const dragRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    originX: number;
-    originY: number;
-  } | null>(null);
+  const positionRef = useRef(defaultPosition);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
 
   const [position, setPosition] = useState(() =>
     loadPosition(storageKey, defaultPosition),
   );
+
+  positionRef.current = position;
 
   const persist = useCallback(
     (pos: PanelPosition) => {
@@ -93,6 +90,10 @@ export function useFloatingPanelPosition(
     },
     [storageKey],
   );
+
+  useEffect(() => {
+    return () => dragCleanupRef.current?.();
+  }, []);
 
   useEffect(() => {
     const el = panelRef.current;
@@ -121,38 +122,53 @@ export function useFloatingPanelPosition(
   }, [boundsRef, persist]);
 
   function onDragHandlePointerDown(e: React.PointerEvent<HTMLElement>) {
-    if ((e.target as HTMLElement).closest("button")) return;
-    dragRef.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startY: e.clientY,
-      originX: position.x,
-      originY: position.y,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    const interactive = (e.target as HTMLElement).closest(
+      "button, a, input, select, textarea",
+    );
+    if (interactive && interactive !== e.currentTarget) return;
+
     e.preventDefault();
-  }
+    e.stopPropagation();
 
-  function onDragHandlePointerMove(e: React.PointerEvent<HTMLElement>) {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) return;
-    const next = {
-      x: drag.originX + (e.clientX - drag.startX),
-      y: drag.originY + (e.clientY - drag.startY),
+    const pointerId = e.pointerId;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const originX = positionRef.current.x;
+    const originY = positionRef.current.y;
+
+    dragCleanupRef.current?.();
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      ev.preventDefault();
+      const next = {
+        x: originX + (ev.clientX - startX),
+        y: originY + (ev.clientY - startY),
+      };
+      setPosition(clampPanelPosition(next, panelRef.current, boundsRef.current));
     };
-    setPosition(clampPanelPosition(next, panelRef.current, boundsRef.current));
-  }
 
-  function onDragHandlePointerUp(e: React.PointerEvent<HTMLElement>) {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) return;
-    dragRef.current = null;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    setPosition((p) => {
-      const next = clampPanelPosition(p, panelRef.current, boundsRef.current);
-      persist(next);
-      return next;
-    });
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      cleanup();
+      setPosition((p) => {
+        const next = clampPanelPosition(p, panelRef.current, boundsRef.current);
+        persist(next);
+        return next;
+      });
+    };
+
+    function cleanup() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      dragCleanupRef.current = null;
+    }
+
+    document.addEventListener("pointermove", onMove, { passive: false });
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    dragCleanupRef.current = cleanup;
   }
 
   return {
@@ -161,9 +177,6 @@ export function useFloatingPanelPosition(
     setPosition,
     dragHandleProps: {
       onPointerDown: onDragHandlePointerDown,
-      onPointerMove: onDragHandlePointerMove,
-      onPointerUp: onDragHandlePointerUp,
-      onPointerCancel: onDragHandlePointerUp,
     },
   };
 }

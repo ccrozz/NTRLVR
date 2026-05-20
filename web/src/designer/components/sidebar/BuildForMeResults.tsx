@@ -24,6 +24,7 @@ export function BuildForMeResults() {
   const placeRecommendedOnCanvas = useDesignerStore(
     (s) => s.placeRecommendedOnCanvas,
   );
+  const placingGardenOnCanvas = useDesignerStore((s) => s.placingGardenOnCanvas);
   const setSidebarMode = useDesignerStore((s) => s.setSidebarMode);
 
   const recQuery = useRecommendedPlants(recommendedPlantIds);
@@ -148,9 +149,10 @@ export function BuildForMeResults() {
         <button
           type="button"
           className="rr-btn rr-btn-primary sidebar-build-results-place"
+          disabled={placingGardenOnCanvas}
           onClick={() => void placeRecommendedOnCanvas()}
         >
-          Add plants to canvas
+          {placingGardenOnCanvas ? "Placing on canvas…" : "Add plants to canvas"}
         </button>
         <button
           type="button"

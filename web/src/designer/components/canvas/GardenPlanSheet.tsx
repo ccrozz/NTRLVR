@@ -7,6 +7,7 @@ export function GardenPlanSheet() {
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
   const setPlanSheetOpen = useDesignerStore((s) => s.setPlanSheetOpen);
   const placeRecommendedOnCanvas = useDesignerStore((s) => s.placeRecommendedOnCanvas);
+  const placingGardenOnCanvas = useDesignerStore((s) => s.placingGardenOnCanvas);
 
   const hasOtherBeds = zones.length > 0 || canvasPlants.length > 0;
 
@@ -75,9 +76,10 @@ export function GardenPlanSheet() {
           <button
             type="button"
             className="garden-plan-sheet-place"
+            disabled={placingGardenOnCanvas}
             onClick={() => void placeRecommendedOnCanvas()}
           >
-            Add plants to canvas →
+            {placingGardenOnCanvas ? "Placing on canvas…" : "Add plants to canvas →"}
           </button>
         </div>
       </div>

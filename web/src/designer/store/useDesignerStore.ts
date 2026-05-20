@@ -41,6 +41,8 @@ import type {
   ZoneGardenPlan,
 } from "../types/garden-plan";
 import { layoutForPlan } from "../lib/garden-onboarding-run";
+import { focusDesignerCanvas } from "../lib/focus-designer-canvas";
+import { isMobileDesignerLayout } from "../lib/mobile-layout";
 import {
   buildZoneGardenPlan,
   planToSidebarFields,
@@ -125,6 +127,10 @@ type DesignerState = {
   setZoom: (zoom: number) => void;
   setStagePos: (pos: { x: number; y: number }) => void;
   resetCanvasView: () => void;
+  /** Bumped after placing a garden plan so the canvas can center on new content (mobile). */
+  canvasFitTick: number;
+  requestCanvasFit: () => void;
+  placingGardenOnCanvas: boolean;
   setBackgroundImage: (url: string | null) => void;
   setCanvasMode: (mode: "blank" | "photo") => void;
   setSearchQuery: (q: string) => void;
@@ -134,6 +140,9 @@ type DesignerState = {
   toggleLayerVisibility: (layer: CanopyLayer) => void;
   setCompactCanvasVisuals: (compact: boolean) => void;
   setSidebarMode: (mode: "browse" | "build") => void;
+  /** Mobile bottom sheet: plants / build panel over canvas */
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
   setQuestionnaireDraft: (draft: QuestionnaireDraft | null) => void;
   setShowingRecommendations: (show: boolean) => void;
   setPlanSheetOpen: (open: boolean) => void;
@@ -272,6 +281,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   gardenVision: null,
 
   sidebarMode: "browse",
+  mobileSidebarOpen: false,
   showingRecommendations: false,
   recommendedPlantIds: null,
   recommendationMeta: {},
@@ -285,6 +295,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   zoneGardenPlans: {},
   pendingGardenPlan: null,
   buildResultsReady: false,
+  canvasFitTick: 0,
+  placingGardenOnCanvas: false,
 
   history: [],
   redoHistory: [],
@@ -507,6 +519,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       zoom: INITIAL_CANVAS_ZOOM,
       stagePos: { ...INITIAL_STAGE_POS },
     }),
+  requestCanvasFit: () =>
+    set((s) => ({ canvasFitTick: s.canvasFitTick + 1 })),
   setBackgroundImage: (backgroundImageUrl) => set({ backgroundImageUrl }),
   setCanvasMode: (canvasMode) => set({ canvasMode }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -524,6 +538,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   setSidebarMode: (sidebarMode) => set({ sidebarMode }),
 
+  setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
+
   setQuestionnaireDraft: (questionnaireDraft) => set({ questionnaireDraft }),
 
   setShowingRecommendations: (showingRecommendations) =>
@@ -535,6 +551,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     set({
       workspacePanelOpen: false,
       sidebarMode: "browse",
+      mobileSidebarOpen: false,
       buildResultsReady: false,
     }),
 
@@ -628,6 +645,10 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     const s = get();
     const result = s.lastGenerateResult;
     if (!result) return;
+
+    focusDesignerCanvas();
+    set({ placingGardenOnCanvas: true });
+
     const profile = s.gardenProfile;
     const pending =
       s.pendingGardenPlan ??
@@ -639,42 +660,50 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
           })
         : null);
 
-    const { zone, placements } = await layoutForPlan(result, undefined);
-    const hasLayout = s.zones.length > 0 || s.canvasPlants.length > 0;
-    const bedLabel = profile?.name?.trim()
-      ? profile.name.trim().slice(0, 48)
-      : undefined;
+    try {
+      const { zone, placements } = await layoutForPlan(result, undefined);
+      const hasLayout = s.zones.length > 0 || s.canvasPlants.length > 0;
+      const bedLabel = profile?.name?.trim()
+        ? profile.name.trim().slice(0, 48)
+        : undefined;
 
-    get().applyAutoPopulate(placements, {
-      zone,
-      mergeWithExisting: hasLayout,
-      zoneName: bedLabel,
-      gardenVision: profile
-        ? {
-            name: profile.name,
-            description: profile.description,
-            philosophy: profile.philosophy,
-          }
-        : null,
-    });
+      get().applyAutoPopulate(placements, {
+        zone,
+        mergeWithExisting: hasLayout,
+        zoneName: bedLabel,
+        gardenVision: profile
+          ? {
+              name: profile.name,
+              description: profile.description,
+              philosophy: profile.philosophy,
+            }
+          : null,
+      });
 
-    const newZoneId = get().activeZoneId;
-    if (newZoneId && pending) {
-      set((state) => ({
-        zoneGardenPlans: {
-          ...state.zoneGardenPlans,
-          [newZoneId]: pending,
-        },
-        pendingGardenPlan: null,
-        planCanvasZoneId: newZoneId,
-        spaceListZoneId: newZoneId,
-        activeZoneId: newZoneId,
-        ...planToSidebarFields(pending),
-        planSheetOpen: false,
-      }));
-      return;
+      const newZoneId = get().activeZoneId;
+      if (newZoneId && pending) {
+        set((state) => ({
+          zoneGardenPlans: {
+            ...state.zoneGardenPlans,
+            [newZoneId]: pending,
+          },
+          pendingGardenPlan: null,
+          planCanvasZoneId: newZoneId,
+          spaceListZoneId: newZoneId,
+          activeZoneId: newZoneId,
+          ...planToSidebarFields(pending),
+          planSheetOpen: false,
+        }));
+      } else {
+        set({ planSheetOpen: false });
+      }
+
+      if (isMobileDesignerLayout()) {
+        get().requestCanvasFit();
+      }
+    } finally {
+      set({ placingGardenOnCanvas: false });
     }
-    set({ planSheetOpen: false });
   },
 
   setWorkspacePanelOpen: (workspacePanelOpen) => set({ workspacePanelOpen }),
