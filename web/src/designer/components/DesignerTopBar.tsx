@@ -21,9 +21,9 @@ export function DesignerTopBar({
           type="button"
           className="designer-top-autofill"
           onClick={onAutoPopulateClick}
-          title="Pick a garden type and auto-build a starter layout"
+          title="Answer a few questions and we'll build a personalized layout"
         >
-          Auto-fill
+          Let&apos;s build your garden
         </button>
         <button
           type="button"

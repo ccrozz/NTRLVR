@@ -63,3 +63,25 @@ export const DEFAULT_FLORIDA_USDA_ZONES = [8, 9, 10, 11];
 export function usdaNumbersForZonePicker(): number[] {
   return [...ALL_USDA_ZONE_NUMBERS];
 }
+
+/** Sort key for USDA subzones (higher = warmer). */
+export function usdaSubzoneSortKey(zone: string): number | null {
+  const m = zone.trim().toLowerCase().match(/^(\d{1,2})([ab])$/);
+  if (!m) return null;
+  const num = parseInt(m[1]!, 10);
+  const half = m[2] === "b" ? 1 : 0;
+  return num * 2 + half;
+}
+
+/** Designer catalog: central/south Florida focus — 8b through 11b only. */
+export const DESIGNER_MIN_WARM_ZONE = "8b";
+
+export function plantSuitableForDesignerCatalog(zones: string[]): boolean {
+  if (zones.length === 0) return false;
+  const floor = usdaSubzoneSortKey(DESIGNER_MIN_WARM_ZONE);
+  if (floor == null) return true;
+  return zones.some((z) => {
+    const key = usdaSubzoneSortKey(z);
+    return key != null && key >= floor;
+  });
+}

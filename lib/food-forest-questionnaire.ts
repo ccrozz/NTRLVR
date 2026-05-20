@@ -111,7 +111,9 @@ export function defaultDensityForGardenStyle(
     case "easy_care":
     case "visual":
       return "spacious";
+    case "food_forest":
     case "kitchen_garden":
+    case "pollinator":
       return "dense";
     default:
       return "balanced";

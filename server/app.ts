@@ -33,6 +33,16 @@ import {
   type CompanionReasonPlant,
 } from "../lib/companion-reason.js";
 import { generateFoodForestLayout } from "../lib/food-forest-layout.js";
+import { generateGardenFromOnboarding } from "../lib/garden-generate.js";
+import {
+  type GardenOnboardingAnswers,
+  type OnboardingSunlight,
+} from "../lib/garden-onboarding.js";
+import {
+  hardinessZoneForFloridaRegion,
+  isFloridaRegionId,
+} from "../lib/florida-onboarding-regions.js";
+import { listFloridaDesignerPlants } from "../lib/florida-designer-catalog.js";
 import {
   normalizePreferences,
   type GardenPreferences,
@@ -220,6 +230,155 @@ app.get("/api/plants/:id", async (c) => {
       sources,
     },
   });
+});
+
+function countPlantsForSunlight(
+  sun: OnboardingSunlight,
+  hardiness_zone = "10a",
+): number {
+  const plants = listFloridaDesignerPlants({
+    exclude_invasive: true,
+    native_state: "FL",
+    for_my_area: true,
+    hardiness_zone,
+  });
+  return plants.filter((p) => {
+    const s = applyDesignerProfile(p).sunlight;
+    switch (sun) {
+      case "full":
+        return s === "Full Sun" || s === "Adaptable";
+      case "partial":
+        return (
+          s === "Full Sun" || s === "Partial Shade" || s === "Adaptable"
+        );
+      case "dappled":
+        return (
+          s === "Partial Shade" || s === "Adaptable" || s === "Full Shade"
+        );
+      case "shade":
+        return (
+          s === "Partial Shade" || s === "Full Shade" || s === "Adaptable"
+        );
+    }
+  }).length;
+}
+
+app.get("/api/garden/sunlight-count", (c) => {
+  const raw = c.req.query("sunlight") ?? "full";
+  const allowed: OnboardingSunlight[] = [
+    "full",
+    "partial",
+    "dappled",
+    "shade",
+  ];
+  const sunlight = allowed.includes(raw as OnboardingSunlight)
+    ? (raw as OnboardingSunlight)
+    : "full";
+  const hardiness_zone = c.req.query("hardiness_zone")?.trim() || "10a";
+  return c.json({
+    data: {
+      count: countPlantsForSunlight(sunlight, hardiness_zone),
+      sunlight,
+      hardiness_zone,
+    },
+  });
+});
+
+app.post("/api/garden/generate", async (c) => {
+  let body: Partial<GardenOnboardingAnswers>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body." }, 400);
+  }
+
+  const goals = Array.isArray(body.goals)
+    ? body.goals.filter(Boolean)
+    : [];
+  const gardenStyles = [
+    "food_forest",
+    "kitchen_garden",
+    "pollinator",
+    "visual",
+    "easy_care",
+  ] as const;
+  const garden_style =
+    body.garden_style &&
+    gardenStyles.includes(body.garden_style as (typeof gardenStyles)[number])
+      ? body.garden_style
+      : "food_forest";
+
+  if (
+    !body.property_type ||
+    !body.space_size ||
+    !goals.length ||
+    !body.sunlight ||
+    !body.maintenance ||
+    !body.water ||
+    !body.experience
+  ) {
+    return c.json(
+      { error: "Missing required onboarding fields (goals must include at least one)." },
+      400,
+    );
+  }
+
+  const florida_region =
+    typeof body.florida_region === "string" &&
+    isFloridaRegionId(body.florida_region)
+      ? body.florida_region
+      : undefined;
+  const hardiness_zone =
+    body.hardiness_zone?.trim() ||
+    (florida_region
+      ? hardinessZoneForFloridaRegion(florida_region)
+      : "10a");
+
+  const answers: GardenOnboardingAnswers = {
+    garden_style: garden_style as GardenOnboardingAnswers["garden_style"],
+    property_type: body.property_type,
+    space_size: body.space_size,
+    goals: goals as GardenOnboardingAnswers["goals"],
+    sunlight: body.sunlight,
+    maintenance: body.maintenance,
+    water: body.water,
+    preferences: Array.isArray(body.preferences)
+      ? body.preferences.filter(Boolean)
+      : [],
+    experience: body.experience,
+    florida_region,
+    hardiness_zone,
+    space_source: body.space_source,
+    bed_width_feet:
+      typeof body.bed_width_feet === "number" ? body.bed_width_feet : undefined,
+    bed_height_feet:
+      typeof body.bed_height_feet === "number"
+        ? body.bed_height_feet
+        : undefined,
+    canvas_zone_id:
+      typeof body.canvas_zone_id === "string"
+        ? body.canvas_zone_id.trim()
+        : undefined,
+    planting_density:
+      body.planting_density === "spacious" ||
+      body.planting_density === "balanced" ||
+      body.planting_density === "dense"
+        ? body.planting_density
+        : undefined,
+  };
+
+  try {
+    const result = await generateGardenFromOnboarding(answers);
+    return c.json({ data: result });
+  } catch (e) {
+    return c.json(
+      {
+        error:
+          e instanceof Error ? e.message : "Garden generation failed.",
+      },
+      500,
+    );
+  }
 });
 
 app.post("/api/food-forest-layout", async (c) => {

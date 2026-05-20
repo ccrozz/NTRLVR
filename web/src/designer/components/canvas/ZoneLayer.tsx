@@ -165,7 +165,7 @@ export function ZoneLayer({
         <Text
           x={12}
           y={28}
-          text="Drag a zone to move it and its plants"
+          text="Drag moves this bed and its plants only"
           fontSize={10}
           fill="rgba(168, 196, 168, 0.7)"
           listening={false}

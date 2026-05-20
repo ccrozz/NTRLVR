@@ -63,7 +63,8 @@ export function plantMatchesFoodForestGroup(
       return (
         plant.category === "Edible Flower" ||
         hasTag(plant, "pollinator") ||
-        (plant.category === "Native Shrub" && hasTag(plant, "pollinator"))
+        (plant.category === "Native Shrub" && hasTag(plant, "pollinator")) ||
+        hasTag(plant, "landscape")
       );
     case "support":
       return (

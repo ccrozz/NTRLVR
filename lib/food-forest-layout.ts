@@ -1,6 +1,11 @@
 import type { CanopyLayer, PlantSummary } from "../schema.js";
-import { listPlants, plantToSummary } from "../db/plant-repository.js";
-import { applyDesignerProfile } from "./designer-plant-profiles.js";
+import { plantToSummary } from "../db/plant-repository.js";
+import { listFloridaDesignerPlants } from "./florida-designer-catalog.js";
+import {
+  dedupeOrderedIds,
+  dedupeOrderedIdsByName,
+  dedupePlantsByName,
+} from "./plant-dedupe.js";
 import {
   buildGardenerProfileText,
   deriveGoalsFromPreferences,
@@ -35,6 +40,7 @@ export type FoodForestLayoutResponse = {
 type CatalogRow = {
   id: string;
   common_name: string;
+  scientific_name: string;
   canopy_layer: CanopyLayer;
   category: string;
   radius_ft: number;
@@ -50,49 +56,42 @@ function resolveGoals(req: FoodForestLayoutRequest): FoodForestLayoutGoal[] {
 }
 
 function loadCatalogForZone(zone: string, limit = 160): CatalogRow[] {
-  const { data } = listPlants({
-    food_forest_only: true,
-    hardiness_zone: zone,
-    exclude_invasive: true,
-    limit,
-    offset: 0,
-  });
-
-  let rows = data.map((p) => {
-    const s = plantToSummary(applyDesignerProfile(p));
+  const toRow = (p: ReturnType<typeof listFloridaDesignerPlants>[number]) => {
+    const s = plantToSummary(p);
     return {
       id: s.id,
       common_name: s.common_name,
+      scientific_name: s.scientific_name,
       canopy_layer: s.canopy_layer,
       category: s.category,
       radius_ft: s.canvas_radius_feet || 3,
       native: s.is_florida_native,
       edible: s.is_edible,
     };
-  });
+  };
+
+  let rows = listFloridaDesignerPlants({
+    hardiness_zone: zone,
+    exclude_invasive: true,
+    native_state: "FL",
+    for_my_area: true,
+  })
+    .slice(0, limit)
+    .map(toRow);
 
   if (rows.length < 50) {
-    const { data: broad } = listPlants({
-      food_forest_only: true,
-      exclude_invasive: true,
-      limit,
-      offset: 0,
-    });
     const seen = new Set(rows.map((r) => r.id));
-    for (const p of broad) {
-      const s = plantToSummary(applyDesignerProfile(p));
-      if (!seen.has(s.id)) {
-        seen.add(s.id);
-        rows.push({
-          id: s.id,
-          common_name: s.common_name,
-          canopy_layer: s.canopy_layer,
-          category: s.category,
-          radius_ft: s.canvas_radius_feet || 3,
-          native: s.is_florida_native,
-          edible: s.is_edible,
-        });
+    for (const p of listFloridaDesignerPlants({
+      exclude_invasive: true,
+      native_state: "FL",
+      for_my_area: true,
+    })) {
+      const row = toRow(p);
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        rows.push(row);
       }
+      if (rows.length >= limit) break;
     }
   }
 
@@ -156,7 +155,7 @@ ${densityRules}
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514",
+      model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5",
       max_tokens: 1200,
       system,
       messages: [{ role: "user", content: user }],
@@ -181,14 +180,18 @@ ${densityRules}
     const parsed = JSON.parse(text) as {
       plant_ids?: string[];
     };
-    const ids = (parsed.plant_ids ?? []).filter((id) => validIds.has(id));
+    const ids = dedupeOrderedIds(
+      (parsed.plant_ids ?? []).filter((id) => validIds.has(id)),
+    );
     return ids.length ? ids : null;
   } catch {
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return null;
     try {
       const parsed = JSON.parse(match[0]) as { plant_ids?: string[] };
-      return (parsed.plant_ids ?? []).filter((id) => validIds.has(id));
+      return dedupeOrderedIds(
+        (parsed.plant_ids ?? []).filter((id) => validIds.has(id)),
+      );
     } catch {
       return null;
     }
@@ -398,6 +401,11 @@ export async function generateFoodForestLayout(
     }
   }
 
+  const rowById = new Map(catalog.map((c) => [c.id, c]));
+  plant_ids = dedupeOrderedIdsByName(dedupeOrderedIds(plant_ids), (id) =>
+    rowById.get(id),
+  );
+
   return { plant_ids, source, target_count: target, message };
 }
 
@@ -407,9 +415,9 @@ export function resolveLayoutPlants(
 ): PlantSummary[] {
   const byId = new Map(pool.map((p) => [p.id, p]));
   const out: PlantSummary[] = [];
-  for (const id of ids) {
+  for (const id of dedupeOrderedIds(ids)) {
     const p = byId.get(id);
     if (p) out.push(p);
   }
-  return out;
+  return dedupePlantsByName(out);
 }

@@ -7,8 +7,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { AutoPopulateWizard } from "../components/AutoPopulateWizard";
 import { DesignerHelpOverlay } from "../components/DesignerHelpOverlay";
+import { GardenPlanSheet } from "../components/canvas/GardenPlanSheet";
 import { DesignerTopBar } from "../components/DesignerTopBar";
 import { PlantSidebar } from "../components/sidebar/PlantSidebar";
 import {
@@ -31,7 +31,6 @@ import type { PlantListItem } from "../types";
 import "../styles/designer.css";
 
 const HELP_DISMISSED_KEY = "ntr-designer-help-dismissed";
-
 export function DesignerPage() {
   const [params] = useSearchParams();
   const canvasRef = useRef<DesignerCanvasHandle>(null);
@@ -43,10 +42,7 @@ export function DesignerPage() {
   const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
   const detailOpen = Boolean(selectedPlantId || selectedCanvasPlantId);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [autoFillOpen, setAutoFillOpen] = useState(false);
-  const canvasPlants = useDesignerStore((s) => s.canvasPlants);
-  const zones = useDesignerStore((s) => s.zones);
-  const hasExistingLayout = canvasPlants.length > 0 || zones.length > 0;
+  const setSidebarMode = useDesignerStore((s) => s.setSidebarMode);
 
   useEffect(() => {
     try {
@@ -85,6 +81,12 @@ export function DesignerPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
+  const prepareDesignerOnLoad = useDesignerStore((s) => s.prepareDesignerOnLoad);
+
+  useEffect(() => {
+    prepareDesignerOnLoad();
+  }, [prepareDesignerOnLoad]);
+
   useEffect(() => {
     document.documentElement.classList.add("designer-mode");
     document.body.classList.add("designer-mode");
@@ -101,14 +103,13 @@ export function DesignerPage() {
   }, [params, setCanvasMode]);
 
   useEffect(() => {
-    const open = () => setAutoFillOpen(true);
+    const open = () => setSidebarMode("build");
     window.addEventListener("ntr-open-auto-fill", open);
     return () => window.removeEventListener("ntr-open-auto-fill", open);
-  }, []);
+  }, [setSidebarMode]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Delete" && e.key !== "Backspace") return;
       const el = e.target as HTMLElement;
       if (
         el.tagName === "INPUT" ||
@@ -117,11 +118,30 @@ export function DesignerPage() {
       ) {
         return;
       }
-      const { selectedCanvasPlantId, deleteSelectedCanvasPlant } =
-        useDesignerStore.getState();
-      if (!selectedCanvasPlantId) return;
+
+      const store = useDesignerStore.getState();
+      const mod = e.metaKey || e.ctrlKey;
+
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (store.redoHistory.length > 0) store.redo();
+        } else if (store.history.length > 0) {
+          store.undo();
+        }
+        return;
+      }
+
+      if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        if (store.redoHistory.length > 0) store.redo();
+        return;
+      }
+
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (!store.selectedCanvasPlantId) return;
       e.preventDefault();
-      deleteSelectedCanvasPlant();
+      store.deleteSelectedCanvasPlant();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -161,7 +181,7 @@ export function DesignerPage() {
       <DesignerTopBar
         helpOpen={helpOpen}
         onHelpClick={toggleHelp}
-        onAutoPopulateClick={() => setAutoFillOpen(true)}
+        onAutoPopulateClick={() => setSidebarMode("build")}
       />
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="designer-layout" ref={wrapRef}>
@@ -193,11 +213,7 @@ export function DesignerPage() {
             )}
             <PlantDetailPanel />
             {helpOpen && <DesignerHelpOverlay onClose={dismissHelp} />}
-            <AutoPopulateWizard
-              open={autoFillOpen}
-              onClose={() => setAutoFillOpen(false)}
-              hasExistingLayout={hasExistingLayout}
-            />
+            <GardenPlanSheet />
           </div>
         </div>
       </DndContext>

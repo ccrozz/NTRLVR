@@ -447,9 +447,6 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
   geobalanus: {
     companion_plants: ["Coontie", "Sabal Palm", "Firebush"],
   },
-  musa: {
-    companion_plants: ["Comfrey", "Lemongrass", "Pigeon Pea", "Sweet Potato"],
-  },
   psidium: {
     companion_plants: ["Comfrey", "Lemongrass", "Moringa", "Sweet Potato"],
   },

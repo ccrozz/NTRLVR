@@ -24,6 +24,8 @@ export type CanvasPlant = {
   is_invasive_in_florida: boolean;
   x: number;
   y: number;
+  /** Bed this plant belongs to; stays fixed when beds overlap or move. */
+  zoneId: string | null;
 };
 
 export type PlantListItem = PlantSummary & {

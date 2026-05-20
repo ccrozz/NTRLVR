@@ -12,7 +12,7 @@ import type Konva from "konva";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { CANOPY_LAYER_ORDER } from "../../lib/canopy-colors";
 import { radiusPx } from "../../lib/canvas-utils";
-import { plantInsideZones } from "../../lib/zone-geometry";
+import { plantOutsideOwnedZone } from "../../lib/zone-geometry";
 import { ZoneLayer } from "./ZoneLayer";
 import { CanvasBackdropLayer } from "./CanvasBackdropLayer";
 import { ScaleGridLayer } from "./ScaleGridLayer";
@@ -26,6 +26,7 @@ import { DrawMeasureOverlay } from "./DrawMeasureOverlay";
 import { PlantCircle } from "./PlantCircle";
 import { CompanionSuggestions } from "./CompanionSuggestions";
 import { CrossSectionView } from "./CrossSectionView";
+import { handleCanvasWheel } from "../../lib/canvas-wheel";
 import type { CanvasPlant } from "../../types";
 
 export type DesignerCanvasHandle = {
@@ -85,6 +86,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     );
     const compactCanvasVisuals = useDesignerStore((s) => s.compactCanvasVisuals);
     const movePlant = useDesignerStore((s) => s.movePlant);
+    const setZoom = useDesignerStore((s) => s.setZoom);
     const setStagePos = useDesignerStore((s) => s.setStagePos);
     const pushHistory = useDesignerStore((s) => s.pushHistory);
     const zones = useDesignerStore((s) => s.zones);
@@ -162,6 +164,27 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       setSize({ w: el.clientWidth, h: el.clientHeight });
       return () => ro.disconnect();
     }, []);
+
+    useEffect(() => {
+      const root = wrapRef.current;
+      if (!root) return;
+
+      const onWheel = (e: WheelEvent) => {
+        const s = useDesignerStore.getState();
+        handleCanvasWheel(
+          e,
+          root,
+          { zoom: s.zoom, stagePos: s.stagePos },
+          ({ zoom: nextZoom, stagePos: nextPos }) => {
+            setZoom(nextZoom);
+            setStagePos(nextPos);
+          },
+        );
+      };
+
+      root.addEventListener("wheel", onWheel, { passive: false });
+      return () => root.removeEventListener("wheel", onWheel);
+    }, [canvasView, setZoom, setStagePos]);
 
     const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
     useEffect(() => {
@@ -306,9 +329,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
                 is_invasive_in_florida={cp.is_invasive_in_florida}
                 selected={selectedCanvasPlantId === cp.canvasId}
                 hovered={hoveredCanvasPlantId === cp.canvasId}
-                outsideZone={
-                  zones.length > 0 && !plantInsideZones(cp.x, cp.y, zones)
-                }
+                outsideZone={plantOutsideOwnedZone(cp, zones)}
                 layerDimmed={hiddenLayers.includes(cp.canopy_layer)}
                 placementFlash={placementFlashCanvasId === cp.canvasId}
                 compactVisuals={compactCanvasVisuals}

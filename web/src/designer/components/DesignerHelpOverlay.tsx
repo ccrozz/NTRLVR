@@ -4,12 +4,20 @@ export type HelpToolItem = { name: string; description: string };
 
 /** Always visible on the top-left of the canvas. */
 export const DESIGNER_TOOLBAR_QUICK: HelpToolItem[] = [
-  { name: "+ / −", description: "Zoom in and out on your layout." },
-  { name: "Center", description: "Reset pan and zoom to the starting view." },
-  { name: "Undo", description: "Step back after moving or placing plants." },
+  {
+    name: "Scroll / pinch",
+    description:
+      "Mouse wheel or trackpad pinch zooms on the canvas. Two-finger scroll pans.",
+  },
+  { name: "+ / −", description: "Zoom buttons in the toolbar." },
+  { name: "Center", description: "Pan and zoom back to a good view of your bed." },
+  {
+    name: "Undo / Redo",
+    description: "← → in the canvas toolbar, or ⌘Z / ⌘⇧Z to step backward and forward.",
+  },
   {
     name: "⋯",
-    description: "Open the tool menu (Space, yard photo, cross section, and more).",
+    description: "Open more tools — space, grid, auto-fill, photo, export, and more.",
   },
 ];
 
@@ -18,73 +26,80 @@ export const DESIGNER_TOOLBAR_MENU: HelpToolItem[] = [
   {
     name: "Space",
     description:
-      "Opens the Your space panel to define beds and zones in feet — rectangles, circles, or a custom drawn outline.",
+      "Open Your space to add beds in feet (rectangle, circle, or draw a custom outline on the grid).",
+  },
+  {
+    name: "Build your garden",
+    description: "Opens the Build For Me tab in the left sidebar — answer a few questions for plant recommendations.",
   },
   {
     name: "Foot grid",
+    description: "Show or hide the 1-foot grid and scale bar along the canvas edges.",
+  },
+  {
+    name: "Simple icons / Show canopy rings",
     description:
-      "Toggle a 1-foot grid and scale bar on the canvas so spacing matches real-world size.",
+      "Switch between compact plant dots and full canopy-size rings with labels.",
   },
   {
     name: "Yard photo",
-    description:
-      "Upload a photo of your yard as the canvas background. Drag plants on top to plan over the real site.",
+    description: "Upload a photo of your yard as the background to plan on top of.",
   },
   {
     name: "Export PNG",
-    description: "Download a snapshot of your current top-down layout.",
+    description: "Download a picture of your current top-down layout.",
   },
   {
     name: "Cross section",
     description:
-      "Switch to a side-view diagram of canopy layers (overstory, understory, shrubs, etc.) for the plants you placed.",
+      "Side view of canopy layers for plants on the canvas (top-down is for placing plants).",
   },
 ];
 
 export const DESIGNER_HELP_SECTIONS = [
   {
-    title: "Auto-fill layout",
-    body: "Tap Auto-fill in the header (or Auto-fill layout in the ⋯ menu). Walk through garden type, what you want to harvest, sun/water/time, plant priorities, then bed size and region — we build a starter layout matched to your answers.",
+    title: "Let's build your garden",
+    body: "Tap Let's build your garden in the top bar, then use the Build For Me tab in the left sidebar. Draw beds first with Space (⋯ menu) — rectangle, circle, or custom outline — then pick My drawn space in the questionnaire so recommendations match that exact area. Or use a size estimate / custom feet. Drag plants onto the canvas, or Place all plants to fill your chosen bed.",
   },
   {
-    title: "Find plants",
-    body: "Use the search box and category pills on the left. Scroll the list to browse the Florida food-forest catalog.",
+    title: "Your space — draw a bed",
+    body: "Open Space from the ⋯ menu. Add a rectangle or circle by size in feet, or tap Draw custom outline and click corners on the grid (at least 3 points, then Finish zone in the bar at the bottom). In Select mode, drag a zone to move it and all plants inside together. Auto-fill with a new bed adds a second zone beside your layout; choose an existing zone only when you want to refill that bed (plants inside it are replaced).",
   },
   {
-    title: "Read a plant profile",
-    body: "Click a plant in the list (without dragging) to open its profile on the right — growing notes, guild roles, and suggested companions.",
+    title: "Find plants (left sidebar)",
+    body: "Browse Plants is the default tab — search by name or use category pills. After Build For Me, recommended plants appear in Browse Plants with priority badges; tap Show all plants to return to the full catalog. Tap Full catalog at the bottom for the complete list.",
   },
   {
-    title: "Place plants on the canvas",
-    body: "Drag a plant from the list onto the green layout area. Click a placed plant to select it and see who to plant nearby.",
+    title: "Place plants",
+    body: "Drag a plant from the list onto the grid. Each plant shows a canopy ring sized to mature spread (toggle Simple icons in ⋯ if you want a cleaner view). Click a plant on the canvas to select it.",
   },
   {
-    title: "Your garden",
-    body: "Once you have plants on the canvas, a Your garden tab appears on the left edge of the layout. Tap it to open a scrollable list of everything you placed — tap any row to jump to that plant and open its profile.",
+    title: "Your garden list",
+    body: "After you place plants, a Your garden tab appears on the left edge of the canvas. With more than one bed drawn, use the space tabs to switch between them and see only the plants in that zone. The Browse Plants sidebar uses the same tabs when you have recommendations.",
   },
   {
-    title: "Build a guild",
-    body: "With a plant selected on the canvas, use Plant nearby: tap + to drop a companion on its recommended ring spot, drag onto the grid, or tap Why? for a short pairing note.",
+    title: "Plant profile & companions",
+    body: "Click a plant in the sidebar (without dragging) to read its profile on the right. When a plant is selected on the canvas, the profile shows Plant nearby — tap + to place a companion on its ring, or Why? for a short pairing note.",
   },
   {
-    title: "Pan the layout",
-    body: "Drag empty canvas space to move around. Use the toolbar in the top-left corner for zoom and extra tools.",
+    title: "Pan and zoom",
+    body: "Drag empty space on the grid to pan. Scroll or pinch over the canvas to zoom toward your cursor; two-finger trackpad scroll pans. Use + / − or Center in the toolbar. Edge rulers show feet when the grid is on.",
   },
   {
-    title: "Space — size your yard",
-    body: "Tap Space in the ⋯ menu to open Your space. Add rectangle or circle zones by size in feet, or use Draw to click corners on the canvas (at least 3 points, then Finish zone). In Select mode, drag a zone to move it and every plant inside it together. Plants outside your zones are flagged so you can adjust placement.",
+    title: "Hide canopy layers",
+    body: "At the bottom of the left sidebar, open Canvas layers to show or hide overstory, understory, shrubs, herbs, and other layers — handy when the bed feels crowded.",
   },
   {
     title: "Yard photo background",
-    body: "Tap Yard photo in the ⋯ menu and choose an image from your device. Your photo becomes the layout backdrop so you can place plants over the real yard. Use Center if you need to re-frame the view.",
+    body: "Yard photo in the ⋯ menu lets you upload an image from your device as the backdrop. Plan on top of the real site, then use Center if you need to re-frame.",
   },
   {
     title: "Cross section view",
-    body: "Tap Cross section in the ⋯ menu to leave the top-down plan and see a vertical stack of canopy layers for the plants on your canvas. Tap Cross section again to return to the plan view. Placing new plants is done in top-down mode.",
+    body: "Cross section in ⋯ switches to a vertical stack of canopy layers for plants on your canvas. Switch back to plan view to add or move plants.",
   },
   {
     title: "Remove a plant",
-    body: "Select a plant on the canvas, then press Delete or Backspace, or use Remove from layout in the detail panel.",
+    body: "Select a plant on the canvas, then Delete or Backspace, or Remove from layout in the profile panel.",
   },
 ] as const;
 
@@ -121,18 +136,15 @@ export function DesignerHelpOverlay({ onClose }: { onClose: () => void }) {
         <header className="designer-help-card-head">
           <h2 id="designer-help-title">How to use the designer</h2>
           <p className="designer-help-intro">
-            Plan a Florida food forest: browse plants, place them in guilds, and learn
-            why neighbors work together.
+            Plan a Florida food forest on a real-size grid: define your bed, auto-fill
+            or hand-pick plants, and explore companions and canopy layers.
           </p>
         </header>
 
         <section className="designer-help-tools-block" aria-labelledby="designer-help-tools-title">
           <h3 id="designer-help-tools-title" className="designer-help-tools-heading">
-            Canvas toolbar
+            Canvas toolbar (top-left of grid)
           </h3>
-          <p className="designer-help-tools-lead">
-            Top-left of the green layout area — tap ⋯ to open the full menu.
-          </p>
           <ul className="designer-help-tools">
             {DESIGNER_TOOLBAR_QUICK.map((tool) => (
               <li key={tool.name}>

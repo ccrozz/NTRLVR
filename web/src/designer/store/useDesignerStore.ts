@@ -18,11 +18,33 @@ import {
 import { clampStagePos } from "../lib/clamp-stage-pos";
 import { nearFirstDrawPoint } from "../lib/draw-zone-utils";
 import {
-  plantInsideZone,
+  plantBelongsToZone,
+  pointInZone,
+  primaryZoneAtPoint,
+  stampMissingPlantZoneIds,
   translateZone,
 } from "../lib/zone-geometry";
 import { resolveCompanionPlacement } from "../lib/companion-placement";
 import type { LayoutPlacement } from "../lib/auto-populate";
+import { zoneHasPlants } from "../lib/zone-plant-groups";
+import {
+  anchorZone,
+  nextZoneAnchor,
+  offsetPlacements,
+  zonePlacementOffset,
+} from "../lib/workspace-placement";
+import type { GardenGenerateResult } from "@lib/garden-generate";
+import type {
+  GardenProfile,
+  QuestionnaireDraft,
+  RecommendedPlantMeta,
+  ZoneGardenPlan,
+} from "../types/garden-plan";
+import { layoutForPlan } from "../lib/garden-onboarding-run";
+import {
+  buildZoneGardenPlan,
+  planToSidebarFields,
+} from "../lib/zone-plan-sidebar";
 
 type DesignerState = {
   canvasPlants: CanvasPlant[];
@@ -54,8 +76,35 @@ type DesignerState = {
   placementFlashCanvasId: string | null;
   /** After auto-fill: simpler rings & labels until user toggles off */
   compactCanvasVisuals: boolean;
+  gardenVision: {
+    name: string;
+    description: string;
+    philosophy: string;
+  } | null;
+
+  sidebarMode: "browse" | "build";
+  showingRecommendations: boolean;
+  recommendedPlantIds: string[] | null;
+  recommendationMeta: Record<string, RecommendedPlantMeta>;
+  gardenProfile: GardenProfile | null;
+  lastGenerateResult: GardenGenerateResult | null;
+  questionnaireDraft: QuestionnaireDraft | null;
+  /** Bumped to remount Build For Me from a clean slate. */
+  buildForMeSession: number;
+  /** Bed used in Build For Me for size reference only (not auto-fill on place). */
+  planCanvasZoneId: string | null;
+  planSheetOpen: boolean;
+  /** Filter garden / recommendation lists by workspace zone (`all` = every space). */
+  spaceListZoneId: "all" | string;
+  /** Per-bed saved plans after Place on canvas. */
+  zoneGardenPlans: Record<string, ZoneGardenPlan>;
+  /** Latest generated plan not yet placed on canvas. */
+  pendingGardenPlan: ZoneGardenPlan | null;
+  /** True after a plan is generated this session; cleared on fresh designer load. */
+  buildResultsReady: boolean;
 
   history: CanvasPlant[][];
+  redoHistory: CanvasPlant[][];
 
   addPlant: (plant: PlantSummary | PlantListItem, x: number, y: number) => void;
   addPlantNearHost: (
@@ -72,6 +121,7 @@ type DesignerState = {
   selectSidebarPlant: (plantId: string | null) => void;
   closeDetailPanel: () => void;
   undo: () => void;
+  redo: () => void;
   setZoom: (zoom: number) => void;
   setStagePos: (pos: { x: number; y: number }) => void;
   resetCanvasView: () => void;
@@ -83,10 +133,45 @@ type DesignerState = {
   setCanvasView: (view: CanvasView) => void;
   toggleLayerVisibility: (layer: CanopyLayer) => void;
   setCompactCanvasVisuals: (compact: boolean) => void;
+  setSidebarMode: (mode: "browse" | "build") => void;
+  setQuestionnaireDraft: (draft: QuestionnaireDraft | null) => void;
+  setShowingRecommendations: (show: boolean) => void;
+  setPlanSheetOpen: (open: boolean) => void;
+  setSpaceListZoneId: (id: "all" | string) => void;
+  renameZone: (id: string, name: string) => void;
+  /** Reset UI that should not carry over when opening the designer page. */
+  prepareDesignerOnLoad: () => void;
+  applyGardenPlan: (payload: {
+    profile: GardenProfile;
+    result: GardenGenerateResult;
+    recommendations: RecommendedPlantMeta[];
+    canvasZoneId?: string | null;
+  }) => void;
+  clearGardenPlan: () => void;
+  /** Show the latest unplaced Build For Me plan in the sidebar. */
+  showPendingGardenPlan: () => void;
+  /** Clear recommendations and restart the Build For Me questionnaire. */
+  resetBuildForMe: () => void;
+  placeRecommendedOnCanvas: () => Promise<void>;
   pushHistory: () => void;
   applyAutoPopulate: (
     placements: LayoutPlacement[],
-    options: { zone?: WorkspaceZone; keepExistingZones?: boolean },
+    options: {
+      zone?: WorkspaceZone;
+      /** Fill this zone only when empty, unless replacePlantsInZone is set. */
+      fillZoneId?: string;
+      /** Replace plants inside fillZoneId even when that bed already has plants. */
+      replacePlantsInZone?: boolean;
+      /** Add a new bed beside existing layout (default when anything is already on canvas). */
+      mergeWithExisting?: boolean;
+      /** Label for a newly added bed (defaults to "Bed N"). */
+      zoneName?: string;
+      gardenVision?: {
+        name: string;
+        description: string;
+        philosophy: string;
+      } | null;
+    },
   ) => void;
 
   setWorkspacePanelOpen: (open: boolean) => void;
@@ -120,6 +205,7 @@ function toCanvasPlant(
   plant: PlantSummary | PlantListItem,
   x: number,
   y: number,
+  zoneId: string | null = null,
 ): CanvasPlant {
   return {
     canvasId: crypto.randomUUID(),
@@ -137,7 +223,22 @@ function toCanvasPlant(
     is_invasive_in_florida: plant.is_invasive_in_florida ?? false,
     x,
     y,
+    zoneId,
   };
+}
+
+function zoneIdForPlacement(
+  x: number,
+  y: number,
+  zones: WorkspaceZone[],
+  activeZoneId: string | null,
+): string | null {
+  if (!zones.length) return null;
+  if (activeZoneId) {
+    const active = zones.find((z) => z.id === activeZoneId);
+    if (active && pointInZone(x, y, active)) return activeZoneId;
+  }
+  return primaryZoneAtPoint(x, y, zones)?.id ?? null;
 }
 
 export const INITIAL_CANVAS_ZOOM = 1;
@@ -154,7 +255,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   canvasView: "top-down",
   hiddenLayers: [],
 
-  workspacePanelOpen: true,
+  workspacePanelOpen: false,
   gardenPanelOpen: false,
   zones: [],
   activeZoneId: null,
@@ -168,29 +269,118 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   categoryFilter: null,
   placementFlashCanvasId: null,
   compactCanvasVisuals: false,
+  gardenVision: null,
+
+  sidebarMode: "browse",
+  showingRecommendations: false,
+  recommendedPlantIds: null,
+  recommendationMeta: {},
+  gardenProfile: null,
+  lastGenerateResult: null,
+  questionnaireDraft: null,
+  buildForMeSession: 0,
+  planCanvasZoneId: null,
+  planSheetOpen: false,
+  spaceListZoneId: "all",
+  zoneGardenPlans: {},
+  pendingGardenPlan: null,
+  buildResultsReady: false,
 
   history: [],
+  redoHistory: [],
 
   pushHistory: () => {
     const snap = structuredClone(get().canvasPlants);
-    set((s) => ({ history: [...s.history.slice(-30), snap] }));
+    set((s) => ({
+      history: [...s.history.slice(-30), snap],
+      redoHistory: [],
+    }));
   },
 
   applyAutoPopulate: (placements, options) => {
     get().pushHistory();
-    const canvasPlants = placements.map(({ plant, x, y }) =>
-      toCanvasPlant(plant, x, y),
-    );
-    const keepZones = options.keepExistingZones === true;
+    const state = get();
     const zone = options.zone;
+    if (!zone) return;
+
+    const hasLayout =
+      state.zones.length > 0 || state.canvasPlants.length > 0;
+    const shouldMerge =
+      options.mergeWithExisting !== false && hasLayout;
+
+    if (options.fillZoneId) {
+      const target =
+        state.zones.find((z) => z.id === options.fillZoneId) ?? zone;
+      const occupied = zoneHasPlants(state.canvasPlants, target, state.zones);
+      if (!occupied || options.replacePlantsInZone) {
+        const kept = state.canvasPlants.filter(
+          (p) => !plantBelongsToZone(p, target, state.zones),
+        );
+        const added = placements.map(({ plant, x, y }) =>
+          toCanvasPlant(plant, x, y, target.id),
+        );
+        set({
+          canvasPlants: [...kept, ...added],
+          zones: state.zones,
+          activeZoneId: target.id,
+          gardenVision: options.gardenVision ?? state.gardenVision,
+          workspaceTool: "select",
+          drawPoints: [],
+          drawCursor: null,
+          canvasView: "top-down",
+          selectedCanvasPlantId: null,
+          selectedPlantId: null,
+          placementFlashCanvasId: null,
+          showRuler: true,
+          compactCanvasVisuals: false,
+        });
+        get().resetCanvasView();
+        return;
+      }
+    }
+
+    if (shouldMerge) {
+      const w = zone.widthFeet ?? 20;
+      const h = zone.heightFeet ?? 20;
+      const anchor = nextZoneAnchor(state.zones, w, h);
+      const { dx, dy } = zonePlacementOffset(zone, anchor);
+      const positionedZone = {
+        ...anchorZone(zone, anchor),
+        name: options.zoneName?.trim() || nextZoneName(state.zones),
+      };
+      const added = offsetPlacements(placements, dx, dy).map(({ plant, x, y }) =>
+        toCanvasPlant(plant, x, y, positionedZone.id),
+      );
+      set({
+        canvasPlants: [...state.canvasPlants, ...added],
+        zones: [...state.zones, positionedZone],
+        activeZoneId: positionedZone.id,
+        gardenVision: options.gardenVision ?? state.gardenVision,
+        workspaceTool: "select",
+        drawPoints: [],
+        drawCursor: null,
+        canvasView: "top-down",
+        selectedCanvasPlantId: null,
+        selectedPlantId: null,
+        placementFlashCanvasId: null,
+        showRuler: true,
+        compactCanvasVisuals: false,
+      });
+      get().resetCanvasView();
+      return;
+    }
+
+    const firstZone = {
+      ...zone,
+      name: options.zoneName?.trim() || zone.name || nextZoneName([]),
+    };
     set({
-      canvasPlants,
-      ...(keepZones
-        ? { activeZoneId: zone?.id ?? get().activeZoneId }
-        : {
-            zones: zone ? [zone] : [],
-            activeZoneId: zone?.id ?? null,
-          }),
+      canvasPlants: placements.map(({ plant, x, y }) =>
+        toCanvasPlant(plant, x, y, firstZone.id),
+      ),
+      zones: [firstZone],
+      activeZoneId: firstZone.id,
+      gardenVision: options.gardenVision ?? state.gardenVision,
       workspaceTool: "select",
       drawPoints: [],
       drawCursor: null,
@@ -206,7 +396,9 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   addPlant: (plant, x, y) => {
     get().pushHistory();
-    const cp = toCanvasPlant(plant, x, y);
+    const s = get();
+    const zoneId = zoneIdForPlacement(x, y, s.zones, s.activeZoneId);
+    const cp = toCanvasPlant(plant, x, y, zoneId);
     set((s) => ({
       canvasPlants: [...s.canvasPlants, cp],
       selectedCanvasPlantId: cp.canvasId,
@@ -228,7 +420,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     );
 
     get().pushHistory();
-    const cp = toCanvasPlant(plant, x, y);
+    const cp = toCanvasPlant(plant, x, y, host.zoneId);
     set((s) => ({
       canvasPlants: [...s.canvasPlants, cp],
       // Keep the host selected so Plant nearby stays open for more companions.
@@ -280,12 +472,31 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     set({ selectedPlantId: null, selectedCanvasPlantId: null }),
 
   undo: () => {
-    const { history } = get();
+    const { history, canvasPlants, redoHistory } = get();
     if (!history.length) return;
-    const prev = history[history.length - 1];
+    const prev = history[history.length - 1]!;
     set({
       canvasPlants: prev,
       history: history.slice(0, -1),
+      redoHistory: [
+        ...redoHistory.slice(-30),
+        structuredClone(canvasPlants),
+      ],
+      selectedCanvasPlantId: null,
+      selectedPlantId: null,
+    });
+  },
+
+  redo: () => {
+    const { redoHistory, canvasPlants, history } = get();
+    if (!redoHistory.length) return;
+    const next = redoHistory[redoHistory.length - 1]!;
+    set({
+      canvasPlants: next,
+      redoHistory: redoHistory.slice(0, -1),
+      history: [...history.slice(-30), structuredClone(canvasPlants)],
+      selectedCanvasPlantId: null,
+      selectedPlantId: null,
     });
   },
 
@@ -310,6 +521,161 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     })),
 
   setCompactCanvasVisuals: (compactCanvasVisuals) => set({ compactCanvasVisuals }),
+
+  setSidebarMode: (sidebarMode) => set({ sidebarMode }),
+
+  setQuestionnaireDraft: (questionnaireDraft) => set({ questionnaireDraft }),
+
+  setShowingRecommendations: (showingRecommendations) =>
+    set({ showingRecommendations }),
+
+  setPlanSheetOpen: (planSheetOpen) => set({ planSheetOpen }),
+
+  prepareDesignerOnLoad: () =>
+    set({
+      workspacePanelOpen: false,
+      sidebarMode: "browse",
+      buildResultsReady: false,
+    }),
+
+  setSpaceListZoneId: (spaceListZoneId) => {
+    if (spaceListZoneId === "all") {
+      set({ spaceListZoneId });
+      return;
+    }
+    const s = get();
+    const plan = s.zoneGardenPlans[spaceListZoneId];
+    if (plan) {
+      set({
+        spaceListZoneId,
+        activeZoneId: spaceListZoneId,
+        planCanvasZoneId: spaceListZoneId,
+        ...planToSidebarFields(plan),
+      });
+      return;
+    }
+    set({
+      spaceListZoneId,
+      activeZoneId: spaceListZoneId,
+      showingRecommendations: false,
+      recommendedPlantIds: null,
+      recommendationMeta: {},
+      gardenProfile: null,
+      lastGenerateResult: null,
+      planCanvasZoneId: null,
+      gardenVision: null,
+    });
+  },
+
+  renameZone: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set((s) => ({
+      zones: s.zones.map((z) =>
+        z.id === id ? { ...z, name: trimmed } : z,
+      ),
+    }));
+  },
+
+  applyGardenPlan: ({ profile, result, recommendations, canvasZoneId }) => {
+    const plan = buildZoneGardenPlan({ profile, result, recommendations });
+    set({
+      pendingGardenPlan: plan,
+      planCanvasZoneId: canvasZoneId ?? null,
+      sidebarMode: "build",
+      buildResultsReady: true,
+      ...planToSidebarFields(plan),
+    });
+  },
+
+  clearGardenPlan: () =>
+    set({
+      showingRecommendations: false,
+      recommendedPlantIds: null,
+      recommendationMeta: {},
+      gardenProfile: null,
+      lastGenerateResult: null,
+      planCanvasZoneId: null,
+      planSheetOpen: false,
+      gardenVision: null,
+      pendingGardenPlan: null,
+    }),
+
+  showPendingGardenPlan: () => {
+    const pending = get().pendingGardenPlan;
+    if (!pending) return;
+    set(planToSidebarFields(pending));
+  },
+
+  resetBuildForMe: () =>
+    set((s) => ({
+      showingRecommendations: false,
+      recommendedPlantIds: null,
+      recommendationMeta: {},
+      gardenProfile: null,
+      lastGenerateResult: null,
+      planCanvasZoneId: null,
+      planSheetOpen: false,
+      gardenVision: null,
+      pendingGardenPlan: null,
+      buildResultsReady: false,
+      questionnaireDraft: null,
+      sidebarMode: "build",
+      buildForMeSession: s.buildForMeSession + 1,
+    })),
+
+  placeRecommendedOnCanvas: async () => {
+    const s = get();
+    const result = s.lastGenerateResult;
+    if (!result) return;
+    const profile = s.gardenProfile;
+    const pending =
+      s.pendingGardenPlan ??
+      (profile
+        ? buildZoneGardenPlan({
+            profile,
+            result,
+            recommendations: Object.values(s.recommendationMeta),
+          })
+        : null);
+
+    const { zone, placements } = await layoutForPlan(result, undefined);
+    const hasLayout = s.zones.length > 0 || s.canvasPlants.length > 0;
+    const bedLabel = profile?.name?.trim()
+      ? profile.name.trim().slice(0, 48)
+      : undefined;
+
+    get().applyAutoPopulate(placements, {
+      zone,
+      mergeWithExisting: hasLayout,
+      zoneName: bedLabel,
+      gardenVision: profile
+        ? {
+            name: profile.name,
+            description: profile.description,
+            philosophy: profile.philosophy,
+          }
+        : null,
+    });
+
+    const newZoneId = get().activeZoneId;
+    if (newZoneId && pending) {
+      set((state) => ({
+        zoneGardenPlans: {
+          ...state.zoneGardenPlans,
+          [newZoneId]: pending,
+        },
+        pendingGardenPlan: null,
+        planCanvasZoneId: newZoneId,
+        spaceListZoneId: newZoneId,
+        activeZoneId: newZoneId,
+        ...planToSidebarFields(pending),
+        planSheetOpen: false,
+      }));
+      return;
+    }
+    set({ planSheetOpen: false });
+  },
 
   setWorkspacePanelOpen: (workspacePanelOpen) => set({ workspacePanelOpen }),
   setGardenPanelOpen: (gardenPanelOpen) => set({ gardenPanelOpen }),
@@ -343,11 +709,38 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     }));
   },
 
-  removeZone: (id) =>
-    set((s) => ({
-      zones: s.zones.filter((z) => z.id !== id),
-      activeZoneId: s.activeZoneId === id ? null : s.activeZoneId,
-    })),
+  removeZone: (id) => {
+    const s = get();
+    const zone = s.zones.find((z) => z.id === id);
+    if (!zone) return;
+    get().pushHistory();
+    set((state) => {
+      const { [id]: _removed, ...restPlans } = state.zoneGardenPlans;
+      const nextSpace =
+        state.spaceListZoneId === id ? "all" : state.spaceListZoneId;
+      const removedIds = new Set(
+        state.canvasPlants
+          .filter((p) => plantBelongsToZone(p, zone, state.zones))
+          .map((p) => p.canvasId),
+      );
+      const canvasPlants = state.canvasPlants.filter(
+        (p) => !removedIds.has(p.canvasId),
+      );
+      const selectedCanvasPlantId =
+        state.selectedCanvasPlantId &&
+        !removedIds.has(state.selectedCanvasPlantId)
+          ? state.selectedCanvasPlantId
+          : null;
+      return {
+        zones: state.zones.filter((z) => z.id !== id),
+        canvasPlants,
+        activeZoneId: state.activeZoneId === id ? null : state.activeZoneId,
+        selectedCanvasPlantId,
+        zoneGardenPlans: restPlans,
+        spaceListZoneId: nextSpace,
+      };
+    });
+  },
 
   setActiveZoneId: (activeZoneId) => set({ activeZoneId }),
 
@@ -399,12 +792,19 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     set({ drawPoints: [], drawCursor: null, workspaceTool: "select" }),
 
   beginZoneDrag: (zoneId) => {
-    const zone = get().zones.find((z) => z.id === zoneId);
+    const s = get();
+    const zone = s.zones.find((z) => z.id === zoneId);
     if (!zone) return;
-    const plants = get()
-      .canvasPlants.filter((p) => plantInsideZone(p.x, p.y, zone))
+    const stamped = stampMissingPlantZoneIds(
+      s.canvasPlants,
+      s.zones,
+      zoneId,
+    );
+    const plants = stamped
+      .filter((p) => p.zoneId === zoneId)
       .map((p) => ({ canvasId: p.canvasId, x: p.x, y: p.y }));
     set({
+      canvasPlants: stamped,
       zoneDragOrigin: { zone: structuredClone(zone), plants },
       activeZoneId: zoneId,
     });

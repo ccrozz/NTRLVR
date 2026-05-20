@@ -22,6 +22,8 @@ import {
   getTreflePlantBySlug,
 } from "./trefle-api.js";
 import { applyDesignerProfile } from "./designer-plant-profiles.js";
+import { listFloridaDesignerPlants } from "./florida-designer-catalog.js";
+import { dedupePlantsByName } from "./plant-dedupe.js";
 export function listLocalSummaries(filters: PlantFilters): {
   data: PlantSummary[];
   total: number;
@@ -216,7 +218,7 @@ export function listPlantsByIds(ids: string[]): PlantListItem[] {
     const plant = resolvePlantRecord(key);
     if (plant) out.push(plantToListItem(plant));
   }
-  return out;
+  return dedupePlantsByName(out);
 }
 
 /** Batch lookup by display name (companion_plants strings). */
@@ -251,14 +253,21 @@ export async function listPlantsWithTrefle(
     return { data, total: data.length };
   }
 
-  /** Designer catalog: curated food-forest plants only (no Trefle bulk). */
+  /** Designer catalog: curated seeds + Florida-growable DB plants. */
   if (filters.food_forest_only) {
-    const seedFilters: PlantFilters = {
+    const mergedFilters: PlantFilters = {
       ...filters,
       exclude_invasive: true,
       search: search ?? filters.search,
+      native_state: filters.native_state ?? "FL",
+      for_my_area: filters.for_my_area !== false,
     };
-    const all = listSeedSummaries(seedFilters);
+    const all = listFloridaDesignerPlants(mergedFilters).map((plant) =>
+      summaryFromLocal({
+        ...plantToSummary(plant),
+        is_invasive_in_florida: plant.is_invasive_in_florida,
+      }),
+    );
     return {
       data: all.slice(offset, offset + limit),
       total: all.length,

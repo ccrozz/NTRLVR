@@ -134,9 +134,9 @@ export const PLANTING_DENSITY_OPTIONS: {
   },
   {
     id: "dense",
-    title: "Packed in",
+    title: "Lush & layered",
     description:
-      "More plants for a lush, full look. You can always thin or drag extras later.",
+      "Dense food-forest style — many plants, tight guild spacing. Thin or drag extras later if needed.",
   },
 ];
 

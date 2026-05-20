@@ -2,6 +2,7 @@ import type { Plant } from "../schema.js";
 import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
 import { FL_FOOD_FOREST_COMPREHENSIVE } from "./fl-food-forest-comprehensive.js";
 import { FL_FOOD_FOREST_PLANTS } from "./fl-food-forest-plants.js";
+import { FL_FLORIDA_GARDEN_PLANTS } from "./fl-florida-garden-plants.js";
 import { makeSeed } from "./seed-helpers.js";
 
 /** Original curated set (kept for backward-compatible IDs). */
@@ -298,6 +299,7 @@ export const SEED_PLANTS: Plant[] = mergeSeedCatalog(
   LEGACY_SEED_PLANTS,
   FL_FOOD_FOREST_PLANTS,
   FL_FOOD_FOREST_COMPREHENSIVE,
+  FL_FLORIDA_GARDEN_PLANTS,
 ).map(applyDesignerProfile);
 
 export const SEED_BY_ID = Object.fromEntries(

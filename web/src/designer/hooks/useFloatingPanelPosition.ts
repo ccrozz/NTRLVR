@@ -33,6 +33,21 @@ export function centeredPanelPosition(
   };
 }
 
+/** Horizontally centered near the top of the canvas. */
+export function topCenterPanelPosition(
+  boundsEl: HTMLElement | null,
+  panelEl: HTMLElement | null,
+  options?: { pad?: number; top?: number },
+): PanelPosition | null {
+  if (!panelEl || !boundsEl || panelEl.offsetWidth === 0) return null;
+  const pad = options?.pad ?? 12;
+  const top = options?.top ?? pad;
+  return {
+    x: Math.max(pad, (boundsEl.clientWidth - panelEl.offsetWidth) / 2),
+    y: Math.max(pad, top),
+  };
+}
+
 export function clampPanelPosition(
   pos: PanelPosition,
   panelEl: HTMLElement | null,

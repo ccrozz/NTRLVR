@@ -1,4 +1,5 @@
 import { PX_PER_FOOT } from "./canvas-utils";
+import type { CanvasPlant } from "../types";
 import type { WorkspaceZone } from "../types/workspace";
 
 export function feetToPx(feet: number): number {
@@ -165,6 +166,89 @@ export function plantInsideZone(
   zone: WorkspaceZone,
 ): boolean {
   return pointInZone(x, y, zone);
+}
+
+/** Topmost zone at a point (draw order). Used only for new placement hints. */
+export function primaryZoneAtPoint(
+  x: number,
+  y: number,
+  zones: WorkspaceZone[],
+): WorkspaceZone | null {
+  for (let i = zones.length - 1; i >= 0; i--) {
+    const z = zones[i]!;
+    if (pointInZone(x, y, z)) return z;
+  }
+  return null;
+}
+
+function zonesContainingPoint(
+  x: number,
+  y: number,
+  zones: WorkspaceZone[],
+): WorkspaceZone[] {
+  return zones.filter((z) => pointInZone(x, y, z));
+}
+
+/**
+ * Resolve which bed owns a plant. Explicit zoneId wins; legacy plants infer once
+ * from geometry (smallest overlapping bed when ambiguous).
+ */
+export function inferPlantZoneId(
+  plant: CanvasPlant,
+  zones: WorkspaceZone[],
+  preferZoneId?: string | null,
+): string | null {
+  if (plant.zoneId) return plant.zoneId;
+  const containing = zonesContainingPoint(plant.x, plant.y, zones);
+  if (containing.length === 0) return null;
+  if (containing.length === 1) return containing[0]!.id;
+  if (preferZoneId && containing.some((z) => z.id === preferZoneId)) {
+    return preferZoneId;
+  }
+  let best = containing[0]!;
+  let bestArea = zoneAreaSqFt(best) ?? Infinity;
+  for (const z of containing.slice(1)) {
+    const a = zoneAreaSqFt(z) ?? Infinity;
+    if (a < bestArea) {
+      best = z;
+      bestArea = a;
+    }
+  }
+  return best.id;
+}
+
+export function plantBelongsToZone(
+  plant: CanvasPlant,
+  zone: WorkspaceZone,
+  zones: WorkspaceZone[],
+): boolean {
+  return inferPlantZoneId(plant, zones) === zone.id;
+}
+
+/** Stamp missing zoneId on canvas plants (e.g. before a bed drag). */
+export function stampMissingPlantZoneIds(
+  plants: CanvasPlant[],
+  zones: WorkspaceZone[],
+  preferZoneId?: string | null,
+): CanvasPlant[] {
+  if (!zones.length) return plants;
+  return plants.map((p) => {
+    if (p.zoneId) return p;
+    const zoneId = inferPlantZoneId(p, zones, preferZoneId);
+    return zoneId ? { ...p, zoneId } : p;
+  });
+}
+
+/** True when the plant is outside the bed it belongs to (e.g. dragged out). */
+export function plantOutsideOwnedZone(
+  plant: CanvasPlant,
+  zones: WorkspaceZone[],
+): boolean {
+  if (!zones.length) return false;
+  const zoneId = inferPlantZoneId(plant, zones);
+  if (!zoneId) return !plantInsideZones(plant.x, plant.y, zones);
+  const zone = zones.find((z) => z.id === zoneId);
+  return zone ? !pointInZone(plant.x, plant.y, zone) : true;
 }
 
 export function translateZone(

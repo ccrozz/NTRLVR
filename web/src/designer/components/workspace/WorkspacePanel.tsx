@@ -6,7 +6,7 @@ import {
   useFloatingPanelPosition,
 } from "../../hooks/useFloatingPanelPosition";
 import type { PanelPosition } from "../../hooks/useFloatingPanelPosition";
-import { plantInsideZones, zoneAreaSqFt } from "../../lib/zone-geometry";
+import { plantInsideZones } from "../../lib/zone-geometry";
 
 const ZONE_COLORS = ["#7ec850", "#5eb8d4", "#e8b84a", "#c49ae8", "#f08080"];
 
@@ -22,14 +22,11 @@ export function WorkspacePanel() {
   const open = useDesignerStore((s) => s.workspacePanelOpen);
   const setOpen = useDesignerStore((s) => s.setWorkspacePanelOpen);
   const zones = useDesignerStore((s) => s.zones);
-  const activeZoneId = useDesignerStore((s) => s.activeZoneId);
   const workspaceTool = useDesignerStore((s) => s.workspaceTool);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
 
   const addRectangleZone = useDesignerStore((s) => s.addRectangleZone);
   const addCircleZone = useDesignerStore((s) => s.addCircleZone);
-  const removeZone = useDesignerStore((s) => s.removeZone);
-  const setActiveZoneId = useDesignerStore((s) => s.setActiveZoneId);
   const setWorkspaceTool = useDesignerStore((s) => s.setWorkspaceTool);
   const cancelDrawZone = useDesignerStore((s) => s.cancelDrawZone);
   const setDrawCursor = useDesignerStore((s) => s.setDrawCursor);
@@ -254,46 +251,6 @@ export function WorkspacePanel() {
                 </button>
               </div>
             </>
-          )}
-
-          {!isDrawing && zones.length > 0 && (
-            <section className="workspace-zone-list">
-              <h3>Zones ({zones.length})</h3>
-              <ul>
-                {zones.map((z, i) => {
-                  const area = zoneAreaSqFt(z);
-                  return (
-                    <li key={z.id}>
-                      <button
-                        type="button"
-                        className={`workspace-zone-item${activeZoneId === z.id ? " active" : ""}`}
-                        onClick={() => setActiveZoneId(z.id)}
-                      >
-                        <span
-                          className="workspace-zone-swatch"
-                          style={{ background: zoneColor(i) }}
-                        />
-                        <span className="workspace-zone-meta">
-                          <strong>{z.name}</strong>
-                          <span>
-                            {z.shape}
-                            {area != null ? ` · ${Math.round(area)} sq ft` : ""}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="workspace-zone-remove"
-                        onClick={() => removeZone(z.id)}
-                        aria-label={`Remove ${z.name}`}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
           )}
         </aside>
       )}

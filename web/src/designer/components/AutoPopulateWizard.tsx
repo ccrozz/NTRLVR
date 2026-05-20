@@ -32,8 +32,8 @@ import {
   GARDEN_WATER_OPTIONS,
   PLANTING_DENSITY_OPTIONS,
 } from "../lib/garden-questionnaire-ui";
-import { zoneAreaSqFt, zoneLayoutDimensions } from "../lib/zone-geometry";
-import type { WorkspaceZone } from "../types/workspace";
+import { zoneLayoutDimensions } from "../lib/zone-geometry";
+import { zoneSummary } from "../lib/zone-summary";
 import { useDesignerStore } from "../store/useDesignerStore";
 
 type Step = "style" | "goals" | "yard" | "layout";
@@ -42,19 +42,6 @@ type SpaceMode = "existing" | "new";
 const STEPS: Step[] = ["style", "goals", "yard", "layout"];
 const MAX_USES = 4;
 const MAX_PRIORITIES = 3;
-
-function zoneSummary(zone: WorkspaceZone): string {
-  const area = zoneAreaSqFt(zone);
-  const areaStr = area != null ? ` · ~${Math.round(area)} sq ft` : "";
-  if (zone.shape === "rectangle") {
-    return `Rectangle ${zone.widthFeet ?? "?"}×${zone.heightFeet ?? "?"} ft${areaStr}`;
-  }
-  if (zone.shape === "circle") {
-    const d = (zone.radiusFeet ?? 0) * 2;
-    return `Circle ${d} ft across${areaStr}`;
-  }
-  return `Custom outline${areaStr}`;
-}
 
 function parseFeetInput(raw: string, fallback: number): number {
   const n = parseFloat(raw.trim());
@@ -231,12 +218,14 @@ export function AutoPopulateWizard({
     if (existingZone) {
       return `Fill “${existingZone.name}” with a new plant layout? Your zone shape stays the same; existing plants will be replaced.`;
     }
-    return "Replace your current plants and zones with a new layout?";
+    return null;
   }
 
   function requestBuild() {
     setError(null);
-    if (hasExistingLayout && !replaceConfirmOpen) {
+    const useExisting =
+      spaceMode === "existing" && zones.length > 0 && selectedZoneId;
+    if (useExisting && hasExistingLayout && !replaceConfirmOpen) {
       setReplaceConfirmOpen(true);
       return;
     }
@@ -278,7 +267,9 @@ export function AutoPopulateWizard({
       const { zone, placements, meta } = await runAutoPopulate(answers);
       applyAutoPopulate(placements, {
         zone,
-        keepExistingZones: Boolean(existingZone),
+        fillZoneId: existingZone?.id,
+        replacePlantsInZone: Boolean(existingZone),
+        mergeWithExisting: !existingZone && zones.length > 0,
       });
       if (meta.message && placements.length > 0) {
         console.info(

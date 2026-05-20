@@ -17,6 +17,7 @@ import {
   type GardenPreferences,
   type PlantingDensity,
 } from "@lib/food-forest-questionnaire";
+import { dedupePlantsByName, dedupeOrderedIds, normalizePlantName } from "@lib/plant-dedupe";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -176,11 +177,11 @@ export function pickPlantsFromIds(
 ): PlantSummary[] {
   const byId = new Map(pool.map((p) => [p.id, p]));
   const picked: PlantSummary[] = [];
-  for (const id of plantIds) {
+  for (const id of dedupeOrderedIds(plantIds)) {
     const p = byId.get(id);
     if (p) picked.push(p);
   }
-  return picked.sort(
+  return dedupePlantsByName(picked).sort(
     (a, b) =>
       LAYER_ORDER.indexOf(a.canopy_layer) - LAYER_ORDER.indexOf(b.canopy_layer),
   );
@@ -294,9 +295,12 @@ function tryPlacePlants(
   placed: { x: number; y: number; r: number; layer: CanopyLayer }[],
   out: LayoutPlacement[],
   skipIds: Set<string>,
+  skipNames: Set<string>,
 ): void {
   for (const plant of plants) {
     if (skipIds.has(plant.id)) continue;
+    const nameKey = normalizePlantName(plant.common_name);
+    if (skipNames.has(nameKey)) continue;
     const footprint = collisionRadiusPx(plant, density);
     const minDist = minCenterSpacingFeet(plant, density, relax) * PX_PER_FOOT;
     let best: { x: number; y: number } | null = null;
@@ -325,6 +329,7 @@ function tryPlacePlants(
     });
     out.push({ plant, x: best.x, y: best.y });
     skipIds.add(plant.id);
+    skipNames.add(nameKey);
   }
 }
 
@@ -333,14 +338,15 @@ export function layoutPlantsInZone(
   plants: PlantSummary[],
   density?: PlantingDensity,
 ): LayoutPlacement[] {
+  const uniquePlants = dedupePlantsByName(plants);
   const marginFt = density === "dense" ? 0.75 : 1.5;
   const bounds = zoneLayoutBoundsPx(zone, marginFt);
   const area = zoneAreaSqFt(zone) ?? 400;
   const limit = Math.min(
-    plants.length,
+    uniquePlants.length,
     maxPlantsForCanvas(area, density ?? "balanced"),
   );
-  const sorted = sortPlantsForLayout(plants, density).slice(0, limit);
+  const sorted = sortPlantsForLayout(uniquePlants, density).slice(0, limit);
 
   const placed: { x: number; y: number; r: number; layer: CanopyLayer }[] = [];
   const out: LayoutPlacement[] = [];
@@ -352,6 +358,7 @@ export function layoutPlantsInZone(
       ? Math.max(2.2, avgSpacing * 0.42)
       : Math.max(4, avgSpacing * 0.75)) * layoutStepMultiplier(density);
   const placedIds = new Set<string>();
+  const placedNames = new Set<string>();
 
   const passes: {
     stepMult: number;
@@ -382,6 +389,7 @@ export function layoutPlantsInZone(
       placed,
       out,
       placedIds,
+      placedNames,
     );
     if (density === "dense" && out.length >= sorted.length * 0.92) break;
   }
