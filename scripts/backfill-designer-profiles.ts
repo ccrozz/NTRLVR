@@ -7,7 +7,7 @@ import { loadEnv } from "../lib/load-env.js";
 import { designerSeedsForState } from "../data/state-seed-catalog.js";
 import type { DesignerStateCode } from "../lib/designer-states.js";
 import { DESIGNER_STATE_CODES } from "../lib/designer-states.js";
-import { countPlants, getPlantById, upsertPlant } from "../db/plant-repository.js";
+import { countPlants, getPlantById, upsertPlant } from "../db/plant-repository-sqlite.js";
 import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
 
 loadEnv();

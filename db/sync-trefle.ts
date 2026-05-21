@@ -7,7 +7,7 @@ import { TrefleAuthError, TrefleRateLimitError } from "../trefle/errors.js";
 import { mapDetailToPlant, mapListToPlant } from "../trefle/map-plant.js";
 import type { TrefleSyncState } from "../trefle/types.js";
 import { closeDb, DB_PATH, getDb } from "./client.js";
-import { countPlants, upsertPlant } from "./plant-repository.js";
+import { countPlants, upsertPlant } from "./plant-repository-sqlite.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = path.join(__dirname, "../data/trefle-sync-state.json");

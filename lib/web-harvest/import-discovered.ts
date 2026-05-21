@@ -2,7 +2,7 @@ import type { DesignerStateCode } from "../designer-states.js";
 import type { Plant } from "../../schema.js";
 import { enrichPlantFromWeb } from "../enrich-plant.js";
 import { fetchBestPlantImage } from "../plant-images.js";
-import { getPlantById, upsertPlant } from "../../db/plant-repository.js";
+import { getPlantById, upsertPlant } from "../../db/plant-repository-sqlite.js";
 import { tagPlantForState } from "../state-plant-import.js";
 import { discoveredSpeciesToPlant } from "./species-to-plant.js";
 import type { DiscoveredSpecies } from "./discovered-species.js";

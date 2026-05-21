@@ -40,17 +40,19 @@
     "images:fetch:inat": "tsx scripts/fetch-plant-images.ts --source=ifas --replace-non-inat --inat-only",
     "images:fetch:all": "tsx scripts/fetch-plant-images.ts",
     "images:fetch:vh021-fruit": "tsx scripts/fetch-cultivar-fruit-images.ts",
-    "build:vercel": "npm run db:sync-state-seeds && tsx scripts/ensure-ifas-images.ts && npm run build --prefix web"
+    "build:vercel": "npm run build --prefix web",
+    "db:migrate:supabase": "tsx scripts/migrate-sqlite-to-supabase.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
     "better-sqlite3": "^11.9.1",
-    "hono": "^4.7.10"
+    "hono": "^4.7.10",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
+    "concurrently": "^9.1.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

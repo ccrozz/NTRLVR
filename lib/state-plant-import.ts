@@ -14,7 +14,7 @@ import {
   mapListToPlant,
 } from "../trefle/map-plant.js";
 import type { TrefleListPlant } from "../trefle/types.js";
-import { upsertPlant, getPlantById } from "../db/plant-repository.js";
+import { upsertPlant, getPlantById } from "../db/plant-repository-sqlite.js";
 import { enrichPlantFromWeb } from "./enrich-plant.js";
 import { fetchBestPlantImage } from "./plant-images.js";
 import { mergeLocalWithTrefle, searchTrefleByScientificName } from "./trefle-api.js";

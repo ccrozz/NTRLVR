@@ -7,7 +7,7 @@
 import { loadEnv } from "../lib/load-env.js";
 import type { DesignerStateCode } from "../lib/designer-states.js";
 import { getDb } from "../db/client.js";
-import { countPlants, rowToPlant, upsertPlant } from "../db/plant-repository.js";
+import { countPlants, rowToPlant, upsertPlant } from "../db/plant-repository-sqlite.js";
 import {
   plantGrowsInState,
   tagPlantForState,

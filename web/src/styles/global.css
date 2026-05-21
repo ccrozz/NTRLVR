@@ -95,10 +95,25 @@ body.designer-mode::after {
   display: none;
 }
 
-#root:has(.designer-root) {
+/* Full-screen canvas only — landing scrolls with the document */
+#root:has(.designer-root:not(.rr-landing)) {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
+}
+
+#root:has(.rr-landing) {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+html:has(.rr-landing),
+html:has(.rr-landing) body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 h1,

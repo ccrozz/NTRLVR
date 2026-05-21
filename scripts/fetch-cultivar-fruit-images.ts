@@ -7,7 +7,7 @@
  */
 import { loadEnv } from "../lib/load-env.js";
 import { fetchCultivarFruitImage } from "../lib/cultivar-fruit-images.js";
-import { getPlantById, rowToPlant, upsertPlant } from "../db/plant-repository.js";
+import { getPlantById, rowToPlant, upsertPlant } from "../db/plant-repository-sqlite.js";
 import { getDb } from "../db/client.js";
 import type { Plant } from "../schema.js";
 

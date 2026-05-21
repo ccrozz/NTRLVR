@@ -34,13 +34,13 @@ function plantId(p: CompanionReasonPlant): string {
 }
 
 /** Load full guild roles from catalog so reasons are specific, not generic. */
-export function resolveReasonPlant(
+export async function resolveReasonPlant(
   payload: CompanionReasonPlant,
-): CompanionReasonPlant {
+): Promise<CompanionReasonPlant> {
   const id = payload.id?.trim();
   if (!id) return payload;
 
-  const raw = getPlantById(id) ?? SEED_BY_ID[id];
+  const raw = (await getPlantById(id)) ?? SEED_BY_ID[id];
   if (!raw) return payload;
 
   const full = applyDesignerProfile(raw);
@@ -112,14 +112,14 @@ const GENERIC_FALLBACK_RE =
   /stack different canopy layers|stable mini-guild around your centerpiece|share space without fighting for the same niche/i;
 
 /** Instant rule-based copy (no Anthropic). Used for batch panel load. */
-export function generateCompanionReasonFast(
+export async function generateCompanionReasonFast(
   plantA: CompanionReasonPlant,
   plantB: CompanionReasonPlant,
   options?: { avoid?: boolean },
-): string {
+): Promise<string> {
   const avoid = options?.avoid ?? false;
-  const host = resolveReasonPlant(plantA);
-  const companion = resolveReasonPlant(plantB);
+  const host = await resolveReasonPlant(plantA);
+  const companion = await resolveReasonPlant(plantB);
   return avoid
     ? buildEducationalAvoidReason(host, companion)
     : buildEducationalCompanionReason(host, companion);
@@ -136,8 +136,8 @@ export async function generateCompanionReason(
     ? false
     : (options?.useAi ?? process.env.COMPANION_REASON_AI === "true");
 
-  const host = resolveReasonPlant(plantA);
-  const companion = resolveReasonPlant(plantB);
+  const host = await resolveReasonPlant(plantA);
+  const companion = await resolveReasonPlant(plantB);
 
   const key = cacheKey(plantId(host), plantId(companion), avoid);
   const cached = sessionCache.get(key);
@@ -162,11 +162,11 @@ export async function generateCompanionReason(
 }
 
 /** All companion “why” lines for a host in one fast pass. */
-export function generateCompanionReasonsBatch(
+export async function generateCompanionReasonsBatch(
   hostId: string,
   companionIds: string[],
-): Record<string, string> {
-  const hostRow = resolveReasonPlant({
+): Promise<Record<string, string>> {
+  const hostRow = await resolveReasonPlant({
     id: hostId,
     common_name: hostId,
     scientific_name: "",
@@ -177,7 +177,7 @@ export function generateCompanionReasonsBatch(
 
   const out: Record<string, string> = {};
   for (const cid of companionIds) {
-    const compRow = resolveReasonPlant({
+    const compRow = await resolveReasonPlant({
       id: cid,
       common_name: cid,
       scientific_name: "",

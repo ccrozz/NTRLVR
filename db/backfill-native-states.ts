@@ -3,7 +3,7 @@
  * Run: npm run db:backfill-native
  */
 import { closeDb } from "./client.js";
-import { listPlants, upsertPlant } from "./plant-repository.js";
+import { listPlants, upsertPlant } from "./plant-repository-sqlite.js";
 import { fetchNativeStatesForPlant } from "../lib/usda-plants.js";
 
 const DELAY_MS = 280;

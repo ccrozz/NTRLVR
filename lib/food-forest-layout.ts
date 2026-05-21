@@ -62,12 +62,12 @@ function resolveGoals(req: FoodForestLayoutRequest): FoodForestLayoutGoal[] {
     : deriveGoalsFromPreferences(prefs);
 }
 
-function loadCatalogForZone(
+async function loadCatalogForZone(
   zone: string,
   stateCode: DesignerStateCode = DEFAULT_DESIGNER_STATE,
   limit = 160,
-): CatalogRow[] {
-  const toRow = (p: ReturnType<typeof listStateDesignerPlants>[number]) => {
+): Promise<CatalogRow[]> {
+  const toRow = (p: Awaited<ReturnType<typeof listStateDesignerPlants>>[number]) => {
     const s = plantToSummary(p);
     return {
       id: s.id,
@@ -81,18 +81,18 @@ function loadCatalogForZone(
     };
   };
 
-  let rows = listStateDesignerPlants({
+  let rows = (await listStateDesignerPlants({
     hardiness_zone: zone,
     exclude_invasive: true,
     native_state: stateCode,
     for_my_area: true,
-  })
+  }))
     .slice(0, limit)
     .map(toRow);
 
   if (rows.length < 50) {
     const seen = new Set(rows.map((r) => r.id));
-    for (const p of listStateDesignerPlants({
+    for (const p of await listStateDesignerPlants({
       exclude_invasive: true,
       native_state: stateCode,
       for_my_area: true,
@@ -367,7 +367,7 @@ export async function generateFoodForestLayout(
   const stateCode = isDesignerStateCode(req.native_state ?? "")
     ? (req.native_state!.toUpperCase() as DesignerStateCode)
     : DEFAULT_DESIGNER_STATE;
-  const catalog = loadCatalogForZone(req.hardiness_zone, stateCode);
+  const catalog = await loadCatalogForZone(req.hardiness_zone, stateCode);
 
   if (!catalog.length) {
     throw new Error("No plants in catalog for this zone.");

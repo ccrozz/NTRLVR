@@ -258,8 +258,8 @@ function layerStackFallback(
       ["Understory", "Shrub", "Herbaceous", "Groundcover"].indexOf(comp.canopy_layer) >=
       ["Understory", "Shrub", "Herbaceous", "Groundcover"].indexOf(host.canopy_layer);
     return under
-      ? `${c.common_name} grows in the ${LAYER_PHRASE[comp.canopy_layer]} band below ${host.common_name}, using light that filters through the canopy. Harvest ${c.common_name} often so it doesn't become a thicket around the trunk.`
-      : `${c.common_name} sits slightly ${LAYER_PHRASE[comp.canopy_layer]} relative to ${host.common_name} — close enough to share pollinators and soil biology, far enough to split root zones.`;
+      ? `${comp.common_name} grows in the ${LAYER_PHRASE[comp.canopy_layer]} band below ${host.common_name}, using light that filters through the canopy. Harvest ${comp.common_name} often so it doesn't become a thicket around the trunk.`
+      : `${comp.common_name} sits slightly ${LAYER_PHRASE[comp.canopy_layer]} relative to ${host.common_name} — close enough to share pollinators and soil biology, far enough to split root zones.`;
   }
   return `${comp.common_name} and ${host.common_name} share the ${LAYER_PHRASE[comp.canopy_layer]} — space them for mature spread. ${comp.guild_functions[0] ? `${comp.common_name} adds ${comp.guild_functions[0].toLowerCase()}; ` : ""}${host.common_name} remains your primary ${CATEGORY_PHRASE[host.category]} in this bed.`;
 }

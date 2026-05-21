@@ -3,7 +3,7 @@
  * Run: npm run db:backfill-edible
  */
 import { closeDb } from "./client.js";
-import { listPlants, upsertPlant } from "./plant-repository.js";
+import { listPlants, upsertPlant } from "./plant-repository-sqlite.js";
 import { applyEdibleFlag } from "../lib/infer-is-edible.js";
 
 const PAGE = 200;

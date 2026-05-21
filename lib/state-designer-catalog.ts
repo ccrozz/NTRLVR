@@ -46,7 +46,7 @@ function dbPlantIncludedInStateDesigner(
   if (plantIsNativeForDesignerState(plant, stateCode)) return true;
   if (plant.category === "Support Species") return true;
   const src = plant.data_source ?? "";
-  if (src === "manual" || src === "ifas" || src === "seed") return true;
+  if (src === "manual" || src === "ifas" || src === "seed" || src === "usda") return true;
   return false;
 }
 
@@ -146,7 +146,9 @@ function dbFiltersForDesigner(
 }
 
 /** Merge state curated seeds with DB rows for that state (deduped by id). */
-export function listStateDesignerPlants(filters: PlantFilters): Plant[] {
+export async function listStateDesignerPlants(
+  filters: PlantFilters,
+): Promise<Plant[]> {
   const stateCode = resolveStateCode(filters);
   const effective: PlantFilters = {
     ...filters,
@@ -160,7 +162,7 @@ export function listStateDesignerPlants(filters: PlantFilters): Plant[] {
 
   for (const seed of stateSeeds) {
     if (!seedMatchesFilters(seed, effective, stateCode)) continue;
-    const stored = getPlantById(seed.id);
+    const stored = await getPlantById(seed.id);
     const plant: Plant = stored
       ? {
           ...seed,
@@ -171,7 +173,9 @@ export function listStateDesignerPlants(filters: PlantFilters): Plant[] {
     byId.set(seed.id, plant);
   }
 
-  const { data: dbRows } = listPlants(dbFiltersForDesigner(effective, stateCode));
+  const { data: dbRows } = await listPlants(
+    dbFiltersForDesigner(effective, stateCode),
+  );
   for (const row of dbRows) {
     if (byId.has(row.id)) {
       const existing = byId.get(row.id)!;

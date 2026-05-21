@@ -140,6 +140,16 @@ export function RootsLanding() {
         <p className="rr-landing-footer-note">
           Natives, edibles, and guild roles — filtered by state and zone.
         </p>
+        <p className="rr-landing-powered">
+          Powered by{" "}
+          <a
+            href="https://www.evergreensolutionsfl.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Evergreen Solutions FL
+          </a>
+        </p>
       </footer>
     </div>
   );

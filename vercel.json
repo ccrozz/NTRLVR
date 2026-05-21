@@ -10,7 +10,6 @@
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": "data/naturelover.db",
       "memory": 1024
     }
   }

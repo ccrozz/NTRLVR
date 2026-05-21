@@ -25,11 +25,11 @@ import { applyDesignerProfile } from "./designer-plant-profiles.js";
 import { listStateDesignerPlants } from "./state-designer-catalog.js";
 import { DEFAULT_DESIGNER_STATE, isDesignerStateCode } from "./designer-states.js";
 import { dedupePlantsByName } from "./plant-dedupe.js";
-export function listLocalSummaries(filters: PlantFilters): {
+export async function listLocalSummaries(filters: PlantFilters): Promise<{
   data: PlantSummary[];
   total: number;
-} {
-  const { data, total } = listPlants(filters);
+}> {
+  const { data, total } = await listPlants(filters);
   return {
     data: data.map((p) => ({
       ...plantToSummary(p),
@@ -141,10 +141,10 @@ function coalesceImageUrl(
   return null;
 }
 
-function listSeedSummaries(filters: PlantFilters): PlantListItem[] {
-  return SEED_PLANTS.filter((p) => seedMatchesFilters(p, filters)).map(
-    (seed) => {
-      const stored = getPlantById(seed.id);
+async function listSeedSummaries(filters: PlantFilters): Promise<PlantListItem[]> {
+  const out: PlantListItem[] = [];
+  for (const seed of SEED_PLANTS.filter((p) => seedMatchesFilters(p, filters))) {
+      const stored = await getPlantById(seed.id);
       const plant: Plant = stored
         ? {
             ...seed,
@@ -152,12 +152,14 @@ function listSeedSummaries(filters: PlantFilters): PlantListItem[] {
             image_url: coalesceImageUrl(stored.image_url, seed.image_url),
           }
         : seed;
-      return summaryFromLocal({
+    out.push(
+      summaryFromLocal({
         ...plantToSummary(plant),
         is_invasive_in_florida: plant.is_invasive_in_florida,
-      });
-    },
-  );
+      }),
+    );
+  }
+  return out;
 }
 
 function plantToListItem(plant: Plant): PlantListItem {
@@ -167,8 +169,8 @@ function plantToListItem(plant: Plant): PlantListItem {
   });
 }
 
-function resolvePlantRecord(id: string): Plant | null {
-  return getPlantById(id) ?? SEED_BY_ID[id] ?? null;
+async function resolvePlantRecord(id: string): Promise<Plant | null> {
+  return (await getPlantById(id)) ?? SEED_BY_ID[id] ?? null;
 }
 
 function scoreCommonNameMatch(plantName: string, query: string): number {
@@ -184,7 +186,7 @@ function scoreCommonNameMatch(plantName: string, query: string): number {
   return 0;
 }
 
-function findPlantByCommonName(name: string): Plant | null {
+async function findPlantByCommonName(name: string): Promise<Plant | null> {
   const target = name.trim().toLowerCase();
   if (!target) return null;
 
@@ -200,11 +202,11 @@ function findPlantByCommonName(name: string): Plant | null {
   };
 
   for (const seed of SEED_PLANTS) {
-    const stored = getPlantById(seed.id);
+    const stored = await getPlantById(seed.id);
     consider(stored ? { ...seed, ...stored } : seed);
   }
 
-  const { data } = listPlants({ search: name.trim(), limit: 16 });
+  const { data } = await listPlants({ search: name.trim(), limit: 16 });
   for (const row of data) {
     consider(row);
   }
@@ -213,28 +215,30 @@ function findPlantByCommonName(name: string): Plant | null {
 }
 
 /** Batch lookup by id (designer companions). */
-export function listPlantsByIds(ids: string[]): PlantListItem[] {
+export async function listPlantsByIds(ids: string[]): Promise<PlantListItem[]> {
   const out: PlantListItem[] = [];
   const seen = new Set<string>();
   for (const id of ids) {
     const key = id.trim();
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    const plant = resolvePlantRecord(key);
+    const plant = await resolvePlantRecord(key);
     if (plant) out.push(plantToListItem(plant));
   }
   return dedupePlantsByName(out);
 }
 
 /** Batch lookup by display name (companion_plants strings). */
-export function listPlantsByCommonNames(names: string[]): PlantListItem[] {
+export async function listPlantsByCommonNames(
+  names: string[],
+): Promise<PlantListItem[]> {
   const out: PlantListItem[] = [];
   const seen = new Set<string>();
   for (const name of names) {
     const key = name.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    const plant = findPlantByCommonName(name);
+    const plant = await findPlantByCommonName(name);
     if (plant) out.push(plantToListItem(plant));
   }
   return out;
@@ -249,12 +253,12 @@ export async function listPlantsWithTrefle(
   const limit = filters.limit ?? 100;
 
   if (filters.ids?.length) {
-    const data = listPlantsByIds(filters.ids);
+    const data = await listPlantsByIds(filters.ids);
     return { data, total: data.length };
   }
 
   if (filters.names?.length) {
-    const data = listPlantsByCommonNames(filters.names);
+    const data = await listPlantsByCommonNames(filters.names);
     return { data, total: data.length };
   }
 
@@ -271,7 +275,7 @@ export async function listPlantsWithTrefle(
       native_state: state,
       for_my_area: filters.for_my_area !== false,
     };
-    const all = listStateDesignerPlants(mergedFilters).map((plant) =>
+    const all = (await listStateDesignerPlants(mergedFilters)).map((plant) =>
       summaryFromLocal({
         ...plantToSummary(plant),
         is_invasive_in_florida: plant.is_invasive_in_florida,
@@ -289,7 +293,7 @@ export async function listPlantsWithTrefle(
     return { data, total: data.length };
   }
 
-  const seeds = listSeedSummaries(filters);
+  const seeds = await listSeedSummaries(filters);
   const seedCount = seeds.length;
   const seen = new Set<string>();
   const items: PlantListItem[] = [];
@@ -298,7 +302,7 @@ export async function listPlantsWithTrefle(
 
   if (offset === 0) {
     const dbLimit = Math.max(0, limit - seedCount);
-    const { data: local, total } = listLocalSummaries({
+    const { data: local, total } = await listLocalSummaries({
       ...filters,
       limit: dbLimit,
       offset: 0,
@@ -319,7 +323,7 @@ export async function listPlantsWithTrefle(
     }
   } else {
     const dbOffset = Math.max(0, offset - seedCount);
-    const { data: local, total } = listLocalSummaries({
+    const { data: local, total } = await listLocalSummaries({
       ...filters,
       limit,
       offset: dbOffset,
@@ -362,10 +366,10 @@ export async function resolvePlantById(id: string): Promise<Plant | null> {
   }
 
   const local =
-    getPlantById(id) ??
-    getPlantByTrefleSlug(id) ??
+    (await getPlantById(id)) ??
+    (await getPlantByTrefleSlug(id)) ??
     (id.startsWith("trefle-")
-      ? getPlantByTrefleSlug(id.slice("trefle-".length))
+      ? await getPlantByTrefleSlug(id.slice("trefle-".length))
       : null) ??
     SEED_BY_ID[id] ??
     null;
@@ -395,7 +399,7 @@ export async function resolvePlantById(id: string): Promise<Plant | null> {
 }
 
 export async function enrichSeedPlant(localId: string): Promise<Plant | null> {
-  const seed = SEED_BY_ID[localId] ?? getPlantById(localId);
+  const seed = SEED_BY_ID[localId] ?? (await getPlantById(localId));
   if (!seed) return null;
 
   const { searchTrefleByScientificName } = await import("./trefle-api.js");

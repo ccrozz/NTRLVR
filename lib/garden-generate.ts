@@ -52,12 +52,12 @@ type CatalogRow = {
   sunlight: string;
 };
 
-function loadCatalogForOnboarding(
+async function loadCatalogForOnboarding(
   zone: string,
   sunlight: GardenOnboardingAnswers["sunlight"],
   stateCode: DesignerStateCode = DEFAULT_DESIGNER_STATE,
-): CatalogRow[] {
-  const plants = listStateDesignerPlants({
+): Promise<CatalogRow[]> {
+  const plants = await listStateDesignerPlants({
     hardiness_zone: zone,
     exclude_invasive: true,
     native_state: stateCode,
@@ -258,13 +258,13 @@ export async function generateGardenFromOnboarding(
     targetPlantCountFromPreferences(areaSqFt, preferences),
   );
 
-  let catalog = loadCatalogForOnboarding(
+  let catalog = await loadCatalogForOnboarding(
     hardiness_zone,
     answers.sunlight,
     stateCode,
   );
   if (catalog.length < 40) {
-    catalog = loadCatalogForOnboarding(hardiness_zone, "partial", stateCode);
+    catalog = await loadCatalogForOnboarding(hardiness_zone, "partial", stateCode);
   }
   if (!catalog.length) {
     throw new Error("No plants in catalog for this zone and sunlight.");

@@ -19,7 +19,7 @@ import {
   getPlantById,
   rowToPlant,
   upsertPlant,
-} from "../db/plant-repository.js";
+} from "../db/plant-repository-sqlite.js";
 import { getDb } from "../db/client.js";
 import type { Plant } from "../schema.js";
 

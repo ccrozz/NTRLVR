@@ -66,11 +66,11 @@ app.use(
   }),
 );
 
-app.get("/api/health", (c) =>
+app.get("/api/health", async (c) =>
   c.json({
     status: "ok",
-    database: DB_PATH,
-    plant_count: countPlants(),
+    database: process.env.DATABASE_URL ? "postgres" : DB_PATH,
+    plant_count: await countPlants(),
   }),
 );
 
@@ -90,8 +90,8 @@ app.get("/api/states", (c) => {
   });
 });
 
-app.get("/api/growing-zones", (c) => {
-  const counts = listGrowingZoneCounts();
+app.get("/api/growing-zones", async (c) => {
+  const counts = await listGrowingZoneCounts();
   const countMap = new Map(counts.map((r) => [r.zone, r.count]));
 
   const zones = US_GROWING_ZONES.map((zone) => ({
@@ -101,7 +101,7 @@ app.get("/api/growing-zones", (c) => {
 
   return c.json({
     data: zones,
-    meta: { total_plants: countPlants() },
+    meta: { total_plants: await countPlants() },
   });
 });
 
@@ -222,10 +222,10 @@ app.get("/api/plants/:id", async (c) => {
     const result = await enrichPlantFromWeb(plant);
     plant = result.plant;
     sources = result.sources;
-    upsertPlant(plant);
+    await upsertPlant(plant);
   } else if (needsBenefitsEnrichment(plant)) {
     plant = applyFinalBenefits(plant);
-    upsertPlant(plant);
+    await upsertPlant(plant);
   }
 
   return c.json({
@@ -237,12 +237,12 @@ app.get("/api/plants/:id", async (c) => {
   });
 });
 
-function countPlantsForSunlight(
+async function countPlantsForSunlight(
   sun: OnboardingSunlight,
   hardiness_zone = "10a",
   stateCode: DesignerStateCode = DEFAULT_DESIGNER_STATE,
-): number {
-  const plants = listStateDesignerPlants({
+): Promise<number> {
+  const plants = await listStateDesignerPlants({
     exclude_invasive: true,
     native_state: stateCode,
     for_my_area: true,
@@ -269,7 +269,7 @@ function countPlantsForSunlight(
   }).length;
 }
 
-app.get("/api/garden/sunlight-count", (c) => {
+app.get("/api/garden/sunlight-count", async (c) => {
   const raw = c.req.query("sunlight") ?? "full";
   const allowed: OnboardingSunlight[] = [
     "full",
@@ -289,7 +289,7 @@ app.get("/api/garden/sunlight-count", (c) => {
     resolveOnboardingHardinessZone(stateCode, {});
   return c.json({
     data: {
-      count: countPlantsForSunlight(sunlight, hardiness_zone, stateCode),
+      count: await countPlantsForSunlight(sunlight, hardiness_zone, stateCode),
       sunlight,
       hardiness_zone,
       state: stateCode,
@@ -462,7 +462,7 @@ app.post("/api/companion-reasons/batch", async (c) => {
   }
 
   try {
-    const reasons = generateCompanionReasonsBatch(hostId, companionIds);
+    const reasons = await generateCompanionReasonsBatch(hostId, companionIds);
     return c.json({ reasons });
   } catch (e) {
     return c.json(

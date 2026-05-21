@@ -1,7 +1,7 @@
 /**
  * Connecticut-specific designer profile patches (zones 5b–7a).
  */
-import type { GuildFunction, Plant, PlantCategory } from "../schema.js";
+import type { Plant, PlantCategory } from "../schema.js";
 import type { ProfilePatch } from "./designer-plant-profiles.js";
 
 export function isConnecticutCatalogPlant(plant: Plant): boolean {

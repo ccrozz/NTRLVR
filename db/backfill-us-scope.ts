@@ -14,7 +14,7 @@
 import { loadEnv } from "../lib/load-env.js";
 import { enrichPlantFromWeb } from "../lib/enrich-plant.js";
 import { closeDb, getDb } from "./client.js";
-import { rowToPlant, upsertPlant } from "./plant-repository.js";
+import { rowToPlant, upsertPlant } from "./plant-repository-sqlite.js";
 import type { Plant } from "../schema.js";
 
 loadEnv();

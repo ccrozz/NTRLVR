@@ -8,7 +8,7 @@ import {
   getPlantById,
   upsertPlant,
   countPlants,
-} from "../db/plant-repository.js";
+} from "../db/plant-repository-sqlite.js";
 import { searchTrefleByScientificName, mapTrefleDetailToPlant } from "../lib/trefle-api.js";
 import { mergeLocalWithTrefle } from "../lib/trefle-api.js";
 

@@ -16,7 +16,7 @@
 import { loadEnv } from "../lib/load-env.js";
 import type { DesignerStateCode } from "../lib/designer-states.js";
 import { designerSeedsForState } from "../data/state-seed-catalog.js";
-import { countPlants, getPlantById, upsertPlant } from "../db/plant-repository.js";
+import { countPlants, getPlantById, upsertPlant } from "../db/plant-repository-sqlite.js";
 import { tagPlantForState } from "../lib/state-plant-import.js";
 import { harvestWebSpeciesForState } from "../lib/web-harvest/harvest-state-species.js";
 import { importDiscoveredSpecies } from "../lib/web-harvest/import-discovered.js";

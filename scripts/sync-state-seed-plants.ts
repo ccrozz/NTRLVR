@@ -11,7 +11,7 @@ import {
   countPlants,
   getPlantById,
   upsertPlant,
-} from "../db/plant-repository.js";
+} from "../db/plant-repository-sqlite.js";
 import { tagPlantForState } from "../lib/state-plant-import.js";
 import {
   mergeLocalWithTrefle,
