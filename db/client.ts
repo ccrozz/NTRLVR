@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 type SqliteDatabase = import("better-sqlite3").Database;
+type SqliteConstructor = new (filename: string) => SqliteDatabase;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "../data");
@@ -16,21 +17,22 @@ let db: SqliteDatabase | null = null;
 export function getDb(): SqliteDatabase {
   if (db) return db;
 
-  const Database = require("better-sqlite3") as typeof import("better-sqlite3").default;
+  const Database = require("better-sqlite3") as SqliteConstructor;
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+  const conn = new Database(DB_PATH);
+  conn.pragma("journal_mode = WAL");
+  conn.pragma("foreign_keys = ON");
 
   const schemaSql = fs.readFileSync(
     path.join(__dirname, "schema.sql"),
     "utf-8",
   );
-  migrate(db);
-  db.exec(schemaSql);
-  migrate(db);
+  migrate(conn);
+  conn.exec(schemaSql);
+  migrate(conn);
 
-  return db;
+  db = conn;
+  return conn;
 }
 
 function columnNames(database: SqliteDatabase): Set<string> {
