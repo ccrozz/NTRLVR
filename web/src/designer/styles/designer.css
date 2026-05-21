@@ -76,45 +76,94 @@
 }
 
 .rr-landing {
+  background: var(--color-bg);
+}
+
+/* Full-viewport nature video behind all landing content */
+.rr-landing-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rr-landing-bg-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  transform: scale(1.04);
+}
+
+.rr-landing-bg-scrim {
+  position: absolute;
+  inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(46, 106, 79, 0.28), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(126, 200, 80, 0.08), transparent 50%),
-    var(--color-bg);
+    linear-gradient(
+      180deg,
+      rgba(8, 14, 11, 0.5) 0%,
+      rgba(8, 14, 11, 0.62) 40%,
+      rgba(8, 14, 11, 0.82) 100%
+    ),
+    rgba(8, 14, 11, 0.28);
+}
+
+.designer-root.rr-landing > header,
+.designer-root.rr-landing > main,
+.designer-root.rr-landing > footer {
+  position: relative;
+  z-index: 1;
 }
 
 .rr-landing-top {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(10, 18, 14, 0.92);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(126, 200, 80, 0.1);
+  background: rgba(10, 18, 14, 0.45);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(126, 200, 80, 0.12);
 }
 
 .rr-landing-main {
-  position: relative;
-  z-index: 1;
   flex: 0 1 auto;
   width: 100%;
   max-width: 56rem;
   margin: 0 auto;
-  padding: clamp(2rem, 5vh, 3rem) clamp(1.25rem, 4vw, 2rem) clamp(2.5rem, 6vh, 4rem);
+  padding: clamp(2.5rem, 6vh, 4rem) clamp(1.25rem, 4vw, 2rem) clamp(2.5rem, 6vh, 4rem);
 }
 
 .rr-landing-intro {
   text-align: center;
-  margin-bottom: clamp(1.75rem, 4vh, 2.5rem);
+  margin-bottom: clamp(2rem, 5vh, 3rem);
 }
 
 .rr-landing-intro h1 {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 5vw, 2.85rem);
+  font-size: clamp(2.25rem, 6vw, 3.25rem);
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: -0.03em;
   margin: 0 0 0.35rem;
   text-wrap: balance;
   color: #f2f7f3;
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rr-landing-bg-video {
+    display: none;
+  }
+
+  .rr-landing-bg {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(8, 14, 11, 0.55),
+        rgba(8, 14, 11, 0.9)
+      ),
+      url("/images/landing/tn.jpg") center / cover no-repeat;
+  }
 }
 
 .rr-landing-tagline {
@@ -125,6 +174,7 @@
   font-style: italic;
   letter-spacing: -0.01em;
   color: var(--color-accent);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
 }
 
 .rr-landing-states {
@@ -144,12 +194,17 @@
   text-wrap: balance;
 }
 
-.rr-landing-states-head p {
+.rr-landing-states-head p,
+.rr-landing-states-lead {
   margin: 0;
   font-size: 0.95rem;
   color: var(--color-text-muted);
-  max-width: 44ch;
   line-height: 1.5;
+}
+
+.rr-landing-states-lead {
+  white-space: nowrap;
+  font-size: clamp(0.82rem, 2.2vw, 0.95rem);
 }
 
 .rr-state-grid {
@@ -165,7 +220,8 @@
   padding: 0;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(126, 200, 80, 0.28);
-  background: #121e18;
+  background: rgba(18, 30, 24, 0.82);
+  backdrop-filter: blur(12px);
   text-decoration: none;
   color: inherit;
   overflow: hidden;
@@ -342,7 +398,8 @@
 
 .rr-landing-step {
   padding: 1.15rem 1.2rem 1.25rem;
-  background: rgba(20, 32, 26, 0.65);
+  background: rgba(20, 32, 26, 0.78);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(45, 74, 56, 0.5);
   border-radius: var(--radius-md);
   transition:
@@ -522,7 +579,8 @@
 }
 
 .rr-btn-secondary {
-  background: var(--color-surface-2);
+  background: rgba(36, 53, 41, 0.85);
+  backdrop-filter: blur(8px);
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
@@ -532,15 +590,14 @@
 }
 
 .rr-landing-footer {
-  position: relative;
-  z-index: 1;
   flex-shrink: 0;
   padding: clamp(2rem, 5vh, 3rem) clamp(1.25rem, 4vw, 2.5rem)
     max(4rem, calc(2.5rem + env(safe-area-inset-bottom, 0px)));
   margin-top: 0;
   text-align: center;
-  border-top: 1px solid rgba(126, 200, 80, 0.1);
-  background: linear-gradient(to top, rgba(8, 14, 11, 0.95), transparent);
+  border-top: 1px solid rgba(126, 200, 80, 0.12);
+  background: rgba(8, 14, 11, 0.72);
+  backdrop-filter: blur(14px);
 }
 
 .rr-landing-footer-note {

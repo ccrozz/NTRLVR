@@ -55,3 +55,6 @@ CREATE INDEX IF NOT EXISTS idx_plants_trefle_slug ON plants(trefle_slug);
 CREATE INDEX IF NOT EXISTS idx_plants_trefle_id ON plants(trefle_id);
 CREATE INDEX IF NOT EXISTS idx_plants_grows_in_us ON plants(grows_in_us);
 CREATE INDEX IF NOT EXISTS idx_plants_common_name ON plants(LOWER(common_name));
+CREATE INDEX IF NOT EXISTS idx_plants_fl_zones_gin ON plants USING gin (florida_hardiness_zones jsonb_ops);
+CREATE INDEX IF NOT EXISTS idx_plants_native_states_gin ON plants USING gin (native_states jsonb_ops);
+CREATE INDEX IF NOT EXISTS idx_plants_tags_gin ON plants USING gin (tags jsonb_ops);

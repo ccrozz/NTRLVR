@@ -23,10 +23,28 @@ DATABASE_URL=postgresql://postgres.[project-ref]:[YOUR-PASSWORD]@aws-0-[region].
 
 Find this under **Project Settings → Database → Connection string → URI** (choose “Transaction” mode).
 
-Then run:
+Then run (use **direct** connection on port **5432** for bulk migration — pooler `:6543` often times out):
 
 ```bash
 npm run db:migrate:supabase
+```
+
+If migration stops partway (e.g. `statement timeout` at ~5000 rows), resume:
+
+```bash
+npm run db:migrate:supabase:resume
+```
+
+Check progress:
+
+```bash
+npm run db:status:supabase
+```
+
+Fix bad JSONB after an old migration (`cannot extract elements from a scalar`):
+
+```bash
+npm run db:fix:supabase-json
 ```
 
 This copies all rows from `data/naturelover.db` into Supabase. Local scripts (`npm run db:sync-state-seeds`, harvest, etc.) still use SQLite unless you also set `DATABASE_URL` locally.

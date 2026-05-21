@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DESIGNER_STATES } from "@lib/designer-states";
 import { AppNav } from "../../../components/AppNav";
@@ -27,6 +28,12 @@ const STATE_VISUALS: Record<
   },
 };
 
+/** Full-page loop — Pexels (Mikhail Nilov), free license */
+const LANDING_VIDEO_SRC = "/videos/landing-bg-nature.mp4";
+const LANDING_VIDEO_POSTER = "/images/landing/tn.jpg";
+/** Slower than 1× for a calmer background (muted video — no pitch issue) */
+const LANDING_VIDEO_PLAYBACK_RATE = 0.6;
+
 const STEPS = [
   { num: "01", title: "Pick your state", body: "Florida, Tennessee, or Connecticut catalogs." },
   { num: "02", title: "Set your zone", body: "ZIP lookup or regional shortcuts in the designer." },
@@ -37,9 +44,43 @@ export function RootsLanding() {
   const [params] = useSearchParams();
   const upload = params.get("mode") === "upload";
   const uploadQuery = upload ? "?mode=upload" : "";
+  const bgVideoRef = useRef<HTMLVideoElement>(null);
+
+  const applyVideoPlaybackRate = useCallback(() => {
+    const video = bgVideoRef.current;
+    if (!video) return;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    video.playbackRate = reducedMotion ? 1 : LANDING_VIDEO_PLAYBACK_RATE;
+  }, []);
+
+  useEffect(() => {
+    applyVideoPlaybackRate();
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mq.addEventListener("change", applyVideoPlaybackRate);
+    return () => mq.removeEventListener("change", applyVideoPlaybackRate);
+  }, [applyVideoPlaybackRate]);
 
   return (
     <div className="designer-root rr-landing">
+      <div className="rr-landing-bg" aria-hidden>
+        <video
+          ref={bgVideoRef}
+          className="rr-landing-bg-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster={LANDING_VIDEO_POSTER}
+          onLoadedMetadata={applyVideoPlaybackRate}
+        >
+          <source src={LANDING_VIDEO_SRC} type="video/mp4" />
+        </video>
+        <div className="rr-landing-bg-scrim" />
+      </div>
+
       <header className="designer-top-bar rr-landing-top">
         <Link to="/" className="designer-top-brand">
           NTR LVR
@@ -57,7 +98,9 @@ export function RootsLanding() {
         <section className="rr-landing-states" aria-labelledby="states-heading">
           <div className="rr-landing-states-head">
             <h2 id="states-heading">Where are you growing?</h2>
-            <p>Choose a state to open the designer with a curated regional catalog.</p>
+            <p className="rr-landing-states-lead">
+              Choose a state to open the designer with a curated regional catalog.
+            </p>
           </div>
           <div className="rr-state-grid">
             {DESIGNER_STATES.map((st) => {

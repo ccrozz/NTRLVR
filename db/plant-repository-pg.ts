@@ -89,16 +89,16 @@ function plantToPgParams(plant: Plant) {
     r.edible_part,
     r.vegetable,
     r.observations,
-    JSON.stringify(r.synonyms),
+    r.synonyms,
     r.trefle_json,
     r.category,
     r.canopy_layer,
-    JSON.stringify(r.guild_functions),
+    r.guild_functions,
     r.is_florida_native,
     r.is_kitchen_essential,
     r.is_edible,
-    JSON.stringify(r.florida_hardiness_zones),
-    JSON.stringify(r.native_states),
+    r.florida_hardiness_zones,
+    r.native_states,
     r.grows_in_us,
     r.is_invasive_in_florida,
     r.mature_height_min,
@@ -108,15 +108,15 @@ function plantToPgParams(plant: Plant) {
     r.canvas_radius_feet,
     r.sunlight,
     r.water_needs,
-    JSON.stringify(r.soil_preferences),
-    JSON.stringify(r.best_planting_seasons),
+    r.soil_preferences,
+    r.best_planting_seasons,
     r.growth_rate,
     r.care_summary,
-    JSON.stringify(r.uses),
-    JSON.stringify(r.benefits),
-    JSON.stringify(r.companion_plants),
-    JSON.stringify(r.avoid_planting_near),
-    JSON.stringify(r.tags),
+    r.uses,
+    r.benefits,
+    r.companion_plants,
+    r.avoid_planting_near,
+    r.tags,
     r.data_source,
     r.last_updated,
   ];
@@ -161,18 +161,30 @@ export async function upsertPlant(plant: Plant): Promise<void> {
   await sql.unsafe(UPSERT_PLANT, plantToPgParams(plant));
 }
 
+/** Fast path for SQLite→Postgres migration (no per-row merge lookups). */
+export async function upsertPlantsMigrationBatch(plants: Plant[]): Promise<void> {
+  if (!plants.length) return;
+  const sql = getSql();
+  await sql.begin(async (tx) => {
+    for (const plant of plants) {
+      await tx.unsafe(UPSERT_PLANT, plantToPgParams(plant));
+    }
+  });
+}
+
 export async function listGrowingZoneCounts(): Promise<
   { zone: string; count: number }[]
 > {
   const sql = getSql();
-  const rows = await sql<{ zone: string; count: string }[]>`
-    SELECT z.value AS zone, COUNT(DISTINCT p.id)::int AS count
-    FROM plants p
-    CROSS JOIN LATERAL jsonb_array_elements_text(p.florida_hardiness_zones) AS z(value)
-    WHERE z.value != ''
-    GROUP BY z.value
-    ORDER BY z.value
-  `;
+  const zonesJsonb = pgJsonbAsArray("p.florida_hardiness_zones");
+  const rows = await sql.unsafe<{ zone: string; count: string }[]>(
+    `SELECT z.value AS zone, COUNT(DISTINCT p.id)::int AS count
+     FROM plants p
+     CROSS JOIN LATERAL jsonb_array_elements_text(${zonesJsonb}) AS z(value)
+     WHERE z.value != ''
+     GROUP BY z.value
+     ORDER BY z.value`,
+  );
   return rows.map((r) => ({ zone: r.zone, count: Number(r.count) }));
 }
 
@@ -196,6 +208,14 @@ export async function getPlantByTrefleSlug(slug: string): Promise<Plant | null> 
 
 type PgQueryParam = string | number | boolean | null;
 
+function pgJsonbAsArray(column: string): string {
+  return `CASE
+    WHEN jsonb_typeof(${column}) = 'array' THEN ${column}
+    WHEN jsonb_typeof(${column}) = 'string' THEN (${column} #>> '{}')::jsonb
+    ELSE '[]'::jsonb
+  END`;
+}
+
 function buildListWhere(filters: PlantFilters): {
   clause: string;
   params: PgQueryParam[];
@@ -213,40 +233,27 @@ function buildListWhere(filters: PlantFilters): {
     const st = filters.native_state.toUpperCase();
     const state = stateByCode(st);
     if (state?.hardiness_zones.length) {
-      const zoneParts: string[] = [];
-      for (const z of state.hardiness_zones) {
-        n += 1;
-        zoneParts.push(
-          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(florida_hardiness_zones) z WHERE LOWER(z.value) = LOWER($${n}))`,
-        );
-        params.push(z);
-      }
-      const wholeNums = [
-        ...new Set(state.hardiness_zones.map((z) => z.replace(/[ab]$/i, ""))),
-      ];
-      for (const num of wholeNums) {
-        n += 1;
-        zoneParts.push(
-          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(florida_hardiness_zones) z WHERE z.value ~ $${n})`,
-        );
-        params.push(`^${num}[ab]$`);
-      }
-      const stParam = ++n;
+      n += 1;
+      const zonesParam = n;
+      params.push(JSON.stringify(state.hardiness_zones));
+      n += 1;
+      const stateParam = n;
+      params.push(JSON.stringify([st]));
       conditions.push(
         `(
-          (${zoneParts.join(" OR ")})
-          OR EXISTS (
-            SELECT 1 FROM jsonb_array_elements_text(native_states) ns
-            WHERE UPPER(ns.value) = UPPER($${stParam})
-          )
+          ${pgJsonbAsArray("florida_hardiness_zones")} && $${zonesParam}::jsonb
+          OR ${pgJsonbAsArray("native_states")} @> $${stateParam}::jsonb
           OR (
-            UPPER($${stParam}) = 'FL'
+            $${stateParam}::jsonb @> '["FL"]'::jsonb
             AND is_florida_native = true
-            AND (native_states IS NULL OR native_states = '[]'::jsonb)
+            AND (
+              native_states IS NULL
+              OR native_states = '[]'::jsonb
+              OR jsonb_array_length(${pgJsonbAsArray("native_states")}) = 0
+            )
           )
         )`,
       );
-      params.push(st);
     }
   }
 
@@ -255,7 +262,7 @@ function buildListWhere(filters: PlantFilters): {
     const term = `%${filters.search.toLowerCase()}%`;
     conditions.push(
       `(LOWER(common_name) LIKE $${n} OR LOWER(scientific_name) LIKE $${n} OR LOWER(COALESCE(family, '')) LIKE $${n} OR LOWER(COALESCE(genus, '')) LIKE $${n} OR EXISTS (
-        SELECT 1 FROM jsonb_array_elements_text(tags) t WHERE LOWER(t.value) LIKE $${n}
+        SELECT 1 FROM jsonb_array_elements_text(${pgJsonbAsArray("tags")}) t WHERE LOWER(t.value) LIKE $${n}
       ))`,
     );
     params.push(term);
@@ -294,18 +301,19 @@ function buildListWhere(filters: PlantFilters): {
     n += 1;
     conditions.push(
       `(
-        EXISTS (
-          SELECT 1 FROM jsonb_array_elements_text(native_states) ns
-          WHERE UPPER(ns.value) = UPPER($${n})
-        )
+        ${pgJsonbAsArray("native_states")} @> $${n}::jsonb
         OR (
-          UPPER($${n}) = 'FL'
+          $${n}::jsonb @> '["FL"]'::jsonb
           AND is_florida_native = true
-          AND (native_states IS NULL OR native_states = '[]'::jsonb)
+          AND (
+            native_states IS NULL
+            OR native_states = '[]'::jsonb
+            OR jsonb_array_length(${pgJsonbAsArray("native_states")}) = 0
+          )
         )
       )`,
     );
-    params.push(st);
+    params.push(JSON.stringify([st]));
   }
 
   if (filters.kitchen_essentials_only) {
@@ -325,30 +333,30 @@ function buildListWhere(filters: PlantFilters): {
     if (/^\d+[ab]$/i.test(z)) {
       n += 1;
       conditions.push(
-        `EXISTS (SELECT 1 FROM jsonb_array_elements_text(florida_hardiness_zones) hz WHERE LOWER(hz.value) = LOWER($${n}))`,
+        `${pgJsonbAsArray("florida_hardiness_zones")} @> $${n}::jsonb`,
       );
-      params.push(z);
+      params.push(JSON.stringify([z]));
     } else if (/^\d+$/.test(z)) {
       n += 1;
       conditions.push(
-        `EXISTS (SELECT 1 FROM jsonb_array_elements_text(florida_hardiness_zones) hz WHERE hz.value ~ $${n})`,
+        `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${pgJsonbAsArray("florida_hardiness_zones")}) hz WHERE hz.value ~ $${n})`,
       );
       params.push(`^${z}[ab]$`);
     } else {
       n += 1;
       conditions.push(
-        `EXISTS (SELECT 1 FROM jsonb_array_elements_text(florida_hardiness_zones) hz WHERE LOWER(hz.value) = LOWER($${n}))`,
+        `${pgJsonbAsArray("florida_hardiness_zones")} @> $${n}::jsonb`,
       );
-      params.push(z);
+      params.push(JSON.stringify([z]));
     }
   }
 
   if (filters.guild_function) {
     n += 1;
     conditions.push(
-      `EXISTS (SELECT 1 FROM jsonb_array_elements_text(guild_functions) gf WHERE gf.value = $${n})`,
+      `${pgJsonbAsArray("guild_functions")} @> $${n}::jsonb`,
     );
-    params.push(filters.guild_function);
+    params.push(JSON.stringify([filters.guild_function]));
   }
 
   const clause =

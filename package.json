@@ -41,7 +41,10 @@
     "images:fetch:all": "tsx scripts/fetch-plant-images.ts",
     "images:fetch:vh021-fruit": "tsx scripts/fetch-cultivar-fruit-images.ts",
     "build:vercel": "npm run build --prefix web",
-    "db:migrate:supabase": "tsx scripts/migrate-sqlite-to-supabase.ts"
+    "db:migrate:supabase": "tsx scripts/migrate-sqlite-to-supabase.ts",
+    "db:migrate:supabase:resume": "tsx scripts/migrate-sqlite-to-supabase.ts -- --resume",
+    "db:fix:supabase-json": "tsx scripts/fix-supabase-jsonb.ts",
+    "db:status:supabase": "tsx scripts/db-status-supabase.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
