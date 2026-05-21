@@ -5,13 +5,12 @@
   "outputDirectory": "web/dist",
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/index.ts": {
+    "api/**/*.ts": {
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 60
     }
   }
 }

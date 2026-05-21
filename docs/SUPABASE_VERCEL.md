@@ -63,7 +63,7 @@ This copies all rows from `data/naturelover.db` into Supabase. Local scripts (`n
 3. Build settings (already in `vercel.json`):
    - Build: `npm run build:vercel`
    - Output: `web/dist`
-   - API: `api/index.ts` (Hono serverless function)
+   - API: `api/[[...path]].ts` (Hono catch-all — handles `/api/health`, `/api/plants`, etc.)
 
 4. After deploy, set the Vite API base if needed. The web app uses `VITE_API_URL` (empty = same origin; `/api` rewrites to the function).
 
@@ -74,12 +74,12 @@ This copies all rows from `data/naturelover.db` into Supabase. Local scripts (`n
 
 ## Troubleshooting
 
-### `/api/health` blank or never loads
+### `/api/health` blank or times out
 
-1. **Redeploy** after setting `DATABASE_URL` in Vercel env vars (pooler URI, port 6543, `?pgbouncer=true`).
-2. Confirm the variable is enabled for **Production**, not only Preview.
-3. Check **Vercel → Deployments → Functions → Logs** for crashes. A common failure was loading `better-sqlite3` on serverless even when using Supabase (fixed in app code — pull latest and redeploy).
-4. Try both URLs: `/api/health` and `/health`.
+1. **Redeploy** with latest code (`api/[[...path]].ts` catch-all — old `api/index.ts` only handled `/api` exactly).
+2. Try **`/api/ping` first** — should return JSON instantly. If ping works but health fails, `DATABASE_URL` / Supabase is the issue.
+3. **Redeploy** after setting `DATABASE_URL` (pooler, port 6543, `?pgbouncer=true`, real password).
+4. Check **Vercel → Deployments → Functions → Logs**.
 
 ### Health returns `database: "sqlite"` or errors
 

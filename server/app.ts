@@ -66,48 +66,6 @@ app.use(
   }),
 );
 
-async function healthPayload() {
-  const plant_count = await countPlants();
-  return {
-    status: "ok" as const,
-    database: dbBackend(),
-    plant_count,
-  };
-}
-
-app.get("/api/health", async (c) => {
-  try {
-    return c.json(await healthPayload());
-  } catch (err) {
-    console.error("[health]", err);
-    return c.json(
-      {
-        status: "error",
-        database: dbBackend(),
-        message: err instanceof Error ? err.message : String(err),
-      },
-      500,
-    );
-  }
-});
-
-/** Vercel rewrite may present path without /api prefix */
-app.get("/health", async (c) => {
-  try {
-    return c.json(await healthPayload());
-  } catch (err) {
-    console.error("[health]", err);
-    return c.json(
-      {
-        status: "error",
-        database: dbBackend(),
-        message: err instanceof Error ? err.message : String(err),
-      },
-      500,
-    );
-  }
-});
-
 app.get("/api/states", (c) => {
   return c.json({
     data: US_STATES.map((s) => ({

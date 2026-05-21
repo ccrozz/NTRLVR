@@ -21,9 +21,10 @@ export function getSql(): ReturnType<typeof postgres> {
   sql = postgres(url, {
     ssl: url.includes("localhost") ? false : "require",
     prepare: false,
-    max: 3,
-    idle_timeout: 20,
-    connect_timeout: 30,
+    max: 1,
+    idle_timeout: 10,
+    connect_timeout: 10,
+    max_lifetime: 60 * 5,
   });
 
   return sql;
