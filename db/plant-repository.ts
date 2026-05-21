@@ -16,21 +16,31 @@ export {
 export { usePostgres, dbBackend } from "./db-config.js";
 
 import type { Plant, PlantFilters } from "../schema.js";
-import * as sqlite from "./plant-repository-sqlite.js";
 import * as pg from "./plant-repository-pg.js";
 
+type SqliteRepo = typeof import("./plant-repository-sqlite.js");
+
+let sqliteRepo: SqliteRepo | null = null;
+
+async function sqlite(): Promise<SqliteRepo> {
+  if (!sqliteRepo) {
+    sqliteRepo = await import("./plant-repository-sqlite.js");
+  }
+  return sqliteRepo;
+}
+
 export async function countPlants(): Promise<number> {
-  return usePostgres() ? pg.countPlants() : Promise.resolve(sqlite.countPlants());
+  return usePostgres() ? pg.countPlants() : (await sqlite()).countPlants();
 }
 
 export async function getPlantById(id: string): Promise<Plant | null> {
-  return usePostgres() ? pg.getPlantById(id) : Promise.resolve(sqlite.getPlantById(id));
+  return usePostgres() ? pg.getPlantById(id) : (await sqlite()).getPlantById(id);
 }
 
 export async function getPlantByTrefleSlug(slug: string): Promise<Plant | null> {
   return usePostgres()
     ? pg.getPlantByTrefleSlug(slug)
-    : Promise.resolve(sqlite.getPlantByTrefleSlug(slug));
+    : (await sqlite()).getPlantByTrefleSlug(slug);
 }
 
 export async function listPlants(filters: PlantFilters = {}): Promise<{
@@ -39,7 +49,7 @@ export async function listPlants(filters: PlantFilters = {}): Promise<{
 }> {
   return usePostgres()
     ? pg.listPlants(filters)
-    : Promise.resolve(sqlite.listPlants(filters));
+    : (await sqlite()).listPlants(filters);
 }
 
 export async function listGrowingZoneCounts(): Promise<
@@ -47,13 +57,13 @@ export async function listGrowingZoneCounts(): Promise<
 > {
   return usePostgres()
     ? pg.listGrowingZoneCounts()
-    : Promise.resolve(sqlite.listGrowingZoneCounts());
+    : (await sqlite()).listGrowingZoneCounts();
 }
 
 export async function upsertPlant(plant: Plant): Promise<void> {
   if (usePostgres()) {
     await pg.upsertPlant(plant);
   } else {
-    sqlite.upsertPlant(plant);
+    (await sqlite()).upsertPlant(plant);
   }
 }

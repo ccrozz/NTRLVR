@@ -1,18 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
+
+const require = createRequire(import.meta.url);
+type SqliteDatabase = import("better-sqlite3").Database;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "../data");
 export const DB_PATH =
   process.env.DATABASE_PATH ?? path.join(DATA_DIR, "naturelover.db");
 
-let db: Database.Database | null = null;
+let db: SqliteDatabase | null = null;
 
-export function getDb(): Database.Database {
+export function getDb(): SqliteDatabase {
   if (db) return db;
 
+  const Database = require("better-sqlite3") as typeof import("better-sqlite3").default;
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
@@ -29,14 +33,14 @@ export function getDb(): Database.Database {
   return db;
 }
 
-function columnNames(database: Database.Database): Set<string> {
+function columnNames(database: SqliteDatabase): Set<string> {
   const columns = database
     .prepare("PRAGMA table_info(plants)")
     .all() as { name: string }[];
   return new Set(columns.map((c) => c.name));
 }
 
-function migrate(database: Database.Database): void {
+function migrate(database: SqliteDatabase): void {
   const cols = columnNames(database);
   if (cols.size === 0) return;
 

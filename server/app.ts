@@ -19,7 +19,7 @@ import {
   needsBenefitsEnrichment,
   plantNeedsAnyEnrichment,
 } from "../lib/plant-enrichment.js";
-import { DB_PATH } from "../db/client.js";
+import { dbBackend } from "../db/db-config.js";
 import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
 import {
   enrichSeedPlant,
@@ -66,13 +66,47 @@ app.use(
   }),
 );
 
-app.get("/api/health", async (c) =>
-  c.json({
-    status: "ok",
-    database: process.env.DATABASE_URL ? "postgres" : DB_PATH,
-    plant_count: await countPlants(),
-  }),
-);
+async function healthPayload() {
+  const plant_count = await countPlants();
+  return {
+    status: "ok" as const,
+    database: dbBackend(),
+    plant_count,
+  };
+}
+
+app.get("/api/health", async (c) => {
+  try {
+    return c.json(await healthPayload());
+  } catch (err) {
+    console.error("[health]", err);
+    return c.json(
+      {
+        status: "error",
+        database: dbBackend(),
+        message: err instanceof Error ? err.message : String(err),
+      },
+      500,
+    );
+  }
+});
+
+/** Vercel rewrite may present path without /api prefix */
+app.get("/health", async (c) => {
+  try {
+    return c.json(await healthPayload());
+  } catch (err) {
+    console.error("[health]", err);
+    return c.json(
+      {
+        status: "error",
+        database: dbBackend(),
+        message: err instanceof Error ? err.message : String(err),
+      },
+      500,
+    );
+  }
+});
 
 app.get("/api/states", (c) => {
   return c.json({

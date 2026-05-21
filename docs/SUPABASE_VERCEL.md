@@ -72,6 +72,23 @@ This copies all rows from `data/naturelover.db` into Supabase. Local scripts (`n
 - `GET https://your-app.vercel.app/api/health` → `{ "status": "ok", "database": "postgres", "plant_count": ... }`
 - Open the site and browse the catalog / designer.
 
+## Troubleshooting
+
+### `/api/health` blank or never loads
+
+1. **Redeploy** after setting `DATABASE_URL` in Vercel env vars (pooler URI, port 6543, `?pgbouncer=true`).
+2. Confirm the variable is enabled for **Production**, not only Preview.
+3. Check **Vercel → Deployments → Functions → Logs** for crashes. A common failure was loading `better-sqlite3` on serverless even when using Supabase (fixed in app code — pull latest and redeploy).
+4. Try both URLs: `/api/health` and `/health`.
+
+### Health returns `database: "sqlite"` or errors
+
+`DATABASE_URL` is missing in Vercel. Add it and redeploy. Do not rely on `.env` in the repo — Vercel does not read it unless you use `vercel env pull` locally.
+
+### Plants empty but health OK
+
+Run `npm run db:fix:supabase-json` locally, then confirm `npm run db:status:supabase` shows full `total` (~13k).
+
 ## Local development
 
 | Mode | Config |
