@@ -1,6 +1,11 @@
 import type { CanopyLayer, PlantSummary } from "../schema.js";
 import { plantToSummary } from "../db/plant-repository.js";
-import { listFloridaDesignerPlants } from "./florida-designer-catalog.js";
+import { listStateDesignerPlants } from "./state-designer-catalog.js";
+import {
+  DEFAULT_DESIGNER_STATE,
+  type DesignerStateCode,
+  isDesignerStateCode,
+} from "./designer-states.js";
 import {
   dedupeOrderedIds,
   dedupeOrderedIdsByName,
@@ -22,6 +27,8 @@ export type { FoodForestLayoutGoal, GardenPreferences };
 
 export type FoodForestLayoutRequest = {
   hardiness_zone: string;
+  /** Designer state for catalog (FL, TN, CT). */
+  native_state?: string;
   width_feet: number;
   height_feet: number;
   preferences: GardenPreferences;
@@ -55,8 +62,12 @@ function resolveGoals(req: FoodForestLayoutRequest): FoodForestLayoutGoal[] {
     : deriveGoalsFromPreferences(prefs);
 }
 
-function loadCatalogForZone(zone: string, limit = 160): CatalogRow[] {
-  const toRow = (p: ReturnType<typeof listFloridaDesignerPlants>[number]) => {
+function loadCatalogForZone(
+  zone: string,
+  stateCode: DesignerStateCode = DEFAULT_DESIGNER_STATE,
+  limit = 160,
+): CatalogRow[] {
+  const toRow = (p: ReturnType<typeof listStateDesignerPlants>[number]) => {
     const s = plantToSummary(p);
     return {
       id: s.id,
@@ -70,10 +81,10 @@ function loadCatalogForZone(zone: string, limit = 160): CatalogRow[] {
     };
   };
 
-  let rows = listFloridaDesignerPlants({
+  let rows = listStateDesignerPlants({
     hardiness_zone: zone,
     exclude_invasive: true,
-    native_state: "FL",
+    native_state: stateCode,
     for_my_area: true,
   })
     .slice(0, limit)
@@ -81,9 +92,9 @@ function loadCatalogForZone(zone: string, limit = 160): CatalogRow[] {
 
   if (rows.length < 50) {
     const seen = new Set(rows.map((r) => r.id));
-    for (const p of listFloridaDesignerPlants({
+    for (const p of listStateDesignerPlants({
       exclude_invasive: true,
-      native_state: "FL",
+      native_state: stateCode,
       for_my_area: true,
     })) {
       const row = toRow(p);
@@ -353,7 +364,10 @@ export async function generateFoodForestLayout(
     cap,
     req.target_count ?? targetPlantCountFromPreferences(area, prefs),
   );
-  const catalog = loadCatalogForZone(req.hardiness_zone);
+  const stateCode = isDesignerStateCode(req.native_state ?? "")
+    ? (req.native_state!.toUpperCase() as DesignerStateCode)
+    : DEFAULT_DESIGNER_STATE;
+  const catalog = loadCatalogForZone(req.hardiness_zone, stateCode);
 
   if (!catalog.length) {
     throw new Error("No plants in catalog for this zone.");

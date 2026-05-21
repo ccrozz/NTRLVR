@@ -41,7 +41,23 @@ const EDIBLE_CATEGORIES: PlantCategory[] = [
   "Ground Cover",
 ];
 
+const DEFAULT_ZONES_BY_STATE: Record<string, string[]> = {
+  FL: ["9a", "9b", "10a", "10b"],
+  TN: ["6a", "6b", "7a", "7b", "8a"],
+  CT: ["5b", "6a", "6b", "7a"],
+};
+
 export function compactSeeds(defs: CompactSeed[]): Plant[] {
+  return compactStateSeeds(defs, "FL");
+}
+
+/** Curated compact rows for a specific designer state catalog. */
+export function compactStateSeeds(
+  defs: CompactSeed[],
+  stateCode: string,
+): Plant[] {
+  const code = stateCode.toUpperCase();
+  const defaultZones = DEFAULT_ZONES_BY_STATE[code] ?? ["9a", "9b", "10a"];
   return defs.map((d) => {
     const spread = d.s ?? [4, 8];
     const edibleDefault =
@@ -52,11 +68,13 @@ export function compactSeeds(defs: CompactSeed[]): Plant[] {
       scientific_name: d.sci,
       category: d.cat,
       canopy_layer: d.layer,
-      florida_hardiness_zones: d.zones ?? ["9a", "9b", "10a", "10b"],
+      florida_hardiness_zones: d.zones ?? defaultZones,
       is_kitchen_essential: d.k ?? false,
       is_edible: edibleDefault,
-      is_florida_native: d.nat ?? false,
+      is_florida_native: code === "FL" && (d.nat ?? false),
       is_invasive_in_florida: d.inv ?? false,
+      native_states: [code],
+      grows_in_us: true,
       mature_height_feet: d.h ?? [8, 15],
       mature_spread_feet: spread,
       canvas_radius_feet: (spread[0] + spread[1]) / 4,
@@ -64,7 +82,8 @@ export function compactSeeds(defs: CompactSeed[]): Plant[] {
       guild_functions: d.guild ?? (edibleDefault ? ["Food Producer"] : []),
       sunlight: d.sun,
       water_needs: d.water,
-      tags: ["food-forest", "florida", ...(d.tags ?? [])],
+      tags: ["food-forest", code.toLowerCase(), ...(d.tags ?? [])],
+      data_source: code === "FL" ? "ifas" : "manual",
     });
   });
 }

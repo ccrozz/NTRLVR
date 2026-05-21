@@ -49,7 +49,9 @@ function findCompanionMentions(text: string): string[] {
   ];
   for (const re of patterns) {
     for (const m of text.matchAll(re)) {
-      const phrase = m[1]
+      const capture = m[1]?.trim();
+      if (!capture) continue;
+      const phrase = capture
         .replace(/\s+and\s+/gi, ", ")
         .split(/[,;]/)
         .map((s) => s.trim())
@@ -69,7 +71,9 @@ function findAvoidMentions(text: string): string[] {
   ];
   for (const re of patterns) {
     for (const m of text.matchAll(re)) {
-      m[1]
+      const capture = m[1]?.trim();
+      if (!capture) continue;
+      capture
         .split(/[,;]/)
         .map((s) => s.trim())
         .filter((s) => s.length > 2)

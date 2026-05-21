@@ -36,13 +36,14 @@ export async function fetchGardenGenerate(
 
 export async function fetchRecommendedPlants(
   ids: string[],
+  stateCode = "FL",
 ): Promise<PlantListItem[]> {
   const uniqueIds = dedupeOrderedIds(ids);
   if (!uniqueIds.length) return [];
   const p = new URLSearchParams();
   p.set("food_forest_only", "true");
   p.set("exclude_invasive", "true");
-  p.set("state", "FL");
+  p.set("state", stateCode);
   p.set("for_my_area", "true");
   p.set("limit", String(Math.max(uniqueIds.length, 80)));
   p.set("ids", uniqueIds.join(","));
@@ -61,7 +62,10 @@ export async function completeGardenPlan(
   answers: GardenOnboardingAnswers,
 ): Promise<GardenPlanPayload> {
   const result = await fetchGardenGenerate(answers);
-  const plants = await fetchRecommendedPlants(result.plant_ids);
+  const plants = await fetchRecommendedPlants(
+    result.plant_ids,
+    answers.designer_state ?? "FL",
+  );
   const byId = new Map(plants.map((p) => [p.id, p]));
   const profile = buildGardenProfile(result);
   const recommendations = buildRecommendationMeta(result, byId);
@@ -80,7 +84,10 @@ export async function layoutForPlan(
   zone: WorkspaceZone;
   placements: LayoutPlacement[];
 }> {
-  const plants = await fetchRecommendedPlants(result.plant_ids);
+  const plants = await fetchRecommendedPlants(
+    result.plant_ids,
+    result.designer_state ?? "FL",
+  );
   if (existingZone) {
     const placements = layoutPlantsInZone(
       existingZone,

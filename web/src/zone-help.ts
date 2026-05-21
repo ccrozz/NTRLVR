@@ -14,6 +14,19 @@ const ZONE_HINTS: Record<string, Record<string, string>> = {
     "11a": "Miami, southeast coast",
     "11b": "Keys & warmest pockets",
   },
+  TN: {
+    "6a": "East TN mountains — coolest",
+    "6b": "Cumberland Plateau",
+    "7a": "Nashville, Chattanooga",
+    "7b": "West Tennessee — warmest",
+    "8a": "Mississippi River fringe",
+  },
+  CT: {
+    "5b": "Northwest hills — coldest",
+    "6a": "Hartford, inland",
+    "6b": "Eastern CT",
+    "7a": "Long Island Sound coast",
+  },
   CA: {
     "5a": "High mountains",
     "5b": "Sierra foothills",

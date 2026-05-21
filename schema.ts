@@ -89,7 +89,7 @@ export interface Plant {
   avoid_planting_near: string[];
 
   tags: string[];
-  data_source: "manual" | "trefle" | "usda" | "ifas";
+  data_source: "manual" | "trefle" | "usda" | "ifas" | "web";
   last_updated: string;
 }
 

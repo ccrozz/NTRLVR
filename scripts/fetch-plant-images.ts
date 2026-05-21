@@ -31,6 +31,12 @@ const inatOnly = process.argv.includes("--inat-only");
 const replaceNonInat = process.argv.includes("--replace-non-inat");
 const sourceArg = process.argv.find((a) => a.startsWith("--source="));
 const sourceFilter = sourceArg?.split("=")[1];
+const tagsArg = process.argv.find((a) => a.startsWith("--tags="));
+const tagsFilter = tagsArg?.split("=")[1]?.toLowerCase();
+const stateArg = process.argv.find((a) => a.startsWith("--state="));
+const stateTag =
+  tagsFilter ??
+  (stateArg ? stateArg.split("=")[1]?.toLowerCase() : undefined);
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -44,6 +50,11 @@ function listTargets(): Plant[] {
   if (sourceFilter) {
     conditions.push("data_source = @source");
     params.source = sourceFilter;
+  }
+
+  if (stateTag) {
+    conditions.push("tags LIKE @tagLike");
+    params.tagLike = `%${stateTag}%`;
   }
 
   if (force) {
@@ -66,7 +77,7 @@ function listTargets(): Plant[] {
 
 async function main() {
   console.log(
-    `Image fetch — iNaturalist-first | force=${force} inatOnly=${inatOnly} replaceNonInat=${replaceNonInat} source=${sourceFilter ?? "all"}`,
+    `Image fetch — iNaturalist-first | force=${force} inatOnly=${inatOnly} replaceNonInat=${replaceNonInat} source=${sourceFilter ?? "all"} tag=${stateTag ?? "all"}`,
   );
 
   const targets = listTargets();

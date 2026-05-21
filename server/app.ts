@@ -39,10 +39,15 @@ import {
   type OnboardingSunlight,
 } from "../lib/garden-onboarding.js";
 import {
-  hardinessZoneForFloridaRegion,
-  isFloridaRegionId,
-} from "../lib/florida-onboarding-regions.js";
-import { listFloridaDesignerPlants } from "../lib/florida-designer-catalog.js";
+  DEFAULT_DESIGNER_STATE,
+  isDesignerStateCode,
+  type DesignerStateCode,
+} from "../lib/designer-states.js";
+import { listStateDesignerPlants } from "../lib/state-designer-catalog.js";
+import {
+  isStateRegionId,
+  resolveOnboardingHardinessZone,
+} from "../lib/state-onboarding-regions.js";
 import {
   normalizePreferences,
   type GardenPreferences,
@@ -235,10 +240,11 @@ app.get("/api/plants/:id", async (c) => {
 function countPlantsForSunlight(
   sun: OnboardingSunlight,
   hardiness_zone = "10a",
+  stateCode: DesignerStateCode = DEFAULT_DESIGNER_STATE,
 ): number {
-  const plants = listFloridaDesignerPlants({
+  const plants = listStateDesignerPlants({
     exclude_invasive: true,
-    native_state: "FL",
+    native_state: stateCode,
     for_my_area: true,
     hardiness_zone,
   });
@@ -274,12 +280,19 @@ app.get("/api/garden/sunlight-count", (c) => {
   const sunlight = allowed.includes(raw as OnboardingSunlight)
     ? (raw as OnboardingSunlight)
     : "full";
-  const hardiness_zone = c.req.query("hardiness_zone")?.trim() || "10a";
+  const stateParam = c.req.query("state")?.trim().toUpperCase() ?? "";
+  const stateCode = isDesignerStateCode(stateParam)
+    ? stateParam
+    : DEFAULT_DESIGNER_STATE;
+  const hardiness_zone =
+    c.req.query("hardiness_zone")?.trim() ||
+    resolveOnboardingHardinessZone(stateCode, {});
   return c.json({
     data: {
-      count: countPlantsForSunlight(sunlight, hardiness_zone),
+      count: countPlantsForSunlight(sunlight, hardiness_zone, stateCode),
       sunlight,
       hardiness_zone,
+      state: stateCode,
     },
   });
 });
@@ -323,16 +336,23 @@ app.post("/api/garden/generate", async (c) => {
     );
   }
 
-  const florida_region =
-    typeof body.florida_region === "string" &&
-    isFloridaRegionId(body.florida_region)
-      ? body.florida_region
-      : undefined;
-  const hardiness_zone =
-    body.hardiness_zone?.trim() ||
-    (florida_region
-      ? hardinessZoneForFloridaRegion(florida_region)
-      : "10a");
+  const designer_state = isDesignerStateCode(body.designer_state ?? "")
+    ? (body.designer_state!.toUpperCase() as DesignerStateCode)
+    : DEFAULT_DESIGNER_STATE;
+  const state_region =
+    typeof body.state_region === "string" &&
+    isStateRegionId(designer_state, body.state_region)
+      ? body.state_region
+      : typeof body.florida_region === "string" &&
+          designer_state === "FL" &&
+          isStateRegionId("FL", body.florida_region)
+        ? body.florida_region
+        : undefined;
+  const hardiness_zone = resolveOnboardingHardinessZone(designer_state, {
+    hardiness_zone: body.hardiness_zone,
+    state_region,
+    florida_region: body.florida_region as GardenOnboardingAnswers["florida_region"],
+  });
 
   const answers: GardenOnboardingAnswers = {
     garden_style: garden_style as GardenOnboardingAnswers["garden_style"],
@@ -346,7 +366,12 @@ app.post("/api/garden/generate", async (c) => {
       ? body.preferences.filter(Boolean)
       : [],
     experience: body.experience,
-    florida_region,
+    designer_state,
+    state_region,
+    florida_region:
+      designer_state === "FL"
+        ? (state_region as GardenOnboardingAnswers["florida_region"])
+        : body.florida_region,
     hardiness_zone,
     space_source: body.space_source,
     bed_width_feet:

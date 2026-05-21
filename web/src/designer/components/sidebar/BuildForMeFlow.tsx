@@ -16,14 +16,15 @@ import {
   spaceDimensions,
   spaceSizeLabel,
 } from "@lib/garden-onboarding";
+import { nativesGroupLabel } from "@lib/food-forest-groups";
 import {
-  DEFAULT_FLORIDA_REGION,
-  FLORIDA_ONBOARDING_REGIONS,
-  floridaRegionById,
-  hardinessZoneForFloridaRegion,
-  isFloridaRegionId,
-  type FloridaRegionId,
-} from "@lib/florida-onboarding-regions";
+  defaultRegionForDesignerState,
+  hardinessZoneForStateRegion,
+  isStateRegionId,
+  regionStepTitle,
+  regionsForDesignerState,
+  stateRegionById,
+} from "@lib/state-onboarding-regions";
 import { countCanvasPlantsInZone } from "../../lib/zone-plant-groups";
 import { zoneLayoutDimensions } from "../../lib/zone-geometry";
 import { zoneSummary } from "../../lib/zone-summary";
@@ -53,8 +54,8 @@ const GOALS: OnboardingGoal[] = [
   "low_maintenance",
 ];
 
-const PREFERENCE_PILLS: { id: string; label: string }[] = [
-  { id: "florida_natives", label: "Florida natives only" },
+const BASE_PREFERENCE_PILLS: { id: string; label: string }[] = [
+  { id: "florida_natives", label: "State natives only" },
   { id: "no_invasive", label: "No invasive species" },
   { id: "kid_friendly", label: "Kid-friendly plants" },
   { id: "pet_safe", label: "Pet-safe plants" },
@@ -116,12 +117,14 @@ export function BuildForMeFlow() {
   const applyGardenPlan = useDesignerStore((s) => s.applyGardenPlan);
   const resetBuildForMe = useDesignerStore((s) => s.resetBuildForMe);
   const buildResultsReady = useDesignerStore((s) => s.buildResultsReady);
+  const designerState = useDesignerStore((s) => s.designerState);
   const zones = useDesignerStore((s) => s.zones);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
   const activeZoneId = useDesignerStore((s) => s.activeZoneId);
   const setActiveZoneId = useDesignerStore((s) => s.setActiveZoneId);
 
-  const initial = storedDraft ?? createFreshQuestionnaireDraft();
+  const initial =
+    storedDraft ?? createFreshQuestionnaireDraft(designerState);
   const [phase, setPhase] = useState<Phase>(() =>
     buildResultsReady ? "results" : "question",
   );
@@ -139,12 +142,28 @@ export function BuildForMeFlow() {
   const [gardenStyle, setGardenStyle] = useState<GardenStyle>(
     initial.answers.garden_style ?? "food_forest",
   );
-  const [floridaRegion, setFloridaRegion] = useState<FloridaRegionId>(() => {
-    const fromDraft = initial.answers.florida_region;
-    if (fromDraft && isFloridaRegionId(fromDraft)) return fromDraft;
-    return DEFAULT_FLORIDA_REGION;
+  const [stateRegion, setStateRegion] = useState<string>(() => {
+    const fromDraft =
+      initial.answers.state_region ?? initial.answers.florida_region;
+    if (fromDraft && isStateRegionId(designerState, fromDraft)) return fromDraft;
+    return defaultRegionForDesignerState(designerState);
   });
-  const hardinessZone = hardinessZoneForFloridaRegion(floridaRegion);
+
+  useEffect(() => {
+    if (isStateRegionId(designerState, stateRegion)) return;
+    setStateRegion(defaultRegionForDesignerState(designerState));
+  }, [designerState, stateRegion]);
+
+  const hardinessZone = hardinessZoneForStateRegion(designerState, stateRegion);
+  const stateRegions = regionsForDesignerState(designerState);
+  const preferencePills = BASE_PREFERENCE_PILLS.map((pill) =>
+    pill.id === "florida_natives"
+      ? {
+          ...pill,
+          label: `${nativesGroupLabel(designerState)} only`,
+        }
+      : pill,
+  );
   const [propertyType, setPropertyType] = useState<PropertyType>(
     initial.answers.property_type ?? "yard",
   );
@@ -219,7 +238,12 @@ export function BuildForMeFlow() {
         water,
         preferences,
         experience,
-        florida_region: floridaRegion,
+        designer_state: designerState,
+        state_region: stateRegion,
+        florida_region:
+          designerState === "FL"
+            ? (stateRegion as GardenOnboardingAnswers["florida_region"])
+            : undefined,
         hardiness_zone: hardinessZone,
         planting_density: plantingDensity,
       },
@@ -227,7 +251,8 @@ export function BuildForMeFlow() {
   }, [
     qIndex,
     gardenStyle,
-    floridaRegion,
+    designerState,
+    stateRegion,
     hardinessZone,
     propertyType,
     spaceSize,
@@ -294,7 +319,7 @@ export function BuildForMeFlow() {
     if (qIndex !== 6) return;
     let cancelled = false;
     fetch(
-      `${API}/api/garden/sunlight-count?sunlight=${sunlight}&hardiness_zone=${encodeURIComponent(hardinessZone)}`,
+      `${API}/api/garden/sunlight-count?sunlight=${sunlight}&hardiness_zone=${encodeURIComponent(hardinessZone)}&state=${designerState}`,
     )
       .then((r) => r.json())
       .then((j) => {
@@ -308,7 +333,7 @@ export function BuildForMeFlow() {
     return () => {
       cancelled = true;
     };
-  }, [qIndex, sunlight, hardinessZone]);
+  }, [qIndex, sunlight, hardinessZone, designerState]);
 
   function buildAnswers(): GardenOnboardingAnswers {
     const bed = resolveBedSelection();
@@ -326,7 +351,12 @@ export function BuildForMeFlow() {
       water,
       preferences,
       experience,
-      florida_region: floridaRegion,
+      designer_state: designerState,
+      state_region: stateRegion,
+      florida_region:
+        designerState === "FL"
+          ? (stateRegion as GardenOnboardingAnswers["florida_region"])
+          : undefined,
       hardiness_zone: hardinessZone,
       planting_density: plantingDensity,
     };
@@ -392,7 +422,7 @@ export function BuildForMeFlow() {
       case 0:
         return Boolean(gardenStyle);
       case 1:
-        return Boolean(floridaRegion);
+        return Boolean(stateRegion);
       case 2:
         return Boolean(propertyType);
       case 3:
@@ -428,7 +458,7 @@ export function BuildForMeFlow() {
   })();
 
   const isMulti = qIndex === 4 || qIndex === 9;
-  const regionMeta = floridaRegionById(floridaRegion);
+  const regionMeta = stateRegionById(designerState, stateRegion);
   const showFoot = isMulti || canContinue;
 
   if (phase === "generating") {
@@ -499,17 +529,17 @@ export function BuildForMeFlow() {
 
         {qIndex === 1 && (
           <>
-            <h2 className="sidebar-build-q">Where in Florida?</h2>
+            <h2 className="sidebar-build-q">{regionStepTitle(designerState)}</h2>
             <p className="sidebar-build-hint">
               We&apos;ll match plants to your area&apos;s USDA hardiness zone.
             </p>
-            {FLORIDA_ONBOARDING_REGIONS.map((region) => (
+            {stateRegions.map((region) => (
               <SidebarOption
                 key={region.id}
                 title={region.label}
                 sub={`${region.subtitle} · Zone ${region.hardiness_zone}`}
-                selected={floridaRegion === region.id}
-                onClick={() => setFloridaRegion(region.id)}
+                selected={stateRegion === region.id}
+                onClick={() => setStateRegion(region.id)}
               />
             ))}
           </>
@@ -789,7 +819,7 @@ export function BuildForMeFlow() {
             <h2 className="sidebar-build-q">Anything else?</h2>
             <p className="sidebar-build-hint">Optional — pick any that matter</p>
             <div className="sidebar-build-pills">
-              {PREFERENCE_PILLS.map((p) => (
+              {preferencePills.map((p) => (
                 <button
                   key={p.id}
                   type="button"

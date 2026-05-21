@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { PlantListItem, FilterKey } from "../types";
+import { useDesignerStore } from "../store/useDesignerStore";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 const PAGE_SIZE = 80;
@@ -7,6 +8,7 @@ const PAGE_SIZE = 80;
 function filtersToParams(
   search: string,
   categoryFilter: FilterKey | null,
+  stateCode: string,
   offset: number,
   trefleLive?: boolean,
 ): URLSearchParams {
@@ -15,7 +17,7 @@ function filtersToParams(
   if (categoryFilter) p.set("food_forest_group", categoryFilter);
   if (trefleLive) p.set("trefle_live", "true");
   p.set("food_forest_only", "true");
-  p.set("state", "FL");
+  p.set("state", stateCode);
   p.set("for_my_area", "true");
   p.set("limit", String(PAGE_SIZE));
   p.set("offset", String(offset));
@@ -27,8 +29,16 @@ export function usePlants(
   categoryFilter: FilterKey | null,
   opts?: { trefleLive?: boolean; enabled?: boolean },
 ) {
+  const designerState = useDesignerStore((s) => s.designerState);
   return useInfiniteQuery({
-    queryKey: ["plants", "food-forest", search, categoryFilter, opts?.trefleLive],
+    queryKey: [
+      "plants",
+      "food-forest",
+      designerState,
+      search,
+      categoryFilter,
+      opts?.trefleLive,
+    ],
     enabled: opts?.enabled !== false,
     initialPageParam: 0,
     queryFn: async ({ pageParam }): Promise<{
@@ -37,7 +47,7 @@ export function usePlants(
       nextOffset: number | null;
     }> => {
       const res = await fetch(
-        `${API}/api/plants?${filtersToParams(search, categoryFilter, pageParam, opts?.trefleLive)}`,
+        `${API}/api/plants?${filtersToParams(search, categoryFilter, designerState, pageParam, opts?.trefleLive)}`,
       );
       if (!res.ok) throw new Error("Failed to load plants");
       const json = await res.json();

@@ -47,6 +47,9 @@ import {
   buildZoneGardenPlan,
   planToSidebarFields,
 } from "../lib/zone-plan-sidebar";
+import type { DesignerStateCode } from "@lib/designer-states";
+import { saveDesignerState } from "../lib/designer-state-prefs";
+import { loadDesignerState } from "../lib/designer-state-prefs";
 
 type DesignerState = {
   canvasPlants: CanvasPlant[];
@@ -83,6 +86,10 @@ type DesignerState = {
     description: string;
     philosophy: string;
   } | null;
+
+  /** Active US state for catalog & Build For Me (FL, TN, CT). */
+  designerState: DesignerStateCode;
+  setDesignerState: (code: DesignerStateCode) => void;
 
   sidebarMode: "browse" | "build";
   showingRecommendations: boolean;
@@ -280,6 +287,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   compactCanvasVisuals: false,
   gardenVision: null,
 
+  designerState: loadDesignerState(),
   sidebarMode: "browse",
   mobileSidebarOpen: false,
   showingRecommendations: false,
@@ -535,6 +543,23 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     })),
 
   setCompactCanvasVisuals: (compactCanvasVisuals) => set({ compactCanvasVisuals }),
+
+  setDesignerState: (designerState) => {
+    saveDesignerState(designerState);
+    set({
+      designerState,
+      categoryFilter: null,
+      searchQuery: "",
+      buildResultsReady: false,
+      recommendedPlantIds: null,
+      recommendationMeta: {},
+      gardenProfile: null,
+      lastGenerateResult: null,
+      pendingGardenPlan: null,
+      questionnaireDraft: null,
+      buildForMeSession: get().buildForMeSession + 1,
+    });
+  },
 
   setSidebarMode: (sidebarMode) => set({ sidebarMode }),
 

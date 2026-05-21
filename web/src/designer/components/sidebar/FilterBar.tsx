@@ -1,7 +1,8 @@
+import { nativesGroupLabel } from "@lib/food-forest-groups";
 import type { FilterKey } from "../../types";
 import { useDesignerStore } from "../../store/useDesignerStore";
 
-const FILTERS: { key: FilterKey; label: string }[] = [
+const BASE_FILTERS: { key: FilterKey; label: string }[] = [
   { key: "fruit_trees", label: "Fruit trees" },
   { key: "fruits_vegetables", label: "Fruits & veggies" },
   { key: "herbs", label: "Herbs" },
@@ -13,6 +14,12 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 export function FilterBar() {
   const categoryFilter = useDesignerStore((s) => s.categoryFilter);
   const setCategoryFilter = useDesignerStore((s) => s.setCategoryFilter);
+  const designerState = useDesignerStore((s) => s.designerState);
+  const filters = BASE_FILTERS.map((f) =>
+    f.key === "natives"
+      ? { ...f, label: nativesGroupLabel(designerState) }
+      : f,
+  );
 
   return (
     <div className="designer-filters" role="group" aria-label="Plant category">
@@ -23,7 +30,7 @@ export function FilterBar() {
       >
         All
       </button>
-      {FILTERS.map((f) => (
+      {filters.map((f) => (
         <button
           key={f.key}
           type="button"

@@ -22,7 +22,8 @@ import {
   getTreflePlantBySlug,
 } from "./trefle-api.js";
 import { applyDesignerProfile } from "./designer-plant-profiles.js";
-import { listFloridaDesignerPlants } from "./florida-designer-catalog.js";
+import { listStateDesignerPlants } from "./state-designer-catalog.js";
+import { DEFAULT_DESIGNER_STATE, isDesignerStateCode } from "./designer-states.js";
 import { dedupePlantsByName } from "./plant-dedupe.js";
 export function listLocalSummaries(filters: PlantFilters): {
   data: PlantSummary[];
@@ -79,7 +80,11 @@ function seedMatchesFilters(plant: Plant, filters: PlantFilters): boolean {
   if (
     filters.food_forest_group &&
     isFoodForestGroup(filters.food_forest_group) &&
-    !plantMatchesFoodForestGroup(plant, filters.food_forest_group)
+    !plantMatchesFoodForestGroup(
+      plant,
+      filters.food_forest_group,
+      filters.native_state ?? "FL",
+    )
   ) {
     return false;
   }
@@ -253,16 +258,20 @@ export async function listPlantsWithTrefle(
     return { data, total: data.length };
   }
 
-  /** Designer catalog: curated seeds + Florida-growable DB plants. */
+  /** Designer catalog: curated state seeds + DB plants for that state. */
   if (filters.food_forest_only) {
+    const state =
+      filters.native_state && isDesignerStateCode(filters.native_state)
+        ? filters.native_state
+        : DEFAULT_DESIGNER_STATE;
     const mergedFilters: PlantFilters = {
       ...filters,
       exclude_invasive: true,
       search: search ?? filters.search,
-      native_state: filters.native_state ?? "FL",
+      native_state: state,
       for_my_area: filters.for_my_area !== false,
     };
-    const all = listFloridaDesignerPlants(mergedFilters).map((plant) =>
+    const all = listStateDesignerPlants(mergedFilters).map((plant) =>
       summaryFromLocal({
         ...plantToSummary(plant),
         is_invasive_in_florida: plant.is_invasive_in_florida,

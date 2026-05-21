@@ -1,30 +1,50 @@
 /**
- * Apply designer panel profiles to every plant row in SQLite.
+ * Apply designer panel profiles to curated seed catalogs in SQLite.
  * Usage: npx tsx scripts/backfill-designer-profiles.ts
+ *        npx tsx scripts/backfill-designer-profiles.ts --state=CT
  */
-import { SEED_PLANTS } from "../data/plants.seed.js";
+import { loadEnv } from "../lib/load-env.js";
+import { designerSeedsForState } from "../data/state-seed-catalog.js";
+import type { DesignerStateCode } from "../lib/designer-states.js";
+import { DESIGNER_STATE_CODES } from "../lib/designer-states.js";
 import { countPlants, getPlantById, upsertPlant } from "../db/plant-repository.js";
 import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
 
+loadEnv();
+
+const stateArg = process.argv
+  .find((a) => a.startsWith("--state="))
+  ?.split("=")[1]
+  ?.toUpperCase();
+
+const states: DesignerStateCode[] =
+  stateArg && DESIGNER_STATE_CODES.includes(stateArg as DesignerStateCode)
+    ? [stateArg as DesignerStateCode]
+    : DESIGNER_STATE_CODES;
+
 async function main() {
   const before = countPlants();
-  let upserted = 0;
+  let total = 0;
 
-  for (const plant of SEED_PLANTS) {
-    const existing = getPlantById(plant.id);
-    const base = existing ? { ...existing, ...plant, id: plant.id } : plant;
-    const row = applyDesignerProfile(base);
-    if (existing?.image_url?.trim() && !row.image_url?.trim()) {
-      row.image_url = existing.image_url;
+  for (const stateCode of states) {
+    const seeds = designerSeedsForState(stateCode);
+    let n = 0;
+    for (const plant of seeds) {
+      const existing = getPlantById(plant.id);
+      const base = existing ? { ...existing, ...plant, id: plant.id } : plant;
+      const row = applyDesignerProfile(base);
+      if (existing?.image_url?.trim() && !row.image_url?.trim()) {
+        row.image_url = existing.image_url;
+      }
+      upsertPlant(row);
+      n++;
+      if (n % 100 === 0) console.log(`  ${stateCode} … ${n}/${seeds.length}`);
     }
-    upsertPlant(row);
-    upserted++;
-    if (upserted % 50 === 0) {
-      console.log(`  … ${upserted}/${SEED_PLANTS.length}`);
-    }
+    console.log(`${stateCode}: ${n} profiles applied`);
+    total += n;
   }
 
-  console.log(`\n✅ Designer profiles applied to ${upserted} plants (${before} rows in DB)`);
+  console.log(`\n✅ Designer profiles: ${total} seeds (${before} → ${countPlants()} DB rows)`);
 }
 
 main().catch((e) => {

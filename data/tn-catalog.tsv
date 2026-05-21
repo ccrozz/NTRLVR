@@ -1,0 +1,427 @@
+# name	sci	cat	layer	flags	note
+Fuji Apple	Malus domestica	Fruit Tree	Overstory	k	
+Gala Apple	Malus domestica	Fruit Tree	Overstory	k	
+Golden Delicious Apple	Malus domestica	Fruit Tree	Overstory	k	
+Red Delicious Apple	Malus domestica	Fruit Tree	Overstory	k	
+Arkansas Black Apple	Malus domestica	Fruit Tree	Overstory	k	
+Stayman Winesap Apple	Malus domestica	Fruit Tree	Overstory	k	
+Liberty Apple	Malus domestica	Fruit Tree	Overstory	k	
+Enterprise Apple	Malus domestica	Fruit Tree	Overstory	k	
+Jonagold Apple	Malus domestica	Fruit Tree	Overstory	k	
+Cortland Apple	Malus domestica	Fruit Tree	Overstory	k	
+Lodi Apple	Malus domestica	Fruit Tree	Overstory	k z6	
+Kieffer Pear	Pyrus communis	Fruit Tree	Overstory	k	
+Orient Pear	Pyrus communis	Fruit Tree	Overstory	k	
+Ayres Pear	Pyrus communis	Fruit Tree	Overstory	k	
+Warren Pear	Pyrus communis	Fruit Tree	Overstory	k	
+Elberta Peach	Prunus persica	Fruit Tree	Overstory	k	
+Georgia Belle Peach	Prunus persica	Fruit Tree	Overstory	k	
+Loring Peach	Prunus persica	Fruit Tree	Overstory	k	
+Harvester Peach	Prunus persica	Fruit Tree	Overstory	k	
+Cresthaven Peach	Prunus persica	Fruit Tree	Overstory	k	
+Dixieland Peach	Prunus persica	Fruit Tree	Overstory	k z7	
+Fantasia Nectarine	Prunus persica	Fruit Tree	Overstory	k	
+Redgold Nectarine	Prunus persica	Fruit Tree	Overstory	k	
+Hardired Nectarine	Prunus persica	Fruit Tree	Overstory	k	
+Bruce Plum	Prunus salicina	Fruit Tree	Overstory	k	
+Ozark Premier Plum	Prunus salicina	Fruit Tree	Overstory	k	
+Wild Plum	Prunus americana	Fruit Tree	Shrub	k nat	
+Morello Cherry	Prunus cerasus	Fruit Tree	Overstory	k	
+Bing Cherry	Prunus avium	Fruit Tree	Overstory	k z7	
+Chinese Apricot	Prunus armeniaca	Fruit Tree	Overstory	k	
+Early Golden Apricot	Prunus armeniaca	Fruit Tree	Overstory	k	
+Elliott Pecan	Carya illinoinensis	Fruit Tree	Overstory	k z7	West TN pecan belt.
+Pawnee Pecan	Carya illinoinensis	Fruit Tree	Overstory	k z7	
+Desirable Pecan	Carya illinoinensis	Fruit Tree	Overstory	k z7	
+Pignut Hickory	Carya glabra	Fruit Tree	Overstory	k nat	
+Wells Pawpaw	Asimina triloba	Fruit Tree	Understory	k nat	
+NC-1 Pawpaw	Asimina triloba	Fruit Tree	Understory	k nat	
+Rosseyanka Persimmon	Diospyros kaki	Fruit Tree	Overstory	k z7	
+JT-02 Persimmon	Diospyros kaki	Fruit Tree	Overstory	k z7	
+Celeste Fig	Ficus carica	Fruit Tree	Shrub	k z7	TN fig country — mulch in 6a.
+LSU Purple Fig	Ficus carica	Fruit Tree	Shrub	k z7	
+Alma Fig	Ficus carica	Fruit Tree	Shrub	k z7	
+Pakistan Mulberry	Morus alba	Fruit Tree	Overstory	k	
+Illinois Everbearing Mulberry	Morus alba	Fruit Tree	Overstory	k	
+Shadbush Serviceberry	Amelanchier arborea	Berry	Understory	k nat	
+Mayhaw	Crataegus opaca	Fruit Tree	Shrub	k nat	West TN jelly fruit.
+Li Jujube	Ziziphus jujuba	Fruit Tree	Overstory	k	
+Lang Jujube	Ziziphus jujuba	Fruit Tree	Overstory	k	
+Sherwood Jujube	Ziziphus jujuba	Fruit Tree	Overstory	k	
+Che Fruit	Maclura tricuspidata	Fruit Tree	Overstory	k	
+Loquat	Eriobotrya japonica	Fruit Tree	Understory	k z7	Middle/West TN warm pockets.
+Tifblue Rabbiteye Blueberry	Vaccinium virgatum	Berry	Shrub	k	Middle & West TN.
+Powderblue Rabbiteye Blueberry	Vaccinium virgatum	Berry	Shrub	k	
+Brightwell Rabbiteye Blueberry	Vaccinium virgatum	Berry	Shrub	k	
+O'Neal Southern Highbush Blueberry	Vaccinium corymbosum	Berry	Shrub	k z7	
+Sunshine Blue Blueberry	Vaccinium corymbosum	Berry	Shrub	k z7	
+Chandler Strawberry	Fragaria × ananassa	Berry	Groundcover	k	
+Albion Strawberry	Fragaria × ananassa	Berry	Groundcover	k	
+Dormanred Raspberry	Rubus idaeus	Berry	Shrub	k z7	South TN.
+Ouachita Blackberry	Rubus fruticosus	Berry	Shrub	k	
+Kiowa Blackberry	Rubus fruticosus	Berry	Shrub	k	
+Scuppernong Muscadine	Vitis rotundifolia	Vine	Vine	k nat	TN signature grape.
+Carlos Muscadine	Vitis rotundifolia	Vine	Vine	k nat	
+Noble Muscadine	Vitis rotundifolia	Vine	Vine	k nat	
+Triumph Muscadine	Vitis rotundifolia	Vine	Vine	k nat	
+Ison Muscadine	Vitis rotundifolia	Vine	Vine	k nat	
+Fry Muscadine	Vitis rotundifolia	Vine	Vine	k nat	
+Viking Aronia	Aronia melanocarpa	Berry	Shrub	k	
+Maypop Passiflora	Passiflora incarnata	Vine	Vine	k nat	Edible fruit; spreads readily.
+Rosemary	Salvia rosmarinus	Herb	Herbaceous	k z7	Year-round in zones 7–8.
+Phenomenal Lavender	Lavandula angustifolia	Herb	Herbaceous	k	Limestone Middle TN soils.
+Lemongrass	Cymbopogon citratus	Herb	Herbaceous	k z7	Perennial in zone 8.
+Shiso	Perilla frutescens	Herb	Herbaceous	k	Self-seeds in TN heat.
+St. John's Wort Shrub	Hypericum prolificum	Native Shrub	Shrub	k nat medicinal	
+Goldenseal	Hydrastis canadensis	Herb	Groundcover	k nat woodland	Do not wild-harvest.
+Sassafras Tea Tree	Sassafras albidum	Native Shrub	Understory	k nat	Root bark tea; native.
+Celebrity Tomato	Solanum lycopersicum	Vegetable	Herbaceous	k z7	
+Better Boy Tomato	Solanum lycopersicum	Vegetable	Herbaceous	k z7	
+Cherokee Purple Tomato	Solanum lycopersicum	Vegetable	Herbaceous	k z7	
+Crowder Pea	Vigna unguiculata	Vegetable	Herbaceous	k z7	Southern staple.
+Dent Corn	Zea mays	Vegetable	Herbaceous	k	
+Peanut	Arachis hypogaea	Vegetable	Herbaceous	k z7	West TN.
+Ramps	Allium tricoccum	Vegetable	Herbaceous	k nat	Native Appalachian delicacy.
+Wild Leek	Allium tricoccum	Vegetable	Herbaceous	k nat	
+Cassava	Manihot esculenta	Vegetable	Herbaceous	k z8	Zone 8 only.
+Scarlet Bee Balm	Monarda didyma	Herb	Herbaceous	k nat pollinator	
+Poke Milkweed	Asclepias exaltata	Native Shrub	Herbaceous	k nat pollinator	
+White Wild Indigo	Baptisia alba	Native Shrub	Herbaceous	k nat N pollinator	
+Aromatic Aster	Symphyotrichum oblongifolium	Edible Flower	Herbaceous	k nat pollinator	
+Sky Blue Aster	Symphyotrichum oolentangiense	Edible Flower	Herbaceous	k nat pollinator	
+Smooth Blue Aster	Symphyotrichum laeve	Edible Flower	Herbaceous	k nat pollinator	
+Ironweed	Vernonia gigantea	Native Shrub	Herbaceous	k nat pollinator	
+Catesbee Trillium	Trillium catesbaei	Native Shrub	Herbaceous	k nat	
+Cuneate Trillium	Trillium cuneatum	Native Shrub	Herbaceous	k nat	
+Wild Blue Phlox	Phlox divaricata	Edible Flower	Herbaceous	k nat pollinator	
+Downy Phlox	Phlox pilosa	Edible Flower	Herbaceous	k nat pollinator	
+Dwarf Crested Iris	Iris cristata	Edible Flower	Herbaceous	k nat	
+Fire Pink	Silene virginica	Edible Flower	Herbaceous	k nat pollinator	
+Wild Bleeding Heart	Dicentra eximia	Native Shrub	Herbaceous	k nat	
+Green-Headed Coneflower	Rudbeckia laciniata	Edible Flower	Herbaceous	k nat	
+Tall Coneflower	Rudbeckia nitida	Edible Flower	Herbaceous	k nat	
+Prairie Coneflower	Ratibida pinnata	Edible Flower	Herbaceous	k nat	
+Wild Petunia	Ruellia humilis	Edible Flower	Herbaceous	k nat pollinator	
+Lanceleaf Coreopsis	Coreopsis lanceolata	Edible Flower	Herbaceous	k nat pollinator	
+Plains Coreopsis	Coreopsis tinctoria	Edible Flower	Herbaceous	k nat	
+Nodding Onion	Allium cernuum	Herb	Herbaceous	k nat eat	
+Obedient Plant	Physostegia virginiana	Native Shrub	Herbaceous	k nat pollinator	
+Yellow Trout Lily	Erythronium americanum	Native Shrub	Herbaceous	k nat	
+Partridge Berry	Mitchella repens	Ground Cover	Groundcover	k nat	
+Green-and-Gold	Chrysogonum virginianum	Ground Cover	Groundcover	k nat pollinator	
+Robin's Plantain	Erigeron pulchellus	Edible Flower	Herbaceous	k nat	
+Hairy Beardtongue	Penstemon hirsutus	Native Shrub	Herbaceous	k nat pollinator	
+Foxglove Beardtongue	Penstemon digitalis	Native Shrub	Herbaceous	k nat pollinator	
+Sensitive Fern	Onoclea sensibilis	Native Shrub	Groundcover	k nat	
+Cinnamon Fern	Osmundastrum cinnamomeum	Native Shrub	Groundcover	k nat	
+Royal Fern	Osmunda regalis	Native Shrub	Groundcover	k nat	
+Christmas Fern	Polystichum acrostichoides	Native Shrub	Groundcover	k nat	
+Maidenhair Fern	Adiantum pedatum	Native Shrub	Groundcover	k nat	
+Catawba Rhododendron	Rhododendron catawbiense	Native Shrub	Shrub	k nat	Smokies native.
+Rosebay Rhododendron	Rhododendron maximum	Native Shrub	Shrub	k nat	
+Flame Azalea	Rhododendron calendulaceum	Native Shrub	Shrub	k nat pollinator	
+Deerberry	Vaccinium stamineum	Berry	Shrub	k nat	
+Sparkleberry	Vaccinium arboreum	Berry	Understory	k nat	
+Possumhaw Holly	Ilex decidua	Native Shrub	Shrub	k nat wildlife	
+Yaupon Holly	Ilex vomitoria	Native Shrub	Shrub	k nat	Edible caffeinated tea from leaves.
+Vernal Witch Hazel	Hamamelis vernalis	Native Shrub	Shrub	k nat	
+Fringe Tree	Chionanthus virginicus	Native Shrub	Understory	k nat pollinator	
+Hearts-a-Bustin'	Euonymus americanus	Native Shrub	Shrub	k nat wildlife	
+Sweetshrub	Calycanthus floridus	Native Shrub	Shrub	k nat	
+Virginia Sweetspire	Itea virginica	Native Shrub	Shrub	k nat pollinator	
+Possum Haw Viburnum	Viburnum nudum	Native Shrub	Shrub	k nat wildlife	
+Chickasaw Plum	Prunus angustifolia	Fruit Tree	Shrub	k nat	
+Winged Sumac	Rhus copallinum	Native Shrub	Shrub	k nat	
+Fragrant Sumac	Rhus aromatica	Native Shrub	Shrub	k nat	
+Leadplant	Amorpha fruticosa	Native Shrub	Shrub	k nat N	
+Beaked Hazelnut	Corylus cornuta	Berry	Shrub	k nat	
+Autumn Olive	Elaeagnus umbellata	Berry	Shrub	inv	Avoid — invasive in TN.
+Kentucky Wisteria	Wisteria macrostachya	Vine	Vine	k nat	
+Dutchman's Pipe	Aristolochia macrophylla	Vine	Vine	k nat	Pipevine Swallowtail host.
+Crossvine	Bignonia capreolata	Vine	Vine	k nat pollinator	
+Summer Grape	Vitis aestivalis	Vine	Vine	k nat	
+Yellow Jessamine	Gelsemium sempervirens	Vine	Vine	k nat z7	
+American Bittersweet	Celastrus scandens	Vine	Vine	k nat	
+Coral Honeysuckle	Lonicera sempervirens	Vine	Vine	k nat pollinator	
+Redbud Nitrogen Fixer	Cercis canadensis	Native Shrub	Understory	k nat N	Edible spring flowers.
+Shumard Oak	Quercus shumardii	Native Shrub	Overstory	k nat	West TN.
+Cherrybark Oak	Quercus pagoda	Native Shrub	Overstory	k nat	
+Willow Oak	Quercus phellos	Native Shrub	Overstory	k nat	
+Water Oak	Quercus nigra	Native Shrub	Overstory	k nat z7	
+Overcup Oak	Quercus lyrata	Native Shrub	Overstory	k nat	
+Bur Oak	Quercus macrocarpa	Native Shrub	Overstory	k nat	
+Post Oak	Quercus stellata	Native Shrub	Overstory	k nat	
+Slippery Elm	Ulmus rubra	Native Shrub	Overstory	k nat	Medicinal bark.
+Water Tupelo	Nyssa aquatica	Native Shrub	Overstory	k nat wetland	
+Pignut Hickory	Carya glabra	Fruit Tree	Overstory	k nat	
+Water Hickory	Carya aquatica	Native Shrub	Overstory	k nat	
+Eastern Cottonwood	Populus deltoides	Native Shrub	Overstory	k nat riparian	
+Bigtooth Aspen	Populus grandidentata	Native Shrub	Overstory	k nat	
+Loblolly Pine	Pinus taeda	Native Shrub	Overstory	k nat	
+Shortleaf Pine	Pinus echinata	Native Shrub	Overstory	k nat	
+Virginia Pine	Pinus virginiana	Native Shrub	Overstory	k nat	
+Carolina Silverbell	Halesia tetraptera	Native Shrub	Understory	k nat	
+Yellowwood	Cladrastis kentukea	Native Shrub	Overstory	k nat	TN native rarity.
+American Smoke Tree	Cotinus obovatus	Native Shrub	Understory	k nat	Middle TN limestone glades.
+Chalk Maple	Acer leucoderme	Native Shrub	Understory	k nat	
+Cucumbertree Magnolia	Magnolia acuminata	Native Shrub	Overstory	k nat	
+Umbrella Magnolia	Magnolia tripetala	Native Shrub	Understory	k nat	
+Bigleaf Magnolia	Magnolia macrophylla	Native Shrub	Understory	k nat	
+Southern Magnolia	Magnolia grandiflora	Native Shrub	Overstory	k nat z7	
+Sweetbay Magnolia	Magnolia virginiana	Native Shrub	Understory	k nat	
+Carolina Buckthorn	Frangula caroliniana	Native Shrub	Understory	k nat	
+Tulip Poplar	Liriodendron tulipifera	Native Shrub	Overstory	k nat	TN state tree.
+Stanley Plum	Prunus domestica	Fruit Tree	Overstory	k	
+Damson Plum	Prunus domestica	Fruit Tree	Overstory	k	
+Methley Plum	Prunus salicina	Fruit Tree	Overstory	k	
+Yamhill Hazelnut	Corylus avellana	Berry	Shrub	k	
+Oregano	Origanum vulgare	Herb	Herbaceous	k	
+Mint	Mentha spicata	Herb	Herbaceous	k	
+Lemon Balm	Melissa officinalis	Herb	Herbaceous	k pollinator	
+French Tarragon	Artemisia dracunculus	Herb	Herbaceous	k	
+Lovage	Levisticum officinale	Herb	Herbaceous	k D	
+French Sorrel	Rumex acetosa	Herb	Herbaceous	k	
+Winter Savory	Satureja montana	Herb	Herbaceous	k	
+Marjoram	Origanum majorana	Herb	Herbaceous	k z7	
+Hyssop	Hyssopus officinalis	Herb	Herbaceous	k medicinal	
+Catnip	Nepeta cataria	Herb	Herbaceous	k P pollinator	
+Anise Hyssop	Agastache foeniculum	Herb	Herbaceous	k pollinator	
+Fennel	Foeniculum vulgare	Herb	Herbaceous	k pollinator	
+Horseradish	Armoracia rusticana	Herb	Herbaceous	k	
+Garlic Chives	Allium tuberosum	Herb	Herbaceous	k	
+Cilantro	Coriandrum sativum	Herb	Herbaceous	k	
+Dill	Anethum graveolens	Herb	Herbaceous	k pollinator	
+Summer Savory	Satureja hortensis	Herb	Herbaceous	k	
+Parsley	Petroselinum crispum	Herb	Herbaceous	k	
+Chervil	Anthriscus cerefolium	Herb	Herbaceous	k	
+Borage	Borago officinalis	Herb	Herbaceous	k D pollinator	
+Valerian	Valeriana officinalis	Herb	Herbaceous	k medicinal	
+Skullcap	Scutellaria lateriflora	Herb	Herbaceous	k nat medicinal	
+Motherwort	Leonurus cardiaca	Herb	Herbaceous	k medicinal	
+Marshmallow Root	Althaea officinalis	Herb	Herbaceous	k medicinal	
+Boneset	Eupatorium perfoliatum	Herb	Herbaceous	k nat medicinal	
+Black Cohosh	Actaea racemosa	Herb	Herbaceous	k nat medicinal	
+Blue Cohosh	Caulophyllum thalictroides	Herb	Herbaceous	k nat medicinal	
+Wild Ginger	Asarum canadense	Herb	Groundcover	k nat	
+Spilanthes	Acmella oleracea	Herb	Herbaceous	k z7	
+Lemon Verbena	Aloysia citrodora	Herb	Herbaceous	k z8	
+German Chamomile	Matricaria chamomilla	Herb	Herbaceous	k	
+Roman Chamomile	Chamaemelum nobile	Herb	Groundcover	k	
+Calendula	Calendula officinalis	Edible Flower	Herbaceous	k pollinator	
+Tulsi Holy Basil	Ocimum tenuiflorum	Herb	Herbaceous	k z7	
+Yarrow	Achillea millefolium	Support Species	Herbaceous	k nat D pollinator	
+Nettles	Urtica dioica	Support Species	Herbaceous	k D	
+Plantain	Plantago major	Support Species	Groundcover	k D medicinal	
+Lettuce	Lactuca sativa	Vegetable	Herbaceous	k	
+Spinach	Spinacia oleracea	Vegetable	Herbaceous	k	
+Arugula	Eruca vesicaria	Vegetable	Herbaceous	k	
+Swiss Chard	Beta vulgaris	Vegetable	Herbaceous	k	
+Collards	Brassica oleracea	Vegetable	Herbaceous	k	Southern TN staple.
+Bok Choy	Brassica rapa	Vegetable	Herbaceous	k	
+Napa Cabbage	Brassica rapa	Vegetable	Herbaceous	k	
+Cabbage	Brassica oleracea	Vegetable	Herbaceous	k	
+Broccoli	Brassica oleracea	Vegetable	Herbaceous	k	
+Cauliflower	Brassica oleracea	Vegetable	Herbaceous	k	
+Brussels Sprouts	Brassica oleracea	Vegetable	Herbaceous	k	
+Kohlrabi	Brassica oleracea	Vegetable	Herbaceous	k	
+Turnip	Brassica rapa	Vegetable	Herbaceous	k	
+Rutabaga	Brassica napus	Vegetable	Herbaceous	k	
+Radish	Raphanus sativus	Vegetable	Herbaceous	k	
+Daikon Radish	Raphanus sativus	Vegetable	Herbaceous	k	
+Beets	Beta vulgaris	Vegetable	Herbaceous	k	
+Carrots	Daucus carota	Vegetable	Herbaceous	k	
+Parsnips	Pastinaca sativa	Vegetable	Herbaceous	k	
+Shelling Peas	Pisum sativum	Vegetable	Herbaceous	k N	
+Snap Peas	Pisum sativum	Vegetable	Herbaceous	k	
+Snow Peas	Pisum sativum	Vegetable	Herbaceous	k	
+Fava Beans	Vicia faba	Vegetable	Herbaceous	k N	
+Mache	Valerianella locusta	Vegetable	Herbaceous	k	
+Mustard Greens	Brassica juncea	Vegetable	Herbaceous	k	
+Asian Greens	Brassica rapa	Vegetable	Herbaceous	k	
+Radicchio	Cichorium intybus	Vegetable	Herbaceous	k	
+Endive	Cichorium endivia	Vegetable	Herbaceous	k	
+Tomato	Solanum lycopersicum	Vegetable	Herbaceous	k z7	
+Bell Pepper	Capsicum annuum	Vegetable	Herbaceous	k z7	
+Hot Pepper	Capsicum annuum	Vegetable	Herbaceous	k z7	
+Eggplant	Solanum melongena	Vegetable	Herbaceous	k z7	
+Cucumber	Cucumis sativus	Vegetable	Herbaceous	k z7	
+Zucchini	Cucurbita pepo	Vegetable	Herbaceous	k z7	
+Summer Squash	Cucurbita pepo	Vegetable	Herbaceous	k z7	
+Butternut Squash	Cucurbita moschata	Vegetable	Herbaceous	k	
+Delicata Squash	Cucurbita pepo	Vegetable	Herbaceous	k	
+Acorn Squash	Cucurbita pepo	Vegetable	Herbaceous	k	
+Hubbard Squash	Cucurbita maxima	Vegetable	Herbaceous	k	
+Pumpkin	Cucurbita pepo	Vegetable	Herbaceous	k	
+Cantaloupe	Cucumis melo	Vegetable	Herbaceous	k z7	
+Honeydew Melon	Cucumis melo	Vegetable	Herbaceous	k z7	
+Watermelon	Citrullus lanatus	Vegetable	Herbaceous	k z7	TN world-class melons.
+Bush Bean	Phaseolus vulgaris	Vegetable	Herbaceous	k N z7	
+Pole Bean	Phaseolus vulgaris	Vegetable	Herbaceous	k N z7	
+Lima Bean	Phaseolus lunatus	Vegetable	Herbaceous	k z7	
+Sweet Corn	Zea mays	Vegetable	Herbaceous	k z7	
+Okra	Abelmoschus esculentus	Vegetable	Herbaceous	k z7	
+Sweet Potato	Ipomoea batatas	Vegetable	Herbaceous	k z7	Major TN crop.
+Globe Artichoke	Cynara cardunculus	Vegetable	Herbaceous	k z7	
+Jerusalem Artichoke	Helianthus tuberosus	Vegetable	Herbaceous	k nat	
+Sea Kale	Crambe maritima	Vegetable	Herbaceous	k	
+Egyptian Walking Onion	Allium × proliferum	Vegetable	Herbaceous	k	
+Welsh Onion	Allium fistulosum	Vegetable	Herbaceous	k	
+Good King Henry	Blitum bonus-henricus	Vegetable	Herbaceous	k	
+Groundnut	Apios americana	Vine	Vine	k nat N	
+Ostrich Fern	Matteuccia struthiopteris	Vegetable	Herbaceous	k nat	
+Shallot	Allium cepa	Vegetable	Herbaceous	k	
+Leek	Allium porrum	Vegetable	Herbaceous	k	
+Yellow Onion	Allium cepa	Vegetable	Herbaceous	k	
+Scallion	Allium fistulosum	Vegetable	Herbaceous	k	
+Potato	Solanum tuberosum	Vegetable	Herbaceous	k	
+Salsify	Tragopogon porrifolius	Vegetable	Herbaceous	k	
+Celeriac	Apium graveolens	Vegetable	Herbaceous	k	
+Ginger	Zingiber officinale	Vegetable	Herbaceous	k z7	
+Turmeric	Curcuma longa	Vegetable	Herbaceous	k z7	
+Wild Bergamot	Monarda fistulosa	Herb	Herbaceous	k nat pollinator	
+Swamp Milkweed	Asclepias incarnata	Native Shrub	Herbaceous	k nat pollinator	
+Blue Wild Indigo	Baptisia australis	Native Shrub	Herbaceous	k nat N pollinator	
+Wild Blue Lupine	Lupinus perennis	Native Shrub	Herbaceous	k nat N pollinator	
+Cardinal Flower	Lobelia cardinalis	Edible Flower	Herbaceous	k nat pollinator	
+Blue Lobelia	Lobelia siphilitica	Edible Flower	Herbaceous	k nat pollinator	
+Rough Goldenrod	Solidago rugosa	Native Shrub	Herbaceous	k nat pollinator	
+Sweet Goldenrod	Solidago odora	Native Shrub	Herbaceous	k nat pollinator	
+Showy Goldenrod	Solidago speciosa	Native Shrub	Herbaceous	k nat pollinator	
+Joe Pye Weed	Eutrochium fistulosum	Native Shrub	Herbaceous	k nat pollinator	
+Wild Columbine	Aquilegia canadensis	Edible Flower	Herbaceous	k nat pollinator	
+Bloodroot	Sanguinaria canadensis	Native Shrub	Herbaceous	k nat	
+Large-flowered Trillium	Trillium grandiflorum	Native Shrub	Herbaceous	k nat	
+Jack-in-the-Pulpit	Arisaema triphyllum	Native Shrub	Herbaceous	k nat	
+Wild Geranium	Geranium maculatum	Native Shrub	Herbaceous	k nat	
+Mayapple	Podophyllum peltatum	Native Shrub	Herbaceous	k nat	
+Spring Beauty	Claytonia virginica	Native Shrub	Herbaceous	k nat	
+Dutchman's Breeches	Dicentra cucullaria	Native Shrub	Herbaceous	k nat	
+Virginia Bluebells	Mertensia virginica	Native Shrub	Herbaceous	k nat pollinator	
+Blue-eyed Grass	Sisyrinchium angustifolium	Edible Flower	Herbaceous	k nat	
+Ohio Spiderwort	Tradescantia ohiensis	Native Shrub	Herbaceous	k nat	
+Swamp Rose Mallow	Hibiscus moscheutos	Native Shrub	Herbaceous	k nat	
+Pink Turtlehead	Chelone obliqua	Native Shrub	Herbaceous	k nat pollinator	
+White Turtlehead	Chelone glabra	Native Shrub	Herbaceous	k nat pollinator	
+Culver's Root	Veronicastrum virginicum	Native Shrub	Herbaceous	k nat pollinator	
+Rattlesnake Master	Eryngium yuccifolium	Native Shrub	Herbaceous	k nat	
+Zinnia	Zinnia elegans	Edible Flower	Herbaceous	k pollinator	
+French Marigold	Tagetes patula	Edible Flower	Herbaceous	k P pollinator	
+Cosmos	Cosmos bipinnatus	Edible Flower	Herbaceous	k pollinator	
+Bachelor's Button	Centaurea cyanus	Edible Flower	Herbaceous	k pollinator	
+Sweet Alyssum	Lobularia maritima	Edible Flower	Groundcover	k pollinator	
+Phacelia	Phacelia tanacetifolia	Edible Flower	Herbaceous	k pollinator	
+Viola	Viola odorata	Edible Flower	Herbaceous	k	
+Catmint	Nepeta × faassenii	Herb	Herbaceous	k pollinator	
+Hollyhock	Alcea rosea	Edible Flower	Herbaceous	k	
+Pasture Rose	Rosa carolina	Native Shrub	Shrub	k nat	
+Swamp Rose	Rosa palustris	Native Shrub	Shrub	k nat	
+Inkberry Holly	Ilex glabra	Native Shrub	Shrub	k nat	
+Buttonbush	Cephalanthus occidentalis	Native Shrub	Shrub	k nat pollinator	
+Swamp Azalea	Rhododendron viscosum	Native Shrub	Shrub	k nat	
+Pinxter Azalea	Rhododendron periclymenoides	Native Shrub	Shrub	k nat	
+Bayberry	Morella pensylvanica	Native Shrub	Shrub	k nat N	
+Sweet Fern	Comptonia peregrina	Native Shrub	Shrub	k nat N	
+New Jersey Tea	Ceanothus americanus	Native Shrub	Shrub	k nat N pollinator	
+Witch Hazel	Hamamelis virginiana	Native Shrub	Understory	k nat	
+Blackhaw Viburnum	Viburnum prunifolium	Native Shrub	Shrub	k nat	
+Nannyberry	Viburnum lentago	Native Shrub	Shrub	k nat	
+Red Chokeberry	Aronia arbutifolia	Berry	Shrub	k nat	
+Chokecherry	Prunus virginiana	Native Shrub	Shrub	k nat	
+Staghorn Sumac	Rhus typhina	Native Shrub	Shrub	k nat	
+Smooth Sumac	Rhus glabra	Native Shrub	Shrub	k nat	
+Meadowsweet	Spiraea alba	Native Shrub	Shrub	k nat pollinator	
+Steeplebush	Spiraea tomentosa	Native Shrub	Shrub	k nat pollinator	
+Pussy Willow	Salix discolor	Native Shrub	Shrub	k nat	
+Sweet Pepperbush	Clethra alnifolia	Native Shrub	Shrub	k nat pollinator	
+Jostaberry	Ribes × nidigrolaria	Berry	Shrub	k	
+Virginia Creeper	Parthenocissus quinquefolia	Vine	Vine	k nat	
+Trumpet Vine	Campsis radicans	Vine	Vine	k nat pollinator	
+American Wisteria	Wisteria frutescens	Vine	Vine	k nat	
+Fox Grape	Vitis vulpina	Vine	Vine	k nat	
+Virgin's Bower	Clematis virginiana	Vine	Vine	k nat	
+Kiwi Berry	Actinidia kolomikta	Vine	Vine	k	
+Niagara Grape	Vitis labrusca	Vine	Vine	k	
+Marquette Grape	Vitis riparia × Vitis vinifera	Vine	Vine	k	
+Frontenac Grape	Vitis riparia × Vitis vinifera	Vine	Vine	k	
+Hops	Humulus lupulus	Vine	Vine	k	
+Scarlet Runner Bean	Phaseolus coccineus	Vine	Vine	k N pollinator	
+Black Locust	Robinia pseudoacacia	Support Species	Overstory	N nat	Powerful N-fixer — spreads.
+Siberian Pea Shrub	Caragana arborescens	Support Species	Shrub	N	
+Goumi Berry	Elaeagnus multiflora	Berry	Shrub	N k	
+Sea Buckthorn	Hippophae rhamnoides	Berry	Shrub	N	
+Crimson Clover	Trifolium incarnatum	Ground Cover	Groundcover	N	
+Hairy Vetch	Vicia villosa	Ground Cover	Groundcover	N	
+Smooth Alder	Alnus serrulata	Native Shrub	Shrub	k nat N riparian	
+Dandelion	Taraxacum officinale	Support Species	Herbaceous	k D	
+Chicory	Cichorium intybus	Support Species	Herbaceous	k D	
+Elecampane	Inula helenium	Support Species	Herbaceous	k D medicinal	
+Tansy	Tanacetum vulgare	Support Species	Herbaceous	k P	
+Rue	Ruta graveolens	Support Species	Herbaceous	k P	
+Wormwood	Artemisia absinthium	Support Species	Herbaceous	k P	
+Queen Anne's Lace	Daucus carota	Support Species	Herbaceous	k pollinator	
+White Oak	Quercus alba	Native Shrub	Overstory	k nat	Keystone species.
+Red Oak	Quercus rubra	Native Shrub	Overstory	k nat	
+Scarlet Oak	Quercus coccinea	Native Shrub	Overstory	k nat	
+Sugar Maple	Acer saccharum	Native Shrub	Overstory	k nat	
+Red Maple	Acer rubrum	Native Shrub	Overstory	k nat	
+Silver Maple	Acer saccharinum	Native Shrub	Overstory	k nat	
+American Beech	Fagus grandifolia	Native Shrub	Overstory	k nat	
+White Ash	Fraxinus americana	Native Shrub	Overstory	k nat	
+Green Ash	Fraxinus pennsylvanica	Native Shrub	Overstory	k nat	
+American Basswood	Tilia americana	Native Shrub	Overstory	k nat pollinator	
+American Elm	Ulmus americana	Native Shrub	Overstory	k nat	
+Sycamore	Platanus occidentalis	Native Shrub	Overstory	k nat	
+Sweetgum	Liquidambar styraciflua	Native Shrub	Overstory	k nat	
+Black Tupelo	Nyssa sylvatica	Native Shrub	Overstory	k nat wildlife	
+Mockernut Hickory	Carya tomentosa	Native Shrub	Overstory	k nat	
+Bitternut Hickory	Carya cordiformis	Native Shrub	Overstory	k nat	
+Sassafras	Sassafras albidum	Native Shrub	Understory	k nat	
+White Pine	Pinus strobus	Native Shrub	Overstory	k nat	
+Eastern Hemlock	Tsuga canadensis	Native Shrub	Overstory	k nat	East TN highlands.
+Eastern Red Cedar	Juniperus virginiana	Native Shrub	Overstory	k nat	
+Atlantic White Cedar	Chamaecyparis thyoides	Native Shrub	Overstory	k nat	
+Pagoda Dogwood	Cornus alternifolia	Native Shrub	Understory	k nat	
+Hawthorn	Crataegus crus-galli	Native Shrub	Shrub	k nat wildlife	
+American Holly	Ilex opaca	Native Shrub	Understory	k nat wildlife	
+Sourwood	Oxydendrum arboreum	Native Shrub	Understory	k nat pollinator	Sourwood honey.
+Striped Maple	Acer pensylvanicum	Native Shrub	Understory	k nat	
+Mountain Maple	Acer spicatum	Native Shrub	Understory	k nat	
+River Birch	Betula nigra	Native Shrub	Overstory	k nat	
+Yellow Birch	Betula alleghaniensis	Native Shrub	Overstory	k nat	
+Aunt Molly's Ground Cherry	Physalis pruinosa	Vegetable	Herbaceous	k	
+Nanking Cherry	Prunus tomentosa	Berry	Shrub	k	
+Goji Berry	Lycium barbarum	Berry	Shrub	k	
+Beach Plum	Prunus maritima	Fruit Tree	Shrub	k nat	
+Invicta Gooseberry	Ribes uva-crispa	Berry	Shrub	k	
+Pixwell Gooseberry	Ribes uva-crispa	Berry	Shrub	k	
+Hinnonmaki Red Gooseberry	Ribes uva-crispa	Berry	Shrub	k	
+Consort Black Currant	Ribes nigrum	Berry	Shrub	k	
+Titania Black Currant	Ribes nigrum	Berry	Shrub	k	
+Rovada Red Currant	Ribes rubrum	Berry	Shrub	k	
+Red Lake Red Currant	Ribes rubrum	Berry	Shrub	k	
+Natchez Blackberry	Rubus fruticosus	Berry	Shrub	k	
+Triple Crown Blackberry	Rubus fruticosus	Berry	Shrub	k	
+Arapaho Blackberry	Rubus fruticosus	Berry	Shrub	k	
+Anne Yellow Raspberry	Rubus idaeus	Berry	Shrub	k	
+Autumn Britten Raspberry	Rubus idaeus	Berry	Shrub	k	
+Earliglow Strawberry	Fragaria × ananassa	Berry	Groundcover	k	
+Seascape Strawberry	Fragaria × ananassa	Berry	Groundcover	k	
+Ozark Beauty Strawberry	Fragaria × ananassa	Berry	Groundcover	k	
+Bluecrop Blueberry	Vaccinium corymbosum	Berry	Shrub	k	
+Duke Blueberry	Vaccinium corymbosum	Berry	Shrub	k	
+Jersey Blueberry	Vaccinium corymbosum	Berry	Shrub	k	
+Dolgo Crabapple	Malus domestica	Fruit Tree	Overstory	k	
+Centennial Crabapple	Malus domestica	Fruit Tree	Overstory	k	
+Pineapple Quince	Cydonia oblonga	Fruit Tree	Shrub	k	
+Nottingham Medlar	Mespilus germanica	Fruit Tree	Shrub	k	
+Royal Medlar	Mespilus germanica	Fruit Tree	Shrub	k	
+Colossal Chestnut	Castanea dentata	Fruit Tree	Overstory	k	
+Chinese-American Chestnut	Castanea mollissima	Fruit Tree	Overstory	k	
+Shellbark Hickory	Carya laciniosa	Fruit Tree	Overstory	k nat	
+Butternut	Juglans cinerea	Fruit Tree	Overstory	k nat	
+Jefferson Hazelnut	Corylus avellana	Berry	Shrub	k	
+Theta Hazelnut	Corylus avellana	Berry	Shrub	k	
+Ken's Red Hardy Kiwi	Actinidia arguta	Vine	Vine	k	
+Issai Hardy Kiwi	Actinidia arguta	Vine	Vine	k	
+White Clover	Trifolium repens	Ground Cover	Groundcover	N pollinator	
+Comfrey Bocking	Symphytum × uplandicum	Support Species	Herbaceous	k D	Plant at base of every fruit tree.

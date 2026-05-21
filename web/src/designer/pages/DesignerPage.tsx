@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { parseDesignerStateParam } from "@lib/designer-states";
 import {
   DndContext,
   DragEndEvent,
@@ -26,6 +27,7 @@ import { GardenPanel } from "../components/garden/GardenPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
 import { PlantDetailPanel } from "../components/detail/PlantDetailPanel";
 import { MobileDesignerBar } from "../components/MobileDesignerBar";
+import { DesignerStateSwitcher } from "../components/DesignerStateSwitcher";
 import { openBuildForMeSidebar } from "../lib/open-build-sidebar";
 import { useDesignerStore } from "../store/useDesignerStore";
 import { stagePoint } from "../lib/canvas-utils";
@@ -46,6 +48,11 @@ export function DesignerPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const mobileSidebarOpen = useDesignerStore((s) => s.mobileSidebarOpen);
   const setMobileSidebarOpen = useDesignerStore((s) => s.setMobileSidebarOpen);
+  const setDesignerState = useDesignerStore((s) => s.setDesignerState);
+
+  useEffect(() => {
+    setDesignerState(parseDesignerStateParam(params.get("state")));
+  }, [params, setDesignerState]);
 
   useEffect(() => {
     try {
@@ -187,6 +194,9 @@ export function DesignerPage() {
         onHelpClick={toggleHelp}
         onAutoPopulateClick={openBuildForMeSidebar}
       />
+      <div className="designer-state-switcher-wrap">
+        <DesignerStateSwitcher compact />
+      </div>
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div
           className={`designer-layout${mobileSidebarOpen ? " designer-layout--sidebar-open" : ""}`}

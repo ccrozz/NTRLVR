@@ -14,13 +14,19 @@ export type CompanionReasonPlant = {
   guild_functions: GuildFunction[];
   canopy_layer: CanopyLayer;
   category: PlantCategory;
+  family?: string | null;
+  genus?: string | null;
+  benefits?: string[];
+  uses?: string[];
+  care_summary?: string;
+  native_states?: string[];
 };
 
 const sessionCache = new Map<string, string>();
 
 function cacheKey(aId: string, bId: string, avoid: boolean): string {
   const [x, y] = [aId, bId].sort();
-  return `${avoid ? "avoid" : "pair"}:v2:${x}:${y}`;
+  return `${avoid ? "avoid" : "pair"}:v3:${x}:${y}`;
 }
 
 function plantId(p: CompanionReasonPlant): string {
@@ -45,6 +51,12 @@ export function resolveReasonPlant(
     guild_functions: full.guild_functions,
     canopy_layer: full.canopy_layer,
     category: full.category,
+    family: full.family,
+    genus: full.genus,
+    benefits: full.benefits,
+    uses: full.uses,
+    care_summary: full.care_summary,
+    native_states: full.native_states,
   };
 }
 

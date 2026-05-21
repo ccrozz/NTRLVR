@@ -13,7 +13,13 @@ import {
   resolveOnboardingBedDimensions,
   type GardenOnboardingAnswers,
 } from "./garden-onboarding.js";
-import { listFloridaDesignerPlants } from "./florida-designer-catalog.js";
+import { resolveOnboardingHardinessZone } from "./state-onboarding-regions.js";
+import { listStateDesignerPlants } from "./state-designer-catalog.js";
+import {
+  DEFAULT_DESIGNER_STATE,
+  type DesignerStateCode,
+} from "./designer-states.js";
+import { designerStateConfig } from "./designer-states.js";
 import { plantToSummary } from "../db/plant-repository.js";
 import { applyDesignerProfile } from "./designer-plant-profiles.js";
 import {
@@ -33,6 +39,7 @@ export type GardenGenerateResult = {
   height_feet: number;
   target_count: number;
   preferences: GardenPreferences;
+  designer_state?: DesignerStateCode;
 };
 
 type CatalogRow = {
@@ -48,11 +55,12 @@ type CatalogRow = {
 function loadCatalogForOnboarding(
   zone: string,
   sunlight: GardenOnboardingAnswers["sunlight"],
+  stateCode: DesignerStateCode = DEFAULT_DESIGNER_STATE,
 ): CatalogRow[] {
-  const plants = listFloridaDesignerPlants({
+  const plants = listStateDesignerPlants({
     hardiness_zone: zone,
     exclude_invasive: true,
-    native_state: "FL",
+    native_state: stateCode,
     for_my_area: true,
   });
 
@@ -115,10 +123,13 @@ function defaultGardenCopy(
     aesthetic: "The Peaceful Green Room",
     low_maintenance: "The Easy-Eden Garden",
   };
+  const stateName =
+    designerStateConfig(answers.designer_state ?? DEFAULT_DESIGNER_STATE)?.name ??
+    "Florida";
   return {
-    garden_name: names[primary ?? "food_production"] ?? "Your Florida Garden",
+    garden_name: names[primary ?? "food_production"] ?? `Your ${stateName} Garden`,
     garden_description:
-      "A layered Florida planting tuned to your light, water, and how much time you want to spend tending it — built from species that actually thrive in our climate.",
+      `A layered ${stateName} planting tuned to your light, water, and how much time you want to spend tending it — built from species that actually thrive in your climate.`,
     design_philosophy:
       "Stack canopy, shrub, and ground layers so each plant supports the next: shade where you need it, pollinators on the edges, and food within easy reach.",
   };
@@ -146,7 +157,10 @@ async function callAnthropicGarden(
   const profile = onboardingProfileText(answers);
   const density = preferences.density ?? "balanced";
 
-  const system = `You are an expert permaculture designer specializing in Florida food forests and edible landscapes. You have deep knowledge of plant guilds, companion planting, canopy layering, and Florida-specific growing conditions. You give practical, specific, enthusiastic advice that makes beginners feel capable and experts feel respected.
+  const stateName =
+    designerStateConfig(answers.designer_state ?? DEFAULT_DESIGNER_STATE)?.name ??
+    "Florida";
+  const system = `You are an expert permaculture designer specializing in ${stateName} food forests and edible landscapes. You have deep knowledge of plant guilds, companion planting, canopy layering, and ${stateName}-specific growing conditions. You give practical, specific, enthusiastic advice that makes beginners feel capable and experts feel respected.
 
 Pick plants ONLY from the catalog (first column = id). Return valid JSON only, no markdown:
 {
@@ -164,7 +178,7 @@ Rules:
 - ${answers.experience === "beginner" ? "Favor foolproof, forgiving species." : ""}
 - ${answers.experience === "advanced" ? "Include diverse guild roles and interesting pairings." : ""}`;
 
-  const user = `${profile}\n\nCatalog (id, name, layer, category, radius_ft):\n${catalogLines(catalog)}\n\nDesign this personalized Florida garden.`;
+  const user = `${profile}\n\nCatalog (id, name, layer, category, radius_ft):\n${catalogLines(catalog)}\n\nDesign this personalized ${stateName} garden.`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -234,7 +248,8 @@ Rules:
 export async function generateGardenFromOnboarding(
   answers: GardenOnboardingAnswers,
 ): Promise<GardenGenerateResult> {
-  const hardiness_zone = answers.hardiness_zone?.trim() || "10a";
+  const stateCode = (answers.designer_state ?? DEFAULT_DESIGNER_STATE) as DesignerStateCode;
+  const hardiness_zone = resolveOnboardingHardinessZone(stateCode, answers);
   const preferences = onboardingToGardenPreferences(answers);
   const { widthFeet, heightFeet, areaSqFt } =
     resolveOnboardingBedDimensions(answers);
@@ -243,9 +258,13 @@ export async function generateGardenFromOnboarding(
     targetPlantCountFromPreferences(areaSqFt, preferences),
   );
 
-  let catalog = loadCatalogForOnboarding(hardiness_zone, answers.sunlight);
+  let catalog = loadCatalogForOnboarding(
+    hardiness_zone,
+    answers.sunlight,
+    stateCode,
+  );
   if (catalog.length < 40) {
-    catalog = loadCatalogForOnboarding(hardiness_zone, "partial");
+    catalog = loadCatalogForOnboarding(hardiness_zone, "partial", stateCode);
   }
   if (!catalog.length) {
     throw new Error("No plants in catalog for this zone and sunlight.");
@@ -287,6 +306,7 @@ export async function generateGardenFromOnboarding(
   if (plant_ids.length < Math.min(8, target)) {
     const layout: FoodForestLayoutResponse = await generateFoodForestLayout({
       hardiness_zone,
+      native_state: stateCode,
       width_feet: widthFeet,
       height_feet: heightFeet,
       preferences,
@@ -314,5 +334,6 @@ export async function generateGardenFromOnboarding(
     height_feet: heightFeet,
     target_count: target,
     preferences,
+    designer_state: stateCode,
   };
 }

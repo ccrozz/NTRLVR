@@ -73,12 +73,15 @@ export function usdaSubzoneSortKey(zone: string): number | null {
   return num * 2 + half;
 }
 
-/** Designer catalog: central/south Florida focus — 8b through 11b only. */
+/** Designer catalog floor for Florida — 8b through 11b. */
 export const DESIGNER_MIN_WARM_ZONE = "8b";
 
-export function plantSuitableForDesignerCatalog(zones: string[]): boolean {
+export function plantSuitableForDesignerCatalog(
+  zones: string[],
+  minSubzone = DESIGNER_MIN_WARM_ZONE,
+): boolean {
   if (zones.length === 0) return false;
-  const floor = usdaSubzoneSortKey(DESIGNER_MIN_WARM_ZONE);
+  const floor = usdaSubzoneSortKey(minSubzone);
   if (floor == null) return true;
   return zones.some((z) => {
     const key = usdaSubzoneSortKey(z);

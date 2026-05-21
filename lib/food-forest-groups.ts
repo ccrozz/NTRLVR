@@ -1,4 +1,6 @@
 import type { Plant, PlantCategory } from "../schema.js";
+import type { DesignerStateCode } from "./designer-states.js";
+import { designerStateConfig } from "./designer-states.js";
 
 /** Designer sidebar group filters for Florida food-forest plants. */
 export type FoodForestGroup =
@@ -20,8 +22,29 @@ export const FOOD_FOREST_GROUP_LABELS: Record<
   herbs: { label: "Herbs", short: "Herbs" },
   flowers: { label: "Flowers & pollinators", short: "Flowers" },
   support: { label: "Support plants", short: "Support" },
-  natives: { label: "Florida natives", short: "Natives" },
+  natives: { label: "Natives", short: "Natives" },
 };
+
+export function nativesGroupLabel(stateCode?: string): string {
+  const name = designerStateConfig(stateCode ?? "FL")?.name ?? "Local";
+  return `${name} natives`;
+}
+
+export function plantIsNativeForDesignerState(
+  plant: Plant,
+  stateCode: string,
+): boolean {
+  const st = stateCode.toUpperCase();
+  if (plant.native_states.some((s) => s.toUpperCase() === st)) return true;
+  if (
+    st === "FL" &&
+    plant.is_florida_native &&
+    plant.native_states.length === 0
+  ) {
+    return true;
+  }
+  return false;
+}
 
 const FRUIT_TREE_CATEGORIES: PlantCategory[] = [
   "Fruit Tree",
@@ -49,10 +72,28 @@ function hasGuild(plant: Plant, fn: string): boolean {
 export function plantMatchesFoodForestGroup(
   plant: Plant,
   group: FoodForestGroup,
+  stateCode: DesignerStateCode | string = "FL",
 ): boolean {
   switch (group) {
     case "fruit_trees":
-      return FRUIT_TREE_CATEGORIES.includes(plant.category);
+      if (!FRUIT_TREE_CATEGORIES.includes(plant.category)) return false;
+      if (hasTag(plant, "landscape")) return false;
+      // Trefle maps any Arecaceae (e.g. Bactris) as Palm — only food palms here
+      if (
+        plant.category === "Palm" &&
+        !plant.is_edible &&
+        !plant.is_kitchen_essential
+      ) {
+        return false;
+      }
+      // Native timber/ornamental trees mis-tagged as fruit (legacy FL imports)
+      if (
+        !plant.is_edible &&
+        plantIsNativeForDesignerState(plant, stateCode)
+      ) {
+        return false;
+      }
+      return true;
     case "fruits_vegetables":
       return PRODUCE_CATEGORIES.includes(plant.category);
     case "vines":
@@ -74,7 +115,7 @@ export function plantMatchesFoodForestGroup(
         hasGuild(plant, "Dynamic Accumulator")
       );
     case "natives":
-      return plant.is_florida_native;
+      return plantIsNativeForDesignerState(plant, stateCode);
     default:
       return true;
   }

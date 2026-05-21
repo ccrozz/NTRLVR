@@ -9,6 +9,16 @@ import type {
   Plant,
   PlantCategory,
 } from "../schema.js";
+import {
+  connecticutCareFallback,
+  connecticutProfilePatches,
+  isConnecticutCatalogPlant,
+} from "./connecticut-designer-profiles.js";
+import {
+  isTennesseeCatalogPlant,
+  tennesseeCareFallback,
+  tennesseeProfilePatches,
+} from "./tennessee-designer-profiles.js";
 import { curatedPatchForPlant } from "./curated-plant-knowledge.js";
 import { finalizePlantBenefits } from "./infer-plant-benefits.js";
 
@@ -656,6 +666,13 @@ function buildCareSummary(plant: Plant, patches: ProfilePatch[]): string {
 
   if (existing && !isDistributionBlurb(existing)) return existing;
 
+  if (isTennesseeCatalogPlant(plant)) {
+    return tennesseeCareFallback(plant);
+  }
+  if (isConnecticutCatalogPlant(plant)) {
+    return connecticutCareFallback(plant);
+  }
+
   return (
     patches.find((p) => p.care_summary)?.care_summary ??
     `${plant.common_name} grows well in Florida food forests as a ${plant.canopy_layer.toLowerCase()} ${plant.category.toLowerCase()}.`
@@ -668,6 +685,8 @@ function collectPatches(plant: Plant): ProfilePatch[] {
   const curated = curatedPatchForPlant(plant.scientific_name);
 
   return [
+    ...tennesseeProfilePatches(plant),
+    ...connecticutProfilePatches(plant),
     CATEGORY_PROFILES[plant.category],
     GENUS_PROFILES[genus],
     SPECIES_PROFILES[sci],

@@ -41,12 +41,14 @@ export function plantIdFromTrefle(slug: string): string {
 
 function displayName(item: {
   common_name: string | null;
-  scientific_name: string;
+  scientific_name?: string | null;
 }): string {
+  const sci = item.scientific_name?.trim() ?? "";
   return (
     item.common_name?.trim() ||
-    item.scientific_name.split(" ")[0] ||
-    item.scientific_name
+    (sci ? sci.split(" ")[0] : "") ||
+    sci ||
+    "Unknown plant"
   );
 }
 
@@ -99,7 +101,17 @@ function inferCategory(
   const habit = (sp?.specifications?.growth_habit ?? "").toLowerCase();
   const ediblePart = (sp?.edible_part ?? "").toLowerCase();
 
-  if (family.includes("arecaceae") || name.includes("palm")) return "Palm";
+  const foodPalm =
+    /coconut|cocos|date palm|phoenix dactylifera|sabal|serenoa|cabbage palm|peach palm|açaí|acai|pupunha|talipot|areca catechu/i;
+  if (
+    (family.includes("arecaceae") || name.includes("palm")) &&
+    (sp?.edible || foodPalm.test(name))
+  ) {
+    return "Palm";
+  }
+  if (family.includes("arecaceae")) {
+    return habit.includes("shrub") ? "Native Shrub" : "Herb";
+  }
   if (name.includes("citrus") || family.includes("rutaceae")) return "Citrus";
   if (habit.includes("vine") || name.includes("vine")) return "Vine";
   if (sp?.edible && (habit.includes("tree") || ediblePart.includes("fruit"))) {
@@ -303,7 +315,10 @@ export function mapDetailToPlant(
   const plant: Plant = {
     id: plantIdFromTrefle(detail.slug),
     common_name: displayName(detail),
-    scientific_name: detail.scientific_name,
+    scientific_name:
+      detail.scientific_name?.trim() ||
+      sp?.scientific_name?.trim() ||
+      (detail.slug ?? String(detail.id ?? "unknown")).replace(/-/g, " "),
     image_url: bestImage(detail, sp),
     trefle_id: detail.id,
     trefle_slug: detail.slug,

@@ -1,11 +1,14 @@
 /**
  * Conversational garden onboarding — shared types and mapping to layout engine.
  */
+import type { DesignerStateCode } from "./designer-states.js";
+import { designerStateConfig } from "./designer-states.js";
 import type { FloridaRegionId } from "./florida-onboarding-regions.js";
 import {
-  floridaRegionById,
-  hardinessZoneForFloridaRegion,
-} from "./florida-onboarding-regions.js";
+  resolveOnboardingHardinessZone,
+  resolveOnboardingRegionId,
+  stateRegionById,
+} from "./state-onboarding-regions.js";
 import type {
   FoodForestLayoutGoal,
   GardenExperience,
@@ -54,7 +57,11 @@ export type GardenOnboardingAnswers = {
   water: OnboardingWater;
   preferences: string[];
   experience: OnboardingExperience;
-  /** Where in Florida — drives USDA zone for plant picks. */
+  /** Active designer state (FL, TN, CT). */
+  designer_state?: DesignerStateCode;
+  /** Sub-region within the state — drives USDA zone for plant picks. */
+  state_region?: string;
+  /** @deprecated Use state_region — kept for saved drafts */
   florida_region?: FloridaRegionId;
   hardiness_zone?: string;
   /** How bed size was chosen (preset buckets, drawn canvas zone, or custom feet). */
@@ -411,19 +418,20 @@ export function onboardingProfileText(answers: GardenOnboardingAnswers): string 
         ? `Space: custom bed ${dims.widthFeet}×${dims.heightFeet} ft (~${Math.round(dims.areaSqFt)} sq ft)`
         : `Space: ${answers.space_size} ${answers.property_type} (~${dims.areaSqFt} sq ft, ${dims.widthFeet}×${dims.heightFeet} ft bed)`;
 
-  const region = answers.florida_region
-    ? floridaRegionById(answers.florida_region)
-    : undefined;
-  const zone =
-    answers.hardiness_zone?.trim() ||
-    (answers.florida_region
-      ? hardinessZoneForFloridaRegion(answers.florida_region)
-      : "10a");
+  const state =
+    answers.designer_state?.toUpperCase() as DesignerStateCode | undefined;
+  const stateCode = state ?? "FL";
+  const stateName = designerStateConfig(stateCode)?.name ?? "Florida";
+  const region = stateRegionById(
+    stateCode,
+    resolveOnboardingRegionId(stateCode, answers),
+  );
+  const zone = resolveOnboardingHardinessZone(stateCode, answers);
   const locationLine = region
-    ? `Location: ${region.label}, Florida (USDA zone ${zone})`
-    : `Location: Florida (USDA zone ${zone})`;
+    ? `Location: ${region.label}, ${stateName} (USDA zone ${zone})`
+    : `Location: ${stateName} (USDA zone ${zone})`;
 
-  return `Design a personalized Florida garden for someone with the following profile:
+  return `Design a personalized ${stateName} garden for someone with the following profile:
 
 Garden type: ${GARDEN_STYLE_LABELS[answers.garden_style]}
 ${locationLine}

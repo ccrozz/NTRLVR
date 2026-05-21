@@ -41,14 +41,14 @@ export function inferIsEdibleFromPlant(plant: {
   }
 
   if (EDIBLE_COMMON_RE.test(blob)) return true;
-  if (EDIBLE_TAXON_RE.test(plant.scientific_name)) return true;
+  const sci = plant.scientific_name?.trim() ?? "";
+  if (sci && EDIBLE_TAXON_RE.test(sci)) return true;
 
   const familyTag = plant.tags?.find((t) => EDIBLE_FAMILY_RE.test(t));
   if (familyTag && EDIBLE_COMMON_RE.test(blob)) return true;
 
-  const familyFromName = plant.scientific_name.split(" ")[0];
   if (plant.category && /fruit|citrus|herb|vegetable|berry|palm/i.test(plant.category)) {
-    if (EDIBLE_COMMON_RE.test(blob) || EDIBLE_TAXON_RE.test(plant.scientific_name)) {
+    if (sci && (EDIBLE_COMMON_RE.test(blob) || EDIBLE_TAXON_RE.test(sci))) {
       return true;
     }
   }
