@@ -43,9 +43,6 @@ export function zonesFromNativeStates(stateCodes: string[]): string[] {
 const ZONE_TEXT_RE =
   /(?:usda\s+)?(?:plant\s+)?hardiness\s+zones?\s*(?:of\s*)?(\d{1,2})\s*(?:[–—-]|through|to)\s*(\d{1,2})/gi;
 
-const ZONE_LIST_RE =
-  /(?:zones?|hardiness)\s*[:\s]+(\d{1,2}[ab]?(?:\s*[,;]\s*\d{1,2}[ab]?)+|\d{1,2}\s*(?:[–—-]|to)\s*\d{1,2})/gi;
-
 const SINGLE_ZONE_RE =
   /\b(?:usda\s+)?zone\s+(\d{1,2})([ab])?\b/gi;
 

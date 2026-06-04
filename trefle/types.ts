@@ -29,7 +29,7 @@ export interface TrefleListPlant {
 export interface TreflePlantsListResponse {
   data: TrefleListPlant[];
   links: TrefleLinks;
-  meta: { total: number };
+  meta: { total: number; last_page?: number };
 }
 
 export interface TrefleGrowth {

@@ -1,116 +1,12 @@
-import type {
-  CanopyLayer,
-  GuildFunction,
-  Plant,
-  PlantCategory,
-  PlantFilters,
-  PlantSummary,
-} from "../schema.js";
+import type { Plant, PlantFilters } from "../schema.js";
 import { stateByCode } from "../lib/us-states.js";
 import { sqliteCatalogEdibleClause } from "../lib/infer-is-edible.js";
 import { sqliteStateTagClause } from "../lib/plant-state-filter.js";
 import { getDb } from "./client.js";
+import type { PlantRow } from "./plant-row.js";
+import { rowToPlant } from "./plant-row.js";
 
-type PlantRow = {
-  id: string;
-  common_name: string;
-  scientific_name: string;
-  image_url: string | null;
-  trefle_id: number;
-  trefle_slug: string;
-  family: string | null;
-  genus: string | null;
-  edible_part: string | null;
-  vegetable: number;
-  observations: string | null;
-  synonyms: string;
-  trefle_json: string | null;
-  category: PlantCategory;
-  canopy_layer: CanopyLayer;
-  guild_functions: string;
-  is_florida_native: number;
-  is_kitchen_essential: number;
-  is_edible: number;
-  florida_hardiness_zones: string;
-  native_states: string;
-  grows_in_us: number;
-  is_invasive_in_florida: number;
-  mature_height_min: number;
-  mature_height_max: number;
-  mature_spread_min: number;
-  mature_spread_max: number;
-  canvas_radius_feet: number;
-  sunlight: Plant["sunlight"];
-  water_needs: Plant["water_needs"];
-  soil_preferences: string;
-  best_planting_seasons: string;
-  growth_rate: Plant["growth_rate"];
-  care_summary: string;
-  uses: string;
-  benefits: string;
-  companion_plants: string;
-  avoid_planting_near: string;
-  tags: string;
-  data_source: Plant["data_source"];
-  last_updated: string;
-};
-
-function parseJsonArray<T>(value: string): T[] {
-  try {
-    return JSON.parse(value) as T[];
-  } catch {
-    return [];
-  }
-}
-
-export function rowToPlant(row: PlantRow): Plant {
-  return {
-    id: row.id,
-    common_name: row.common_name,
-    scientific_name: row.scientific_name,
-    image_url: row.image_url,
-    trefle_id: row.trefle_id ?? 0,
-    trefle_slug: row.trefle_slug ?? row.id,
-    family: row.family,
-    genus: row.genus,
-    edible_part: row.edible_part,
-    vegetable: row.vegetable === 1,
-    observations: row.observations,
-    synonyms: parseJsonArray<string>(row.synonyms ?? "[]"),
-    trefle_json: row.trefle_json,
-    category: row.category,
-    canopy_layer: row.canopy_layer,
-    guild_functions: parseJsonArray<GuildFunction>(row.guild_functions),
-    is_florida_native: row.is_florida_native === 1,
-    is_kitchen_essential: row.is_kitchen_essential === 1,
-    is_edible: row.is_edible === 1,
-    florida_hardiness_zones: parseJsonArray<string>(
-      row.florida_hardiness_zones,
-    ),
-    native_states: parseJsonArray<string>(row.native_states ?? "[]"),
-    native_origin: row.native_origin?.trim() || null,
-    grows_in_us: (row.grows_in_us ?? 0) === 1,
-    is_invasive_in_florida: row.is_invasive_in_florida === 1,
-    mature_height_feet: [row.mature_height_min, row.mature_height_max],
-    mature_spread_feet: [row.mature_spread_min, row.mature_spread_max],
-    canvas_radius_feet: row.canvas_radius_feet,
-    sunlight: row.sunlight,
-    water_needs: row.water_needs,
-    soil_preferences: parseJsonArray(row.soil_preferences),
-    best_planting_seasons: parseJsonArray(row.best_planting_seasons),
-    growth_rate: row.growth_rate,
-    care_summary: row.care_summary,
-    uses: parseJsonArray(row.uses),
-    benefits: parseJsonArray(row.benefits),
-    companion_plants: parseJsonArray(row.companion_plants),
-    avoid_planting_near: parseJsonArray(row.avoid_planting_near),
-    tags: parseJsonArray(row.tags),
-    data_source: row.data_source,
-    last_updated: row.last_updated,
-  };
-}
-
-export { plantToSummary } from "./plant-row.js";
+export { rowToPlant, plantToSummary } from "./plant-row.js";
 
 const UPSERT_PLANT = `
 INSERT INTO plants (

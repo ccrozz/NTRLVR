@@ -293,12 +293,12 @@ export function mapListToPlant(
 
 export function mapDetailToPlant(
   detail: TreflePlantDetail,
-  options?: { storeJson?: boolean },
+  options?: { storeJson?: boolean; catalogFilteredEdible?: boolean },
 ): Plant {
   const sp = detail.main_species ?? null;
   const height = heightFromSpecies(sp);
   const spread = spreadFromSpecies(sp, height);
-  const edible = inferEdible(detail, sp);
+  const edible = inferEdible(detail, sp, options);
   const hardinessZones = zonesFromTrefleGrowth(sp?.growth);
 
   const care =

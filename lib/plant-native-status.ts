@@ -1,4 +1,10 @@
-import type { Plant } from "../schema.js";
+/** Fields used by native helpers (full schema Plant, catalog summary, designer list). */
+export type PlantForNativeStatus = {
+  tags?: string[];
+  native_states?: string[];
+  category?: string;
+  is_florida_native?: boolean;
+};
 
 /** VH021 / IFAS cultivar rows — recommended for FL gardens, not natives. */
 export function isIfasCultivar(plant: {
@@ -26,7 +32,7 @@ export function plantQualifiesAsDocumentedNative(plant: {
  * Whether the plant is a true Florida native for display and filters.
  * Ignores loose Trefle “southeast US” flags and IFAS cultivar state tags.
  */
-export function effectiveIsFloridaNative(plant: Plant): boolean {
+export function effectiveIsFloridaNative(plant: PlantForNativeStatus): boolean {
   if (isIfasCultivar(plant)) return false;
 
   const flListed = (plant.native_states ?? []).some(
@@ -54,7 +60,7 @@ export function effectiveIsFloridaNative(plant: Plant): boolean {
 }
 
 /** State codes where the plant is documented as native (not merely region-tagged). */
-export function effectiveNativeStates(plant: Plant): string[] {
+export function effectiveNativeStates(plant: PlantForNativeStatus): string[] {
   const out = new Set<string>();
 
   if (effectiveIsFloridaNative(plant)) {
@@ -71,7 +77,10 @@ export function effectiveNativeStates(plant: Plant): string[] {
   return [...out].sort();
 }
 
-export function plantIsNativeToState(plant: Plant, stateCode: string): boolean {
+export function plantIsNativeToState(
+  plant: PlantForNativeStatus,
+  stateCode: string,
+): boolean {
   const st = stateCode.toUpperCase();
   return effectiveNativeStates(plant).some((s) => s.toUpperCase() === st);
 }

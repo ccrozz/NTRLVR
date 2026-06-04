@@ -2,7 +2,7 @@ import { plantIsNativeToState } from "@lib/plant-native-status";
 import { sanitizeNativeOriginLabel } from "@lib/native-origin";
 import { shortenNativeOriginBadge } from "@lib/wiki-text";
 import { Link } from "react-router-dom";
-import type { Plant, PlantSummary } from "../types";
+import type { PlantSummary } from "../types";
 import { plantCardZoneLabels } from "../zones";
 import { PlantPlaceholderIcon } from "./Icons";
 
@@ -31,7 +31,7 @@ export function PlantCard({
   const nativeHere =
     !originLabel &&
     myStateCode &&
-    plantIsNativeToState(plant as Plant, myStateCode);
+    plantIsNativeToState(plant, myStateCode);
 
   const overlayBadges: { key: string; label: string; className?: string }[] = [];
   if (plant.is_edible) {

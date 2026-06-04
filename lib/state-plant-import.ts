@@ -97,8 +97,6 @@ export async function importTrefleCatalogForState(
   while (requests < options.maxRequests) {
     if (lastPage !== null && page > lastPage) break;
 
-    if (lastPage !== null && page > lastPage) break;
-
     let listRes;
     try {
       listRes = await client.fetchPlantsPage(page, filters);
@@ -109,7 +107,7 @@ export async function importTrefleCatalogForState(
       throw e;
     }
     requests++;
-    lastPage = listRes.meta.last_page;
+    lastPage = listRes.meta.last_page ?? null;
     const items = listRes.data ?? [];
     log(`Page ${page}/${lastPage ?? "?"} — ${items.length} rows`);
 
@@ -120,7 +118,7 @@ export async function importTrefleCatalogForState(
         if (options.fetchDetails && requests < options.maxRequests) {
           const detail = await client.fetchPlantBySlug(item.slug);
           requests++;
-          plant = mapDetailToPlant(detail, {
+          plant = mapDetailToPlant(detail.data, {
             catalogFilteredEdible: options.edibleOnly,
           });
         } else {
