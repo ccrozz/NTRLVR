@@ -1,7 +1,7 @@
 import { clampStagePos } from "./clamp-stage-pos";
 
-const ZOOM_MIN = 0.4;
-const ZOOM_MAX = 2.5;
+export const ZOOM_MIN = 0.4;
+export const ZOOM_MAX = 2.5;
 
 export type CanvasViewportState = {
   zoom: number;

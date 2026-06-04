@@ -21,6 +21,8 @@ import {
 } from "./tennessee-designer-profiles.js";
 import { curatedPatchForPlant } from "./curated-plant-knowledge.js";
 import { finalizePlantBenefits } from "./infer-plant-benefits.js";
+import { enrichPlantNativeOrigin } from "./native-origin.js";
+import { isWikiDump } from "./wiki-text.js";
 
 export type ProfilePatch = {
   care_summary?: string;
@@ -646,7 +648,8 @@ const LAYER_GUILD: Partial<Record<CanopyLayer, GuildFunction[]>> = {
 };
 
 function buildCareSummary(plant: Plant, patches: ProfilePatch[]): string {
-  const existing = plant.care_summary?.trim() ?? "";
+  let existing = plant.care_summary?.trim() ?? "";
+  if (isWikiDump(existing)) existing = "";
   /** Species/genus overrides come after category in collectPatches — take the most specific. */
   const patchCare = [...patches]
     .reverse()
@@ -767,5 +770,5 @@ export function applyDesignerProfile(plant: Plant): Plant {
 
   merged.benefits = finalizePlantBenefits(merged);
 
-  return merged;
+  return enrichPlantNativeOrigin(merged);
 }

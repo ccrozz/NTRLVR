@@ -7,6 +7,13 @@ import {
   PlantPlaceholderIcon,
   SproutIcon,
 } from "../components/Icons";
+import { effectiveNativeStates } from "@lib/plant-native-status";
+import { sanitizeNativeOriginLabel } from "@lib/native-origin";
+import { BenefitsGroups } from "../components/BenefitsGroups";
+import { CatalogPlantGuideSection } from "../components/CatalogPlantGuide";
+import { buildCatalogPlantGuide } from "../lib/catalog-plant-guide";
+import { useCatalogGrowingContext } from "../lib/catalog-state";
+import "../styles/catalog.css";
 import type { Plant } from "../types";
 
 function DetailSection({
@@ -34,39 +41,6 @@ function MetaGrid({ items }: { items: { label: string; value: string }[] }) {
         </div>
       ))}
     </dl>
-  );
-}
-
-const ECOSYSTEM_BENEFIT_RE =
-  /nitrogen|soil|mulch|pollinat|wildlife|habitat|wind|groundcover|biodiversity|shade|drought|native|support species|accumulator|repel/i;
-
-function BenefitsList({ benefits }: { benefits: string[] }) {
-  if (!benefits.length) {
-    return <p className="detail-empty">No benefits listed yet.</p>;
-  }
-
-  const ecosystem = benefits.filter((b) => ECOSYSTEM_BENEFIT_RE.test(b));
-  const health = benefits.filter((b) => !ecosystem.includes(b));
-
-  const renderGroup = (title: string, items: string[]) => {
-    if (!items.length) return null;
-    return (
-      <div className="benefit-group">
-        <h3 className="benefit-group-title">{title}</h3>
-        <ul className="detail-list">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
-
-  return (
-    <div className="benefits-groups">
-      {renderGroup("Health & harvest", health)}
-      {renderGroup("Soil & ecosystem", ecosystem)}
-    </div>
   );
 }
 
@@ -149,6 +123,7 @@ function DetailSkeleton() {
 
 export function PlantDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const growingCtx = useCatalogGrowingContext();
   const [plant, setPlant] = useState<Plant | null>(null);
   const [sources, setSources] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,6 +168,8 @@ export function PlantDetailPage() {
 
   const zoneList = plant.florida_hardiness_zones ?? plant.growing_zones ?? [];
   const zones = zoneList.length > 0 ? zoneList.join(", ") : "—";
+  const growingGuide = buildCatalogPlantGuide(plant, growingCtx);
+  const nativeOriginLabel = sanitizeNativeOriginLabel(plant.native_origin);
 
   return (
     <article className="detail-page">
@@ -238,22 +215,25 @@ export function PlantDetailPage() {
             {plant.is_kitchen_essential && (
               <span className="badge badge-accent">Kitchen essential</span>
             )}
-            {plant.native_states?.length > 0 && (
+            {!nativeOriginLabel &&
+              effectiveNativeStates(plant).length > 0 && (
               <span className="badge badge-accent">
-                Native: {plant.native_states.join(", ")}
+                Native: {effectiveNativeStates(plant).join(", ")}
               </span>
-            )}
-            {plant.is_florida_native && !plant.native_states?.length && (
-              <span className="badge badge-accent">Florida native</span>
             )}
             {plant.is_invasive_in_florida && (
               <span className="badge badge-warn">Invasive in FL</span>
             )}
           </div>
+          {nativeOriginLabel && (
+            <p className="detail-native-origin">{nativeOriginLabel}</p>
+          )}
         </section>
       </header>
 
       <div className="detail-sections">
+        <CatalogPlantGuideSection guide={growingGuide} />
+
         <DetailSection title="Growing conditions">
           <MetaGrid
             items={[
@@ -298,20 +278,12 @@ export function PlantDetailPage() {
           />
         </DetailSection>
 
-        <DetailSection title="Care">
-          {plant.care_summary.trim() ? (
-            <p className="detail-prose">{plant.care_summary}</p>
-          ) : (
-            <p className="detail-empty">No care description on file yet.</p>
-          )}
-        </DetailSection>
-
         <DetailSection title="Uses">
           <ListOrEmpty items={plant.uses} empty="No uses listed." />
         </DetailSection>
 
         <DetailSection title="Benefits">
-          <BenefitsList benefits={plant.benefits} />
+          <BenefitsGroups benefits={plant.benefits} />
         </DetailSection>
 
         <DetailSection title="Guild roles">
@@ -330,28 +302,6 @@ export function PlantDetailPage() {
 
         <DetailSection title="Avoid planting near">
           <RelationList items={plant.avoid_planting_near} />
-        </DetailSection>
-
-        <DetailSection title="Taxonomy">
-          <MetaGrid
-            items={[
-              { label: "Family", value: plant.family ?? "—" },
-              { label: "Genus", value: plant.genus ?? "—" },
-              {
-                label: "Edible part",
-                value: plant.edible_part ?? "—",
-              },
-              {
-                label: "Vegetable",
-                value: plant.vegetable ? "Yes" : "No",
-              },
-            ]}
-          />
-          {plant.observations && (
-            <p className="detail-prose" style={{ marginTop: "1rem" }}>
-              {plant.observations}
-            </p>
-          )}
         </DetailSection>
       </div>
     </article>

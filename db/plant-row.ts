@@ -5,6 +5,10 @@ import type {
   PlantCategory,
   PlantSummary,
 } from "../schema.js";
+import {
+  effectiveIsFloridaNative,
+  effectiveNativeStates,
+} from "../lib/plant-native-status.js";
 
 export type PlantRow = {
   id: string;
@@ -28,6 +32,7 @@ export type PlantRow = {
   is_edible: number | boolean;
   florida_hardiness_zones: string | unknown;
   native_states: string | unknown;
+  native_origin: string | null;
   grows_in_us: number | boolean;
   is_invasive_in_florida: number | boolean;
   mature_height_min: number;
@@ -89,6 +94,7 @@ export function rowToPlant(row: PlantRow): Plant {
       row.florida_hardiness_zones,
     ),
     native_states: parseJsonArray<string>(row.native_states ?? "[]"),
+    native_origin: row.native_origin?.trim() || null,
     grows_in_us: boolVal(row.grows_in_us),
     is_invasive_in_florida: boolVal(row.is_invasive_in_florida),
     mature_height_feet: [row.mature_height_min, row.mature_height_max],
@@ -119,10 +125,11 @@ export function plantToSummary(plant: Plant): PlantSummary & {
     scientific_name: plant.scientific_name,
     category: plant.category,
     canopy_layer: plant.canopy_layer,
-    is_florida_native: plant.is_florida_native,
+    is_florida_native: effectiveIsFloridaNative(plant),
     is_kitchen_essential: plant.is_kitchen_essential,
     is_edible: plant.is_edible,
-    native_states: plant.native_states,
+    native_states: effectiveNativeStates(plant),
+    native_origin: plant.native_origin?.trim() || null,
     growing_zones: plant.florida_hardiness_zones,
     canvas_radius_feet: plant.canvas_radius_feet,
     image_url: plant.image_url,
@@ -164,6 +171,7 @@ export function plantToRow(plant: Plant) {
     is_edible: plant.is_edible,
     florida_hardiness_zones: plant.florida_hardiness_zones ?? [],
     native_states: plant.native_states ?? [],
+    native_origin: plant.native_origin?.trim() || null,
     grows_in_us: plant.grows_in_us,
     is_invasive_in_florida: plant.is_invasive_in_florida,
     mature_height_min: plant.mature_height_feet?.[0] ?? 4,

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import { getDatabaseUrl } from "./supabase-config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,10 +12,10 @@ let sql: ReturnType<typeof postgres> | null = null;
 export function getSql(): ReturnType<typeof postgres> {
   if (sql) return sql;
 
-  const url = process.env.DATABASE_URL?.trim();
+  const url = getDatabaseUrl();
   if (!url) {
     throw new Error(
-      "DATABASE_URL is required for Postgres (Supabase). Set it in .env or Vercel env vars.",
+      "DATABASE_URL (or POSTGRES_URL) is required for Postgres (Supabase). Set it in .env or Vercel env vars.",
     );
   }
 

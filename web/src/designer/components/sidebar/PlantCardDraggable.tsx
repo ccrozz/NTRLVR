@@ -1,6 +1,10 @@
+import { effectiveIsFloridaNative } from "@lib/plant-native-status";
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
+import { shouldIgnoreSidebarPlantClick } from "../../lib/designer-drag-drop";
 import { canopyColor } from "../../lib/canopy-colors";
+import { useMatchMedia } from "../../hooks/useMatchMedia";
+import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import type { PlantListItem } from "../../types";
 
 export function PlantCardDraggable({
@@ -18,6 +22,7 @@ export function PlantCardDraggable({
     placementNote: string;
   };
 }) {
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `plant-${plant.id}`,
     data: { plant },
@@ -29,61 +34,87 @@ export function PlantCardDraggable({
   const showPhoto = Boolean(plant.image_url) && !imgFailed;
 
   return (
-    <button
+    <div
       ref={setNodeRef}
-      type="button"
-      className={`designer-plant-row${selected ? " selected" : ""}${recommendation ? " designer-plant-row--rec" : ""}`}
-      style={{ opacity: isDragging ? 0.45 : 1 }}
-      onClick={onSelect}
+      className={`designer-plant-row${selected ? " selected" : ""}${recommendation ? " designer-plant-row--rec" : ""}${isDragging ? " designer-plant-row--dragging" : ""}`}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
       title={recommendation?.placementNote}
-      {...listeners}
-      {...attributes}
     >
-      <div className="designer-plant-row-thumb" aria-hidden>
-        {showPhoto ? (
-          <img
-            src={plant.image_url!}
-            alt=""
-            loading="lazy"
-            onError={() => setImgFailed(true)}
-          />
-        ) : (
-          <span
-            className="designer-plant-row-thumb--empty"
-            style={{ color: layer.stroke }}
-          >
-            {initial}
-          </span>
-        )}
-      </div>
-      {recommendation && (
-        <span
-          className="designer-plant-row-priority"
-          aria-label={`Priority ${recommendation.priorityLabel}`}
+      {isMobile && (
+        <button
+          type="button"
+          className="designer-plant-row-handle"
+          aria-label={`Drag ${plant.common_name} onto the canvas`}
+          {...listeners}
+          {...attributes}
         >
-          {recommendation.priorityLabel}.
-        </span>
+          <span className="designer-plant-row-handle-grip" aria-hidden>
+            ⠿
+          </span>
+        </button>
       )}
-      <div className="designer-plant-row-text">
-        <span className="designer-plant-row-name">{plant.common_name}</span>
-        {recommendation ? (
-          <>
-            <span className="designer-plant-row-scientific">
-              {plant.scientific_name}
+      <button
+        type="button"
+        className="designer-plant-row-main"
+        aria-label={`View profile for ${plant.common_name}`}
+        onClick={(e) => {
+          if (isDragging || shouldIgnoreSidebarPlantClick()) {
+            e.preventDefault();
+            return;
+          }
+          onSelect();
+        }}
+        {...(!isMobile ? { ...listeners, ...attributes } : {})}
+      >
+        <div className="designer-plant-row-thumb" aria-hidden>
+          {showPhoto ? (
+            <img
+              src={plant.image_url!}
+              alt=""
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+            />
+          ) : (
+            <span
+              className="designer-plant-row-thumb--empty"
+              style={{ color: layer.stroke }}
+            >
+              {initial}
             </span>
-            <span className="designer-plant-row-why">{recommendation.why}</span>
-            <span className="designer-plant-row-placement">
-              {recommendation.placementNote}
-            </span>
-          </>
-        ) : (
-          <span className="designer-plant-row-meta">
-            {plant.canopy_layer}
-            {plant.is_florida_native && " · Native"}
-            {plant.is_invasive_in_florida && " · Invasive"}
+          )}
+        </div>
+        {recommendation && (
+          <span
+            className="designer-plant-row-priority"
+            aria-label={`Priority ${recommendation.priorityLabel}`}
+          >
+            {recommendation.priorityLabel}.
           </span>
         )}
-      </div>
-    </button>
+        <div className="designer-plant-row-text">
+          <span className="designer-plant-row-name">{plant.common_name}</span>
+          {isMobile && !recommendation && (
+            <span className="designer-plant-row-profile-hint">Tap for profile</span>
+          )}
+          {recommendation ? (
+            <>
+              <span className="designer-plant-row-scientific">
+                {plant.scientific_name}
+              </span>
+              <span className="designer-plant-row-why">{recommendation.why}</span>
+              <span className="designer-plant-row-placement">
+                {recommendation.placementNote}
+              </span>
+            </>
+          ) : (
+            <span className="designer-plant-row-meta">
+              {plant.canopy_layer}
+              {effectiveIsFloridaNative(plant) && " · Native"}
+              {plant.is_invasive_in_florida && " · Invasive"}
+            </span>
+          )}
+        </div>
+      </button>
+    </div>
   );
 }

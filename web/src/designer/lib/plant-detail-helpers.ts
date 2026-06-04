@@ -1,4 +1,5 @@
 import type { GuildFunction, Plant } from "../../types";
+import { scoreCommonNameMatch as scoreCompanionName } from "@lib/companion-name-match";
 import { GUILD_FUNCTION_CARDS } from "./guild-function-copy";
 
 /** Trefle/Wikipedia distribution blurbs — not useful as the main garden summary. */
@@ -85,6 +86,9 @@ export function plantGrowingFacts(plant: Plant): { label: string; value: string 
   if (plant.edible_part?.trim()) {
     facts.push({ label: "Harvest", value: plant.edible_part.trim() });
   }
+  if (plant.native_origin?.trim()) {
+    facts.push({ label: "Native range", value: plant.native_origin.trim() });
+  }
   return facts;
 }
 
@@ -119,14 +123,4 @@ export function resolveCompanionPlant(
     .sort((a, b) => b.score - a.score);
 
   return scored[0]?.p ?? null;
-}
-
-function scoreCompanionName(plantName: string, query: string): number {
-  const cn = plantName.trim().toLowerCase();
-  const q = query.trim().toLowerCase();
-  if (cn === q) return 100;
-  if (cn.endsWith(` ${q}`)) return 85;
-  if (cn.split(/\s+/).includes(q)) return 75;
-  if (cn.includes(q)) return 65;
-  return 0;
 }

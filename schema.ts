@@ -69,6 +69,8 @@ export interface Plant {
   is_edible: boolean;
   florida_hardiness_zones: string[];
   native_states: string[];
+  /** Human-readable homeland, e.g. "Native to the Amazon basin and western South America". */
+  native_origin: string | null;
   grows_in_us: boolean;
   is_invasive_in_florida: boolean;
 
@@ -104,6 +106,7 @@ export interface PlantSummary {
   is_edible: boolean;
   is_invasive_in_florida?: boolean;
   native_states: string[];
+  native_origin?: string | null;
   growing_zones: string[];
   canvas_radius_feet: number;
   mature_height_feet?: [number, number];

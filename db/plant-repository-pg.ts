@@ -1,5 +1,7 @@
 import type { Plant, PlantFilters } from "../schema.js";
+import { pgCatalogEdibleClause } from "../lib/infer-is-edible.js";
 import { stateByCode } from "../lib/us-states.js";
+import { isDesignerStateCode } from "../lib/designer-states.js";
 import { getSql } from "./postgres.js";
 import {
   mergeTrefleIntoCatalogRow,
@@ -13,7 +15,7 @@ INSERT INTO plants (
   id, common_name, scientific_name, image_url,
   trefle_id, trefle_slug, family, genus, edible_part, vegetable, observations, synonyms, trefle_json,
   category, canopy_layer, guild_functions,
-  is_florida_native, is_kitchen_essential, is_edible, florida_hardiness_zones, native_states, grows_in_us, is_invasive_in_florida,
+  is_florida_native, is_kitchen_essential, is_edible, florida_hardiness_zones, native_states, native_origin, grows_in_us, is_invasive_in_florida,
   mature_height_min, mature_height_max, mature_spread_min, mature_spread_max, canvas_radius_feet,
   sunlight, water_needs, soil_preferences, best_planting_seasons, growth_rate,
   care_summary, uses, benefits, companion_plants, avoid_planting_near,
@@ -22,11 +24,11 @@ INSERT INTO plants (
   $1, $2, $3, $4,
   $5, $6, $7, $8, $9, $10, $11, $12, $13,
   $14, $15, $16,
-  $17, $18, $19, $20, $21, $22, $23,
-  $24, $25, $26, $27, $28,
-  $29, $30, $31, $32, $33,
-  $34, $35, $36, $37, $38,
-  $39, $40, $41
+  $17, $18, $19, $20, $21, $22, $23, $24,
+  $25, $26, $27, $28, $29,
+  $30, $31, $32, $33, $34,
+  $35, $36, $37, $38, $39,
+  $40, $41, $42
 )
 ON CONFLICT(id) DO UPDATE SET
   common_name = EXCLUDED.common_name,
@@ -53,6 +55,7 @@ ON CONFLICT(id) DO UPDATE SET
   is_edible = EXCLUDED.is_edible,
   florida_hardiness_zones = EXCLUDED.florida_hardiness_zones,
   native_states = EXCLUDED.native_states,
+  native_origin = COALESCE(EXCLUDED.native_origin, plants.native_origin),
   grows_in_us = EXCLUDED.grows_in_us,
   is_invasive_in_florida = EXCLUDED.is_invasive_in_florida,
   mature_height_min = EXCLUDED.mature_height_min,
@@ -99,6 +102,7 @@ function plantToPgParams(plant: Plant) {
     r.is_edible,
     r.florida_hardiness_zones,
     r.native_states,
+    r.native_origin,
     r.grows_in_us,
     r.is_invasive_in_florida,
     r.mature_height_min,
@@ -189,12 +193,19 @@ export async function listGrowingZoneCounts(): Promise<
 }
 
 export async function getPlantById(id: string): Promise<Plant | null> {
+  const rows = await getPlantsByIds([id]);
+  return rows[0] ?? null;
+}
+
+export async function getPlantsByIds(ids: string[]): Promise<Plant[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return [];
   const sql = getSql();
   const rows = await sql<PlantRow[]>`
-    SELECT * FROM plants WHERE id = ${id}
+    SELECT * FROM plants WHERE id IN ${sql(unique)}
   `;
-  const row = rows[0];
-  return row ? rowToPlant(row) : null;
+  const byId = new Map(rows.map((r) => [r.id, rowToPlant(r)]));
+  return unique.map((id) => byId.get(id)).filter((p): p is Plant => p != null);
 }
 
 export async function getPlantByTrefleSlug(slug: string): Promise<Plant | null> {
@@ -226,22 +237,34 @@ function buildListWhere(filters: PlantFilters): {
 
   const usOnly = filters.us_only !== false && !filters.for_my_area;
   if (usOnly) {
-    conditions.push("grows_in_us = true");
+    conditions.push("(grows_in_us = true OR data_source = 'trefle')");
   }
 
   if (filters.for_my_area && filters.native_state) {
     const st = filters.native_state.toUpperCase();
     const state = stateByCode(st);
     if (state?.hardiness_zones.length) {
-      n += 1;
-      const zonesParam = n;
-      params.push(JSON.stringify(state.hardiness_zones));
+      const zoneParts: string[] = [];
+      for (const z of state.hardiness_zones) {
+        n += 1;
+        zoneParts.push(
+          `${pgJsonbAsArray("florida_hardiness_zones")} @> $${n}::jsonb`,
+        );
+        params.push(JSON.stringify([z]));
+      }
       n += 1;
       const stateParam = n;
       params.push(JSON.stringify([st]));
+      const tag = st.toLowerCase();
+      n += 1;
+      const tagParam = n;
+      params.push(tag);
+      const tagMatch = `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${pgJsonbAsArray("tags")}) t WHERE LOWER(t.value) = LOWER($${tagParam}))`;
+      const idPrefix =
+        isDesignerStateCode(st) ? `OR id LIKE '${tag}-%'` : "";
       conditions.push(
         `(
-          ${pgJsonbAsArray("florida_hardiness_zones")} && $${zonesParam}::jsonb
+          (${zoneParts.join(" OR ")})
           OR ${pgJsonbAsArray("native_states")} @> $${stateParam}::jsonb
           OR (
             $${stateParam}::jsonb @> '["FL"]'::jsonb
@@ -252,6 +275,8 @@ function buildListWhere(filters: PlantFilters): {
               OR jsonb_array_length(${pgJsonbAsArray("native_states")}) = 0
             )
           )
+          OR ${tagMatch}
+          ${idPrefix}
         )`,
       );
     }
@@ -321,7 +346,7 @@ function buildListWhere(filters: PlantFilters): {
   }
 
   if (filters.edible_only) {
-    conditions.push("is_edible = true");
+    conditions.push(pgCatalogEdibleClause());
   }
 
   if (filters.exclude_invasive) {
@@ -400,4 +425,23 @@ export async function countPlants(): Promise<number> {
     SELECT COUNT(*)::int AS total FROM plants
   `;
   return Number(rows[0]?.total ?? 0);
+}
+
+export type PlantCountBreakdown = {
+  total: number;
+  by_source: Record<string, number>;
+};
+
+export async function countPlantsBreakdown(): Promise<PlantCountBreakdown> {
+  const sql = getSql();
+  const rows = await sql<{ data_source: string; n: number }[]>`
+    SELECT data_source, COUNT(*)::int AS n FROM plants GROUP BY data_source ORDER BY n DESC
+  `;
+  const by_source: Record<string, number> = {};
+  let total = 0;
+  for (const row of rows) {
+    by_source[row.data_source] = row.n;
+    total += row.n;
+  }
+  return { total, by_source };
 }

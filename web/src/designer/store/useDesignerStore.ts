@@ -16,8 +16,14 @@ import {
   nextZoneName,
 } from "./workspace-slice";
 import { clampStagePos } from "../lib/clamp-stage-pos";
+import {
+  resizeRectangleZone,
+  scalePlantsToZoneBounds,
+  type ZoneResizeCorner,
+} from "../lib/zone-resize";
 import { nearFirstDrawPoint } from "../lib/draw-zone-utils";
 import {
+  getZoneBounds,
   plantBelongsToZone,
   pointInZone,
   primaryZoneAtPoint,
@@ -74,6 +80,12 @@ type DesignerState = {
     zone: WorkspaceZone;
     plants: { canvasId: string; x: number; y: number }[];
   } | null;
+  zoneResizeOrigin: {
+    zone: WorkspaceZone;
+    plants: { canvasId: string; x: number; y: number }[];
+    corner: ZoneResizeCorner;
+    bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  } | null;
 
   selectedPlantId: string | null;
   searchQuery: string;
@@ -128,6 +140,7 @@ type DesignerState = {
   movePlant: (canvasId: string, x: number, y: number) => void;
   selectCanvasPlant: (canvasId: string | null) => void;
   selectSidebarPlant: (plantId: string | null) => void;
+  openCanvasPlantProfile: (canvasId: string) => void;
   closeDetailPanel: () => void;
   undo: () => void;
   redo: () => void;
@@ -205,6 +218,13 @@ type DesignerState = {
   beginZoneDrag: (zoneId: string) => void;
   updateZoneDrag: (dx: number, dy: number) => void;
   endZoneDrag: () => void;
+  beginZoneResize: (zoneId: string, corner: ZoneResizeCorner) => void;
+  updateZoneResize: (
+    corner: ZoneResizeCorner,
+    pointerX: number,
+    pointerY: number,
+  ) => void;
+  endZoneResize: () => void;
 };
 
 const DEFAULT_HEIGHT_BY_LAYER: Record<CanopyLayer, [number, number]> = {
@@ -279,6 +299,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   drawPoints: [],
   drawCursor: null,
   zoneDragOrigin: null,
+  zoneResizeOrigin: null,
 
   selectedPlantId: null,
   searchQuery: "",
@@ -419,9 +440,11 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     const s = get();
     const zoneId = zoneIdForPlacement(x, y, s.zones, s.activeZoneId);
     const cp = toCanvasPlant(plant, x, y, zoneId);
-    set((s) => ({
-      canvasPlants: [...s.canvasPlants, cp],
-      selectedCanvasPlantId: cp.canvasId,
+    set((state) => ({
+      canvasPlants: [...state.canvasPlants, cp],
+      // Placement only — profile opens on intentional tap (sidebar or canvas).
+      selectedCanvasPlantId: null,
+      selectedPlantId: null,
     }));
   },
 
@@ -486,8 +509,34 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     }));
   },
 
-  selectCanvasPlant: (canvasId) => set({ selectedCanvasPlantId: canvasId }),
-  selectSidebarPlant: (plantId) => set({ selectedPlantId: plantId }),
+  selectCanvasPlant: (canvasId) =>
+    set({
+      selectedCanvasPlantId: canvasId,
+      selectedPlantId: null,
+    }),
+  openCanvasPlantProfile: (canvasId) =>
+    set((s) => {
+      const cp = s.canvasPlants.find((p) => p.canvasId === canvasId);
+      if (!cp) return {};
+      return {
+        selectedCanvasPlantId: canvasId,
+        selectedPlantId: cp.plantId,
+      };
+    }),
+  selectSidebarPlant: (plantId) =>
+    set((s) => {
+      const onCanvas = s.canvasPlants.find(
+        (p) => p.canvasId === s.selectedCanvasPlantId,
+      );
+      const keepCanvasSelection =
+        Boolean(onCanvas) && onCanvas!.plantId === plantId;
+      return {
+        selectedPlantId: plantId,
+        selectedCanvasPlantId: keepCanvasSelection
+          ? s.selectedCanvasPlantId
+          : null,
+      };
+    }),
   closeDetailPanel: () =>
     set({ selectedPlantId: null, selectedCanvasPlantId: null }),
 
@@ -846,6 +895,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     set({ drawPoints: [], drawCursor: null, workspaceTool: "select" }),
 
   beginZoneDrag: (zoneId) => {
+    if (get().zoneResizeOrigin) return;
     const s = get();
     const zone = s.zones.find((z) => z.id === zoneId);
     if (!zone) return;
@@ -884,5 +934,67 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     if (!get().zoneDragOrigin) return;
     get().pushHistory();
     set({ zoneDragOrigin: null });
+  },
+
+  beginZoneResize: (zoneId, corner) => {
+    if (get().zoneDragOrigin) return;
+    const s = get();
+    const zone = s.zones.find((z) => z.id === zoneId);
+    if (!zone || zone.shape !== "rectangle") return;
+    const bounds = getZoneBounds(zone);
+    if (!bounds) return;
+    const stamped = stampMissingPlantZoneIds(
+      s.canvasPlants,
+      s.zones,
+      zoneId,
+    );
+    const plants = stamped
+      .filter((p) => p.zoneId === zoneId)
+      .map((p) => ({ canvasId: p.canvasId, x: p.x, y: p.y }));
+    set({
+      canvasPlants: stamped,
+      zoneResizeOrigin: {
+        zone: structuredClone(zone),
+        plants,
+        corner,
+        bounds,
+      },
+      activeZoneId: zoneId,
+    });
+  },
+
+  updateZoneResize: (corner, pointerX, pointerY) => {
+    const origin = get().zoneResizeOrigin;
+    if (!origin || origin.corner !== corner) return;
+    const resized = resizeRectangleZone(
+      origin.zone,
+      corner,
+      pointerX,
+      pointerY,
+    );
+    if (!resized) return;
+    const newBounds = getZoneBounds(resized);
+    if (!newBounds) return;
+    const scaled = scalePlantsToZoneBounds(
+      origin.plants,
+      origin.bounds,
+      newBounds,
+    );
+    const byId = new Map(scaled.map((p) => [p.canvasId, p]));
+    const plantIds = new Set(origin.plants.map((p) => p.canvasId));
+    set((s) => ({
+      zones: s.zones.map((z) => (z.id === resized.id ? resized : z)),
+      canvasPlants: s.canvasPlants.map((p) => {
+        if (!plantIds.has(p.canvasId)) return p;
+        const next = byId.get(p.canvasId);
+        return next ? { ...p, x: next.x, y: next.y } : p;
+      }),
+    }));
+  },
+
+  endZoneResize: () => {
+    if (!get().zoneResizeOrigin) return;
+    get().pushHistory();
+    set({ zoneResizeOrigin: null });
   },
 }));

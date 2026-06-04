@@ -7,6 +7,8 @@ import type {
   PlantSummary,
 } from "../schema.js";
 import { stateByCode } from "../lib/us-states.js";
+import { sqliteCatalogEdibleClause } from "../lib/infer-is-edible.js";
+import { sqliteStateTagClause } from "../lib/plant-state-filter.js";
 import { getDb } from "./client.js";
 
 type PlantRow = {
@@ -86,6 +88,7 @@ export function rowToPlant(row: PlantRow): Plant {
       row.florida_hardiness_zones,
     ),
     native_states: parseJsonArray<string>(row.native_states ?? "[]"),
+    native_origin: row.native_origin?.trim() || null,
     grows_in_us: (row.grows_in_us ?? 0) === 1,
     is_invasive_in_florida: row.is_invasive_in_florida === 1,
     mature_height_feet: [row.mature_height_min, row.mature_height_max],
@@ -107,35 +110,14 @@ export function rowToPlant(row: PlantRow): Plant {
   };
 }
 
-export function plantToSummary(plant: Plant): PlantSummary & {
-  is_invasive_in_florida: boolean;
-} {
-  return {
-    id: plant.id,
-    common_name: plant.common_name,
-    scientific_name: plant.scientific_name,
-    category: plant.category,
-    canopy_layer: plant.canopy_layer,
-    is_florida_native: plant.is_florida_native,
-    is_kitchen_essential: plant.is_kitchen_essential,
-    is_edible: plant.is_edible,
-    native_states: plant.native_states,
-    growing_zones: plant.florida_hardiness_zones,
-    canvas_radius_feet: plant.canvas_radius_feet,
-    image_url: plant.image_url,
-    tags: plant.tags,
-    is_invasive_in_florida: plant.is_invasive_in_florida,
-    data_source: plant.data_source,
-    mature_height_feet: plant.mature_height_feet,
-  };
-}
+export { plantToSummary } from "./plant-row.js";
 
 const UPSERT_PLANT = `
 INSERT INTO plants (
   id, common_name, scientific_name, image_url,
   trefle_id, trefle_slug, family, genus, edible_part, vegetable, observations, synonyms, trefle_json,
   category, canopy_layer, guild_functions,
-  is_florida_native, is_kitchen_essential, is_edible, florida_hardiness_zones, native_states, grows_in_us, is_invasive_in_florida,
+  is_florida_native, is_kitchen_essential, is_edible, florida_hardiness_zones, native_states, native_origin, grows_in_us, is_invasive_in_florida,
   mature_height_min, mature_height_max, mature_spread_min, mature_spread_max, canvas_radius_feet,
   sunlight, water_needs, soil_preferences, best_planting_seasons, growth_rate,
   care_summary, uses, benefits, companion_plants, avoid_planting_near,
@@ -144,7 +126,7 @@ INSERT INTO plants (
   @id, @common_name, @scientific_name, @image_url,
   @trefle_id, @trefle_slug, @family, @genus, @edible_part, @vegetable, @observations, @synonyms, @trefle_json,
   @category, @canopy_layer, @guild_functions,
-  @is_florida_native, @is_kitchen_essential, @is_edible, @florida_hardiness_zones, @native_states, @grows_in_us, @is_invasive_in_florida,
+  @is_florida_native, @is_kitchen_essential, @is_edible, @florida_hardiness_zones, @native_states, @native_origin, @grows_in_us, @is_invasive_in_florida,
   @mature_height_min, @mature_height_max, @mature_spread_min, @mature_spread_max, @canvas_radius_feet,
   @sunlight, @water_needs, @soil_preferences, @best_planting_seasons, @growth_rate,
   @care_summary, @uses, @benefits, @companion_plants, @avoid_planting_near,
@@ -175,6 +157,7 @@ ON CONFLICT(id) DO UPDATE SET
   is_edible = excluded.is_edible,
   florida_hardiness_zones = excluded.florida_hardiness_zones,
   native_states = excluded.native_states,
+  native_origin = COALESCE(excluded.native_origin, plants.native_origin),
   grows_in_us = excluded.grows_in_us,
   is_invasive_in_florida = excluded.is_invasive_in_florida,
   mature_height_min = excluded.mature_height_min,
@@ -222,6 +205,7 @@ export function plantToRow(plant: Plant) {
       plant.florida_hardiness_zones ?? [],
     ),
     native_states: JSON.stringify(plant.native_states ?? []),
+    native_origin: plant.native_origin?.trim() || null,
     grows_in_us: plant.grows_in_us ? 1 : 0,
     is_invasive_in_florida: plant.is_invasive_in_florida ? 1 : 0,
     mature_height_min: plant.mature_height_feet?.[0] ?? 4,
@@ -350,10 +334,18 @@ export function listGrowingZoneCounts(): { zone: string; count: number }[] {
 }
 
 export function getPlantById(id: string): Plant | null {
-  const row = getDb()
-    .prepare("SELECT * FROM plants WHERE id = ?")
-    .get(id) as PlantRow | undefined;
-  return row ? rowToPlant(row) : null;
+  return getPlantsByIds([id])[0] ?? null;
+}
+
+export function getPlantsByIds(ids: string[]): Plant[] {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return [];
+  const placeholders = unique.map(() => "?").join(", ");
+  const rows = getDb()
+    .prepare(`SELECT * FROM plants WHERE id IN (${placeholders})`)
+    .all(...unique) as PlantRow[];
+  const byId = new Map(rows.map((r) => [r.id, rowToPlant(r)]));
+  return unique.map((id) => byId.get(id)).filter((p): p is Plant => p != null);
 }
 
 export function getPlantByTrefleSlug(slug: string): Plant | null {
@@ -372,7 +364,7 @@ export function listPlants(filters: PlantFilters = {}): {
 
   const usOnly = filters.us_only !== false && !filters.for_my_area;
   if (usOnly) {
-    conditions.push("grows_in_us = 1");
+    conditions.push("(grows_in_us = 1 OR data_source = 'trefle')");
   }
 
   if (filters.for_my_area && filters.native_state) {
@@ -398,6 +390,7 @@ export function listPlants(filters: PlantFilters = {}): {
         );
       });
       const zoneClause = zoneParts.join(" OR ");
+      const tagExtra = sqliteStateTagClause(st);
       conditions.push(
         `(
           (${zoneClause})
@@ -407,9 +400,11 @@ export function listPlants(filters: PlantFilters = {}): {
             AND is_florida_native = 1
             AND (native_states IS NULL OR native_states = '[]')
           )
+          OR (${tagExtra.sql})
         )`,
       );
       params.for_my_area_state = st;
+      Object.assign(params, tagExtra.params);
     }
   }
 
@@ -468,7 +463,7 @@ export function listPlants(filters: PlantFilters = {}): {
   }
 
   if (filters.edible_only) {
-    conditions.push("is_edible = 1");
+    conditions.push(sqliteCatalogEdibleClause());
   }
 
   if (filters.exclude_invasive) {
@@ -529,4 +524,24 @@ export function countPlants(): number {
     .prepare("SELECT COUNT(*) AS total FROM plants")
     .get() as { total: number };
   return row.total;
+}
+
+export type PlantCountBreakdown = {
+  total: number;
+  by_source: Record<string, number>;
+};
+
+export function countPlantsBreakdown(): PlantCountBreakdown {
+  const rows = getDb()
+    .prepare(
+      "SELECT data_source, COUNT(*) AS n FROM plants GROUP BY data_source ORDER BY n DESC",
+    )
+    .all() as { data_source: string; n: number }[];
+  const by_source: Record<string, number> = {};
+  let total = 0;
+  for (const row of rows) {
+    by_source[row.data_source] = row.n;
+    total += row.n;
+  }
+  return { total, by_source };
 }

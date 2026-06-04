@@ -14,6 +14,7 @@ import { CANOPY_LAYER_ORDER } from "../../lib/canopy-colors";
 import { radiusPx } from "../../lib/canvas-utils";
 import { plantOutsideOwnedZone } from "../../lib/zone-geometry";
 import { ZoneLayer } from "./ZoneLayer";
+import { ZoneResizeHandles } from "./ZoneResizeHandles";
 import { CanvasBackdropLayer } from "./CanvasBackdropLayer";
 import { ScaleGridLayer } from "./ScaleGridLayer";
 import { CanvasEdgeRulers } from "./CanvasEdgeRulers";
@@ -26,9 +27,12 @@ import { DrawMeasureOverlay } from "./DrawMeasureOverlay";
 import { PlantCircle } from "./PlantCircle";
 import { CompanionSuggestions } from "./CompanionSuggestions";
 import { CrossSectionView } from "./CrossSectionView";
+import { pointerHitsCanvasPlant } from "../../lib/canvas-plant-hit";
 import { bindCanvasTouchViewport } from "../../lib/canvas-touch-viewport";
 import { handleCanvasWheel } from "../../lib/canvas-wheel";
-import { isMobileDesignerLayout, MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
+import { mobileGardenFitZoom } from "../../lib/canvas-mobile-fit";
+import { MobileCanvasZoomControls } from "./MobileCanvasZoomControls";
+import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import { useMatchMedia } from "../../hooks/useMatchMedia";
 import type { CanvasPlant } from "../../types";
 
@@ -74,7 +78,10 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const canvasPlants = useDesignerStore((s) => s.canvasPlants);
     const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
     const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
-    const detailPanelOpen = Boolean(selectedPlantId ?? selectedCanvasPlantId);
+    const detailPanelOpen = Boolean(selectedPlantId);
+    const openCanvasPlantProfile = useDesignerStore(
+      (s) => s.openCanvasPlantProfile,
+    );
     const hiddenLayers = useDesignerStore((s) => s.hiddenLayers);
     const canvasView = useDesignerStore((s) => s.canvasView);
     const zoom = useDesignerStore((s) => s.zoom);
@@ -204,6 +211,13 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           setZoom(nextZoom);
           setStagePos(nextPos);
         },
+        {
+          shouldIgnorePointer: (e) => {
+            const stage = stageRef.current;
+            if (!stage) return false;
+            return pointerHitsCanvasPlant(stage, root, e.clientX, e.clientY);
+          },
+        },
       );
     }, [canvasView, setZoom, setStagePos]);
 
@@ -231,22 +245,17 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       const layout = contentLayoutBounds(zones, canvasPlants, 12);
       let fitZoom = zoom;
       if (
-        isMobileDesignerLayout() &&
+        isMobile &&
         layout.width > 0 &&
         layout.height > 0 &&
         size.w > 0 &&
         size.h > 0
       ) {
-        const pad = 40;
-        fitZoom = Math.min(
-          2.5,
-          Math.max(
-            0.4,
-            Math.min(
-              (size.w - pad) / layout.width,
-              (size.h - pad) / layout.height,
-            ),
-          ),
+        fitZoom = mobileGardenFitZoom(
+          layout.width,
+          layout.height,
+          size.w,
+          size.h,
         );
         setZoom(fitZoom);
       }
@@ -254,11 +263,11 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     }, [
       canvasFitTick,
       canvasView,
+      isMobile,
       zones,
       canvasPlants,
       size.w,
       size.h,
-      zoom,
       setZoom,
       setStagePos,
     ]);
@@ -295,6 +304,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           zoom={zoom}
           visible={showScaleGrid}
         />
+        {isMobile && canvasPlants.length > 0 && <MobileCanvasZoomControls />}
         {showScaleGrid && (
           <div className="designer-canvas-scale-legend" aria-hidden>
             <span className="designer-canvas-scale-bar" />
@@ -344,6 +354,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
               addDrawPoint(pt.x, pt.y);
               return;
             }
+            selectCanvasPlant(null);
             closeDetailPanel();
           }}
         >
@@ -398,16 +409,23 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
                 onHover={(hovering) =>
                   setHoveredCanvasPlantId(hovering ? cp.canvasId : null)
                 }
-                onSelect={() => {
-                  selectCanvasPlant(cp.canvasId);
-                  useDesignerStore.getState().selectSidebarPlant(cp.plantId);
-                }}
+                onSelect={() => selectCanvasPlant(cp.canvasId)}
+                onOpenProfile={() => openCanvasPlantProfile(cp.canvasId)}
+                draggable={workspaceTool !== "draw-zone"}
+                dragDistance={isMobile ? (selectedCanvasPlantId === cp.canvasId ? 6 : 28) : 3}
                 onDragEnd={(x, y) => {
                   pushHistory();
                   movePlant(cp.canvasId, x, y);
                 }}
               />
             ))}
+          </Layer>
+          <Layer>
+            <ZoneResizeHandles
+              zones={zones}
+              activeZoneId={activeZoneId}
+              workspaceTool={workspaceTool}
+            />
           </Layer>
           {selectedPlant && !detailPanelOpen && (
             <Layer>

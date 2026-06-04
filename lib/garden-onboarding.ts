@@ -431,9 +431,21 @@ export function onboardingProfileText(answers: GardenOnboardingAnswers): string 
     ? `Location: ${region.label}, ${stateName} (USDA zone ${zone})`
     : `Location: ${stateName} (USDA zone ${zone})`;
 
+  const canvasRule =
+    answers.garden_style === "food_forest"
+      ? "Place ONLY fruit trees on the canvas (companions come later from Browse Plants)."
+      : answers.garden_style === "kitchen_garden"
+        ? "Place ONLY kitchen crops on the canvas: herbs, vegetables, tomatoes, peppers, beans, greens — NO fruit trees."
+        : answers.garden_style === "pollinator"
+          ? "Place ONLY pollinator plants: flowers, flowering herbs, nectar shrubs — NO fruit trees or row vegetables."
+          : answers.garden_style === "visual"
+            ? "Place ONLY ornamental beauty plants — flowers, foliage, landscape plants — NO fruit trees."
+            : "";
+
   return `Design a personalized ${stateName} garden for someone with the following profile:
 
 Garden type: ${GARDEN_STYLE_LABELS[answers.garden_style]}
+${canvasRule ? `${canvasRule}\n` : ""}
 ${locationLine}
 ${spaceLine}
 Size reference: ${SPACE_SIZE_COMPARISONS[answers.space_size]}

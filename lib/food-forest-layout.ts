@@ -12,11 +12,21 @@ import {
   dedupePlantsByName,
 } from "./plant-dedupe.js";
 import {
+  aiPickingRulesForGardenStyle,
+  catalogRowMatchesGardenStyle,
+  filterCatalogForGardenStyle,
+  filterIdsForGardenStyle,
+  heuristicMessageForStyle,
+  layoutUserPromptForStyle,
+  topUpIdsForGardenStyle,
+} from "./garden-style-catalog.js";
+import {
   buildGardenerProfileText,
   deriveGoalsFromPreferences,
   maxPlantsForCanvas,
   normalizePreferences,
   scoreCatalogRow,
+  targetFoodForestTreeCount,
   targetPlantCountFromPreferences,
   type FoodForestLayoutGoal,
   type GardenPreferences,
@@ -53,6 +63,8 @@ type CatalogRow = {
   radius_ft: number;
   native: boolean;
   edible: boolean;
+  tags: string[];
+  is_kitchen_essential: boolean;
 };
 
 function resolveGoals(req: FoodForestLayoutRequest): FoodForestLayoutGoal[] {
@@ -78,6 +90,8 @@ async function loadCatalogForZone(
       radius_ft: s.canvas_radius_feet || 3,
       native: s.is_florida_native,
       edible: s.is_edible,
+      tags: p.tags,
+      is_kitchen_essential: p.is_kitchen_essential,
     };
   };
 
@@ -134,29 +148,22 @@ async function callAnthropicLayout(
   const profile = buildGardenerProfileText(prefs);
   const validIds = new Set(catalog.map((r) => r.id));
 
-  const densityRules =
-    density === "dense"
-      ? `- DENSE planting requested: pick the full ${target} ids — prioritize shrubs, herbs, groundcovers, vines, and support plants.
-- At most 1–2 Overstory and 2–3 Understory; the rest should be smaller layers so the bed looks full.
-- Prefer radius_ft ≤ 4 for most picks; include many Herbaceous and Groundcover species.`
-      : density === "spacious"
-        ? `- ROOMY spacing: pick fewer, larger anchors (~${Math.max(8, Math.floor(target * 0.65))} plants).
-- At most 2 Overstory; leave visual breathing room.`
-        : `- Balanced guild: mix canopy anchors with shrubs, herbs, and groundcovers.
-- At most 2 Overstory and at most 3 Understory unless space is very large.
-- Prefer smaller radius_ft plants to fill gaps unless profile asks for shade trees.`;
+  const styleRules = aiPickingRulesForGardenStyle(
+    prefs.gardenStyle,
+    target,
+    density,
+  );
 
-  const system = `You are an expert Florida permaculture food-forest designer. Pick plants ONLY from the catalog (first column = id). Return valid JSON only, no markdown:
+  const system = `You are an expert permaculture and edible-landscape designer. Pick plants ONLY from the catalog (first column = id). Return valid JSON only, no markdown:
 {"plant_ids":["id1","id2",...],"message":"one short sentence about the guild"}
 
 Rules:
 - Pick exactly ${target} different plant ids — each must be placeable on a 2D map.
-- Design a stacked guild tailored to the profile below.
-${densityRules}
+${styleRules}
 - Match USDA zone ${req.hardiness_zone}. Derived tags: ${goals}.
 - Bed size ${req.width_feet}×${req.height_feet} ft (${area} sq ft).`;
 
-  const user = `Gardener profile:\n${profile}\n\nCatalog (id, name, layer, category, radius):\n${catalogPromptLines(catalog)}\n\nBuild a personalized food forest plant list for this bed.`;
+  const user = `Gardener profile:\n${profile}\n\nCatalog (id, name, layer, category, radius):\n${catalogPromptLines(catalog)}\n\n${layoutUserPromptForStyle(prefs.gardenStyle)}`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -222,10 +229,16 @@ function layerTargets(
   target: number,
   goals: FoodForestLayoutGoal[],
   density: PlantingDensity = "balanced",
+  gardenStyle?: GardenPreferences["gardenStyle"],
 ): Record<CanopyLayer, number> {
   const low = goals.includes("low_maintenance");
-  const fruit = goals.includes("fruit_trees");
+  const fruit =
+    goals.includes("fruit_trees") && gardenStyle !== "kitchen_garden";
   const herbs = goals.includes("herbs_produce");
+  const noCanopy =
+    gardenStyle === "kitchen_garden" ||
+    gardenStyle === "pollinator" ||
+    gardenStyle === "visual";
 
   const ratios: Record<CanopyLayer, number> =
     density === "dense"
@@ -267,6 +280,20 @@ function layerTargets(
     ratios.Understory *= 0.6;
     ratios.Herbaceous *= 0.75;
   }
+  if (noCanopy) {
+    ratios.Overstory = 0;
+    ratios.Understory = 0;
+    if (gardenStyle === "kitchen_garden") {
+      ratios.Herbaceous = Math.min(0.55, ratios.Herbaceous + 0.12);
+      ratios.Shrub = Math.min(0.35, ratios.Shrub + 0.08);
+      ratios.Vine = Math.min(0.12, ratios.Vine + 0.04);
+    }
+    if (gardenStyle === "pollinator" || gardenStyle === "visual") {
+      ratios.Herbaceous = Math.min(0.5, ratios.Herbaceous + 0.1);
+      ratios.Groundcover = Math.min(0.35, ratios.Groundcover + 0.1);
+      ratios.Shrub = Math.min(0.3, ratios.Shrub + 0.06);
+    }
+  }
 
   const counts: Record<CanopyLayer, number> = {
     Overstory: 0,
@@ -299,22 +326,96 @@ function layerTargets(
   return counts;
 }
 
+function heuristicPickTreeIds(
+  catalog: CatalogRow[],
+  req: FoodForestLayoutRequest,
+  target: number,
+): string[] {
+  const prefs = normalizePreferences(req.preferences);
+  const stateCode = isDesignerStateCode(req.native_state ?? "")
+    ? (req.native_state!.toUpperCase() as DesignerStateCode)
+    : DEFAULT_DESIGNER_STATE;
+
+  let pool = catalog.filter((p) =>
+    catalogRowMatchesGardenStyle(p, "food_forest", stateCode),
+  );
+  if (pool.length < 3) {
+    pool = catalog.filter((p) => p.canopy_layer === "Overstory" || p.canopy_layer === "Understory");
+  }
+
+  const used = new Set<string>();
+  const ids: string[] = [];
+  const layers: CanopyLayer[] = ["Understory", "Overstory"];
+  const perLayer = Math.max(1, Math.ceil(target / layers.length));
+
+  for (const layer of layers) {
+    const layerPool = pool
+      .filter((p) => p.canopy_layer === layer && !used.has(p.id))
+      .sort(
+        (a, b) =>
+          scoreCatalogRow(b, prefs) - scoreCatalogRow(a, prefs) ||
+          b.radius_ft - a.radius_ft,
+      );
+    for (let i = 0; i < perLayer && ids.length < target && i < layerPool.length; i++) {
+      const row = layerPool[i]!;
+      used.add(row.id);
+      ids.push(row.id);
+    }
+  }
+
+  const sorted = [...pool]
+    .filter((p) => !used.has(p.id))
+    .sort(
+      (a, b) =>
+        scoreCatalogRow(b, prefs) - scoreCatalogRow(a, prefs) ||
+        a.radius_ft - b.radius_ft,
+    );
+  for (const row of sorted) {
+    if (ids.length >= target) break;
+    used.add(row.id);
+    ids.push(row.id);
+  }
+
+  return ids;
+}
+
 function heuristicPickIds(
   catalog: CatalogRow[],
   req: FoodForestLayoutRequest,
   target: number,
 ): string[] {
   const prefs = normalizePreferences(req.preferences);
+  const stateCode = isDesignerStateCode(req.native_state ?? "")
+    ? (req.native_state!.toUpperCase() as DesignerStateCode)
+    : DEFAULT_DESIGNER_STATE;
+  if (prefs.gardenStyle === "food_forest") {
+    return heuristicPickTreeIds(catalog, req, target);
+  }
+
   const goals = resolveGoals(req);
   const nativesOnly =
     goals.includes("natives") &&
     (prefs.priorities.includes("florida_natives") ||
       prefs.uses.includes("native_habitat"));
 
-  let pool = catalog.filter((p) => !nativesOnly || p.native);
+  let pool = catalog.filter(
+    (p) =>
+      catalogRowMatchesGardenStyle(p, prefs.gardenStyle, stateCode) &&
+      (!nativesOnly || p.native),
+  );
+  if (pool.length < 10) {
+    pool = catalog.filter((p) =>
+      catalogRowMatchesGardenStyle(p, prefs.gardenStyle, stateCode),
+    );
+  }
   if (pool.length < 10) pool = catalog;
 
-  const counts = layerTargets(target, goals, prefs.density ?? "balanced");
+  const counts = layerTargets(
+    target,
+    goals,
+    prefs.density ?? "balanced",
+    prefs.gardenStyle,
+  );
   const used = new Set<string>();
   const ids: string[] = [];
 
@@ -359,15 +460,27 @@ export async function generateFoodForestLayout(
   const prefs = normalizePreferences(req.preferences);
   const area = req.width_feet * req.height_feet;
   const density = prefs.density ?? "balanced";
-  const cap = maxPlantsForCanvas(area, density);
+  const foodForestTreesOnly = prefs.gardenStyle === "food_forest";
+  const cap = foodForestTreesOnly
+    ? targetFoodForestTreeCount(area, density)
+    : maxPlantsForCanvas(area, density);
   const target = Math.min(
     cap,
-    req.target_count ?? targetPlantCountFromPreferences(area, prefs),
+    req.target_count ??
+      (foodForestTreesOnly
+        ? targetFoodForestTreeCount(area, density)
+        : targetPlantCountFromPreferences(area, prefs)),
   );
   const stateCode = isDesignerStateCode(req.native_state ?? "")
     ? (req.native_state!.toUpperCase() as DesignerStateCode)
     : DEFAULT_DESIGNER_STATE;
-  const catalog = await loadCatalogForZone(req.hardiness_zone, stateCode);
+  let catalog = await loadCatalogForZone(req.hardiness_zone, stateCode);
+  catalog = filterCatalogForGardenStyle(
+    catalog,
+    prefs.gardenStyle,
+    stateCode,
+    prefs.gardenStyle === "food_forest" ? 3 : 10,
+  );
 
   if (!catalog.length) {
     throw new Error("No plants in catalog for this zone.");
@@ -383,28 +496,43 @@ export async function generateFoodForestLayout(
 
   if (useAi) {
     const fromAi = await callAnthropicLayout(req, catalog, target);
-    const aiMin =
-      density === "dense"
+    const aiMin = foodForestTreesOnly
+      ? Math.min(2, target)
+      : density === "dense"
         ? Math.min(target, Math.max(12, Math.floor(target * 0.65)))
         : Math.min(8, target);
     if (fromAi && fromAi.length >= aiMin) {
       plant_ids = fromAi.slice(0, target);
       source = "ai";
-      message = "AI-tailored dense food forest guild.";
+      message =
+        prefs.gardenStyle === "food_forest"
+          ? "AI-selected fruit trees for your food forest."
+          : "AI-tailored plant list for your garden style.";
     }
   }
 
-  if (plant_ids.length < Math.min(8, target)) {
+  const heuristicMin = foodForestTreesOnly ? Math.min(2, target) : Math.min(8, target);
+  if (plant_ids.length < heuristicMin) {
     plant_ids = heuristicPickIds(catalog, req, target);
     source = "heuristic";
-    message =
-      plant_ids.length >= 8
-        ? "Dense guild selected from catalog."
-        : "Limited catalog matches; placed as many as fit your zone.";
+    message = heuristicMessageForStyle(prefs.gardenStyle, plant_ids.length);
   }
 
-  // Top up with small plants if AI returned too few
-  if (plant_ids.length < target) {
+  if (prefs.gardenStyle && prefs.gardenStyle !== "easy_care") {
+    plant_ids = filterIdsForGardenStyle(
+      plant_ids,
+      catalog,
+      prefs.gardenStyle,
+      stateCode,
+    );
+    plant_ids = topUpIdsForGardenStyle(
+      plant_ids,
+      catalog,
+      target,
+      prefs.gardenStyle,
+      stateCode,
+    );
+  } else if (plant_ids.length < target) {
     const used = new Set(plant_ids);
     const extras = catalog
       .filter((p) => !used.has(p.id))

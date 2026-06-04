@@ -14,6 +14,7 @@
     "db:seed:status": "cat data/trefle-sync-state.json 2>/dev/null || echo 'No sync in progress'",
     "db:backfill-edible": "tsx db/backfill-edible.ts",
     "db:backfill-native": "tsx db/backfill-native-states.ts",
+    "db:backfill-native-origin": "tsx scripts/backfill-native-origin.ts",
     "db:backfill-us": "tsx db/backfill-us-scope.ts",
     "enrich:trefle": "tsx scripts/enrich-from-trefle.ts",
     "db:sync-seed": "tsx scripts/sync-seed-plants.ts",
@@ -48,11 +49,12 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
-    "better-sqlite3": "^11.9.1",
+    "@supabase/supabase-js": "^2.106.1",
     "hono": "^4.7.10",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
+    "better-sqlite3": "^11.9.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
     "concurrently": "^9.1.2",

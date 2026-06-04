@@ -1,8 +1,9 @@
 import { clampStagePos } from "./clamp-stage-pos";
-import type { CanvasViewportState } from "./canvas-wheel";
-
-const ZOOM_MIN = 0.4;
-const ZOOM_MAX = 2.5;
+import {
+  type CanvasViewportState,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "./canvas-wheel";
 
 type PointerPoint = { x: number; y: number };
 
@@ -18,11 +19,18 @@ function pointerMidpoint(a: PointerPoint, b: PointerPoint): PointerPoint {
  * Pinch-to-zoom and one-finger pan for touch pointers on the canvas wrap.
  * Mouse/trackpad keeps using wheel + Konva drag on desktop.
  */
+export type CanvasTouchViewportOptions = {
+  /** Let Konva handle this pointer (e.g. plant tap / drag). */
+  shouldIgnorePointer?: (e: PointerEvent) => boolean;
+};
+
 export function bindCanvasTouchViewport(
   root: HTMLElement,
   getState: () => CanvasViewportState,
   apply: (next: CanvasViewportState) => void,
+  options: CanvasTouchViewportOptions = {},
 ): () => void {
+  const { shouldIgnorePointer } = options;
   const active = new Map<number, PointerPoint>();
 
   let pinchBase: {
@@ -77,12 +85,9 @@ export function bindCanvasTouchViewport(
 
   function onPointerDown(e: PointerEvent) {
     if (e.pointerType === "mouse") return;
+    if (document.querySelector(".designer-plant-row--dragging")) return;
+    if (shouldIgnorePointer?.(e)) return;
     active.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    try {
-      root.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
     syncGestureBases();
   }
 
@@ -120,9 +125,16 @@ export function bindCanvasTouchViewport(
     }
 
     if (active.size === 1 && panBase && e.pointerId === panBase.pointerId) {
-      e.preventDefault();
       const dx = e.clientX - panBase.clientX;
       const dy = e.clientY - panBase.clientY;
+      const panThreshold = 8;
+      if (Math.hypot(dx, dy) < panThreshold) return;
+      try {
+        root.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      e.preventDefault();
       apply({
         zoom: getState().zoom,
         stagePos: clampStagePos({
@@ -138,15 +150,17 @@ export function bindCanvasTouchViewport(
     syncGestureBases();
   }
 
-  root.addEventListener("pointerdown", onPointerDown);
-  root.addEventListener("pointermove", onPointerMove, { passive: false });
-  root.addEventListener("pointerup", onPointerUp);
-  root.addEventListener("pointercancel", onPointerUp);
+  const captureOpts = { capture: true };
+
+  root.addEventListener("pointerdown", onPointerDown, captureOpts);
+  root.addEventListener("pointermove", onPointerMove, { passive: false, capture: true });
+  root.addEventListener("pointerup", onPointerUp, captureOpts);
+  root.addEventListener("pointercancel", onPointerUp, captureOpts);
 
   return () => {
-    root.removeEventListener("pointerdown", onPointerDown);
-    root.removeEventListener("pointermove", onPointerMove);
-    root.removeEventListener("pointerup", onPointerUp);
-    root.removeEventListener("pointercancel", onPointerUp);
+    root.removeEventListener("pointerdown", onPointerDown, captureOpts);
+    root.removeEventListener("pointermove", onPointerMove, captureOpts);
+    root.removeEventListener("pointerup", onPointerUp, captureOpts);
+    root.removeEventListener("pointercancel", onPointerUp, captureOpts);
   };
 }

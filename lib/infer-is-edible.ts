@@ -62,3 +62,27 @@ export function applyEdibleFlag(plant: Plant): Plant {
     is_edible: inferIsEdibleFromPlant(plant),
   };
 }
+
+/** Catalog / seed filter — DB flag plus name, uses, tags, and food categories. */
+export function plantMatchesEdibleFilter(plant: {
+  common_name: string;
+  scientific_name: string;
+  uses?: string[];
+  tags?: string[];
+  category?: string;
+  is_edible?: boolean;
+  is_kitchen_essential?: boolean;
+}): boolean {
+  if (plant.is_kitchen_essential) return true;
+  return inferIsEdibleFromPlant(plant);
+}
+
+/** SQLite WHERE fragment for catalog edible_only browse. */
+export function sqliteCatalogEdibleClause(): string {
+  return `(is_edible = 1 OR is_kitchen_essential = 1 OR category IN ('Herb', 'Vegetable', 'Berry', 'Fruit Tree', 'Citrus', 'Tropical Fruit', 'Ground Cover'))`;
+}
+
+/** Postgres WHERE fragment for catalog edible_only browse. */
+export function pgCatalogEdibleClause(): string {
+  return `(is_edible = true OR is_kitchen_essential = true OR category IN ('Herb', 'Vegetable', 'Berry', 'Fruit Tree', 'Citrus', 'Tropical Fruit', 'Ground Cover'))`;
+}

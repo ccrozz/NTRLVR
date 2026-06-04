@@ -1301,6 +1301,56 @@ img {
   color: var(--brand);
 }
 
+.benefit-deep-read {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--brand) 6%, var(--bg-elevated));
+}
+
+.benefit-deep-read summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--brand);
+  list-style: none;
+  user-select: none;
+}
+
+.benefit-deep-read summary::-webkit-details-marker {
+  display: none;
+}
+
+.benefit-deep-read summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.benefit-deep-read[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.benefit-deep-read-body {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.benefit-deep-read-section p {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--ink-muted, var(--color-text-muted));
+  max-width: 68ch;
+}
+
+.benefit-deep-read-section p:last-child {
+  margin-bottom: 0;
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;

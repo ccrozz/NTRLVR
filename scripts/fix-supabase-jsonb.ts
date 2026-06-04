@@ -9,7 +9,8 @@ import { closeSql, normalizePgJsonbArrays } from "../db/postgres.js";
 loadEnv();
 
 async function main() {
-  if (!process.env.DATABASE_URL?.trim()) {
+  const { hasDatabaseUrl } = await import("../db/supabase-config.js");
+  if (!hasDatabaseUrl()) {
     console.error("Set DATABASE_URL in .env");
     process.exit(1);
   }

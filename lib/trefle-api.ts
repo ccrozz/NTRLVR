@@ -2,6 +2,7 @@
  * Server-side Trefle.io API — never import from the Vite client bundle.
  */
 import type { Plant, PlantSummary } from "../schema.js";
+import { plantToSummary } from "../db/plant-row.js";
 import { applyDesignerProfile } from "./designer-plant-profiles.js";
 import { mapDetailToPlant, mapListToPlant, plantIdFromTrefle } from "../trefle/map-plant.js";
 import { TrefleClient } from "../trefle/client.js";
@@ -93,23 +94,7 @@ export async function getFloridaNatives(): Promise<TrefleListPlant[]> {
 }
 
 export function mapTrefleListToSummary(item: TrefleListPlant): PlantSummary {
-  const plant = mapListToPlant(item);
-  return {
-    id: plant.id,
-    common_name: plant.common_name,
-    scientific_name: plant.scientific_name,
-    category: plant.category,
-    canopy_layer: plant.canopy_layer,
-    is_florida_native: plant.is_florida_native,
-    is_kitchen_essential: plant.is_kitchen_essential,
-    is_edible: plant.is_edible,
-    native_states: plant.native_states,
-    growing_zones: plant.florida_hardiness_zones,
-    canvas_radius_feet: plant.canvas_radius_feet,
-    image_url: plant.image_url,
-    tags: plant.tags,
-    is_invasive_in_florida: plant.is_invasive_in_florida,
-  };
+  return plantToSummary(mapListToPlant(item));
 }
 
 export function mapTrefleDetailToPlant(detail: TreflePlantDetail): Plant {

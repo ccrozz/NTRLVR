@@ -1,7 +1,24 @@
-export function usePostgres(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim());
+import { hasDatabaseUrl } from "./supabase-config.js";
+
+export function isVercelRuntime(): boolean {
+  return Boolean(process.env.VERCEL);
 }
 
-export function dbBackend(): "postgres" | "sqlite" {
+/** On Vercel, only Postgres — never SQLite (native module hangs serverless). */
+export function usePostgres(): boolean {
+  if (isVercelRuntime()) return hasDatabaseUrl();
+  return hasDatabaseUrl();
+}
+
+export function dbBackend(): "postgres" | "sqlite" | "unconfigured" {
+  if (isVercelRuntime() && !hasDatabaseUrl()) return "unconfigured";
   return usePostgres() ? "postgres" : "sqlite";
+}
+
+export function assertDatabaseConfigured(): void {
+  if (isVercelRuntime() && !hasDatabaseUrl()) {
+    throw new Error(
+      "DATABASE_URL is not set on Vercel. Add your Supabase pooler URI (port 6543, ?pgbouncer=true) in Project → Settings → Environment Variables.",
+    );
+  }
 }

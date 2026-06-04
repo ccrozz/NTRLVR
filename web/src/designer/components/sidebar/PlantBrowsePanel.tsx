@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDesignerStore } from "../../store/useDesignerStore";
+import { useMatchMedia } from "../../hooks/useMatchMedia";
+import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
+import { dedupePlantsById } from "@lib/plant-dedupe";
 import { usePlants } from "../../hooks/usePlants";
 import { FilterBar } from "./FilterBar";
 import { PlantCardDraggable } from "./PlantCardDraggable";
 import { LayerVisibilityPanel } from "./LayerVisibilityPanel";
 
 export function PlantBrowsePanel() {
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const searchQuery = useDesignerStore((s) => s.searchQuery);
   const setSearchQuery = useDesignerStore((s) => s.setSearchQuery);
   const categoryFilter = useDesignerStore((s) => s.categoryFilter);
@@ -30,7 +34,9 @@ export function PlantBrowsePanel() {
     fetchNextPage,
   } = usePlants(debounced, categoryFilter);
 
-  const plants = browseData?.pages.flatMap((p) => p.items) ?? [];
+  const plants = dedupePlantsById(
+    browseData?.pages.flatMap((p) => p.items) ?? [],
+  );
   const total = browseData?.pages[0]?.total ?? 0;
 
   useEffect(() => {
@@ -87,6 +93,11 @@ export function PlantBrowsePanel() {
       </div>
 
       <footer className="designer-sidebar-footer">
+        {isMobile && (
+          <p className="designer-mobile-drag-hint">
+            Hold the ⠿ grip, then drag onto the bed.
+          </p>
+        )}
         <LayerVisibilityPanel />
         {!browseLoading && total > 0 && (
           <p className="designer-sidebar-count">

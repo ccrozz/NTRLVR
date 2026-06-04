@@ -9,7 +9,7 @@ import {
   plantMatchesFoodForestGroup,
   plantIsNativeForDesignerState,
 } from "./food-forest-groups.js";
-import { getPlantById, listPlants } from "../db/plant-repository.js";
+import { getPlantsByIds, listPlants } from "../db/plant-repository.js";
 import { applyDesignerProfile } from "./designer-plant-profiles.js";
 import {
   designerStateConfig,
@@ -18,7 +18,11 @@ import {
   isDesignerStateCode,
 } from "./designer-states.js";
 import { plantSuitableForDesignerCatalog } from "./growing-zones.js";
-import { dedupePlantsByName } from "./plant-dedupe.js";
+import {
+  dedupeDesignerCatalogPlants,
+  dedupePlantsById,
+  isOtherStateDesignerId,
+} from "./plant-dedupe.js";
 
 function coalesceImageUrl(
   ...candidates: (string | null | undefined)[]
@@ -158,11 +162,15 @@ export async function listStateDesignerPlants(
   };
 
   const byId = new Map<string, Plant>();
-  const stateSeeds = designerSeedsForState(stateCode);
+  const stateSeeds = designerSeedsForState(stateCode).filter((seed) =>
+    seedMatchesFilters(seed, effective, stateCode),
+  );
+  const storedById = new Map(
+    (await getPlantsByIds(stateSeeds.map((s) => s.id))).map((p) => [p.id, p]),
+  );
 
   for (const seed of stateSeeds) {
-    if (!seedMatchesFilters(seed, effective, stateCode)) continue;
-    const stored = await getPlantById(seed.id);
+    const stored = storedById.get(seed.id);
     const plant: Plant = stored
       ? {
           ...seed,
@@ -190,7 +198,8 @@ export async function listStateDesignerPlants(
     byId.set(row.id, applyDesignerProfile(row));
   }
 
-  return dedupePlantsByName([...byId.values()]).sort((a, b) =>
-    a.common_name.localeCompare(b.common_name),
+  const merged = dedupePlantsById([...byId.values()]).filter(
+    (p) => !isOtherStateDesignerId(p.id, stateCode),
   );
+  return dedupeDesignerCatalogPlants(merged, stateCode);
 }

@@ -1,6 +1,11 @@
 # Supabase + Vercel deployment
 
-Naturelover uses **SQLite** locally and **PostgreSQL (Supabase)** in production on Vercel. The API reads `DATABASE_URL`; if it is unset, the app uses `data/naturelover.db`.
+Naturelover uses **SQLite** locally and **Supabase** in production on Vercel:
+
+- **`DATABASE_URL`** — Postgres connection (transaction pooler on Vercel) for plant queries via `postgres`
+- **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`** — server admin API (health check, bypasses RLS)
+
+If `DATABASE_URL` is unset, the app uses `data/naturelover.db`.
 
 ## 1. Create Supabase project
 
@@ -56,16 +61,21 @@ This copies all rows from `data/naturelover.db` into Supabase. Local scripts (`n
 
 | Variable | Value |
 |----------|--------|
-| `DATABASE_URL` | Supabase transaction pooler URI (above) |
+| `DATABASE_URL` | Optional if Vercel sets `POSTGRES_URL` from the Supabase integration |
+| `POSTGRES_URL` | Auto-set by Vercel ↔ Supabase link (used when `DATABASE_URL` is empty) |
+| `SUPABASE_URL` | Optional — `https://[project-ref].supabase.co` (inferred from `DATABASE_URL` if omitted) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional for browse; only needed for admin tooling |
 | `ANTHROPIC_API_KEY` | Optional — AI garden layout / companion reasons |
 | `TREFLE_API_TOKEN` | Optional — live Trefle search |
+
+Vercel’s Supabase integration may set `POSTGRES_URL` instead of `DATABASE_URL`; the app accepts both. `SUPABASE_URL` can be omitted if `DATABASE_URL` uses `db.[ref].supabase.co` — the project ref is inferred.
 
 3. Build settings (already in `vercel.json`):
    - Build: `npm run build:vercel`
    - Output: `web/dist`
-   - API: `api/[[...path]].ts` (Hono catch-all — handles `/api/health`, `/api/plants`, etc.)
+   - API: `api/[...path].ts` → `server/app.ts` (one Node function; must export `{ fetch }`, not a function that returns `Response`)
 
-4. After deploy, set the Vite API base if needed. The web app uses `VITE_API_URL` (empty = same origin; `/api` rewrites to the function).
+4. **No separate API host.** Leave `VITE_API_URL` unset in Vercel so the SPA calls same-origin `/api/...`. Use `npm run dev` locally (Vite proxies `/api` → `localhost:3001`).
 
 ## 5. Verify
 
@@ -74,9 +84,25 @@ This copies all rows from `data/naturelover.db` into Supabase. Local scripts (`n
 
 ## Troubleshooting
 
+### `/api/health` or `/api/plants` pending / timeout
+
+- **`GET /api/plants`** — public catalog (DB + seed overlay)
+- **`GET /api/designer/plants`** — designer (`data/` seeds + filtered DB via `listStateDesignerPlants`)
+- **`GET /api/health`** — Postgres plant count
+
+All API routes use one serverless function (`api/[...path].ts` → `server/app.ts`). Vercel must **include** `data/**` in the function bundle (see `includeFiles` in `vercel.json`). Do not exclude `data/**`. Do not add extra `api/plants.ts` files — they become separate functions and often break.
+
+### `default export returned a Response` / 60s timeout
+
+The catch-all must use Vercel’s Web handler shape: `export default { fetch(request) { … } }`. A default function that returns `Response` (including `handle(app)` from `hono/vercel`) is treated as legacy Node `(req, res)` — the response is **ignored** and the invocation times out at `maxDuration`.
+
+### Plants empty in the UI but Network shows 304 on `/api/plants`
+
+The SPA rewrite was serving **`index.html`** for `/api/*` (HTML + `etag`, so the browser cached **304** with no JSON). `vercel.json` must **not** rewrite `/api/*` to `index.html` (use a negative lookahead, e.g. `/((?!api/).*)` → `/index.html`). Redeploy, then confirm: `curl https://your-app.vercel.app/api/ping` returns JSON, not HTML.
+
 ### `/api/health` blank or times out
 
-1. **Redeploy** with latest code (`api/[[...path]].ts` catch-all — old `api/index.ts` only handled `/api` exactly).
+1. **Redeploy** with latest code (`api/[...path].ts` with `{ fetch }` export).
 2. Try **`/api/ping` first** — should return JSON instantly. If ping works but health fails, `DATABASE_URL` / Supabase is the issue.
 3. **Redeploy** after setting `DATABASE_URL` (pooler, port 6543, `?pgbouncer=true`, real password).
 4. Check **Vercel → Deployments → Functions → Logs**.
@@ -94,7 +120,7 @@ Run `npm run db:fix:supabase-json` locally, then confirm `npm run db:status:supa
 | Mode | Config |
 |------|--------|
 | SQLite (default) | Omit `DATABASE_URL`; run `npm run dev` |
-| Supabase locally | Set `DATABASE_URL` in `.env`; API uses Postgres |
+| Supabase locally | Set `DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `SUPABASE_URL` in `.env` |
 
 ## Notes
 

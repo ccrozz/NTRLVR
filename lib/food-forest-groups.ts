@@ -1,4 +1,5 @@
 import type { Plant, PlantCategory } from "../schema.js";
+import { plantIsNativeToState } from "./plant-native-status.js";
 import type { DesignerStateCode } from "./designer-states.js";
 import { designerStateConfig } from "./designer-states.js";
 
@@ -34,16 +35,7 @@ export function plantIsNativeForDesignerState(
   plant: Plant,
   stateCode: string,
 ): boolean {
-  const st = stateCode.toUpperCase();
-  if (plant.native_states.some((s) => s.toUpperCase() === st)) return true;
-  if (
-    st === "FL" &&
-    plant.is_florida_native &&
-    plant.native_states.length === 0
-  ) {
-    return true;
-  }
-  return false;
+  return plantIsNativeToState(plant, stateCode);
 }
 
 const FRUIT_TREE_CATEGORIES: PlantCategory[] = [
@@ -69,6 +61,61 @@ function hasGuild(plant: Plant, fn: string): boolean {
   );
 }
 
+/** Minimal fields to test the designer “Fruit trees” group (Build For Me canvas picks). */
+export type FruitTreeMatchInput = {
+  category: PlantCategory;
+  tags?: string[];
+  is_edible?: boolean;
+  is_kitchen_essential?: boolean;
+  is_florida_native?: boolean;
+  native_states?: string[];
+};
+
+export function matchesFruitTreesGroup(
+  plant: FruitTreeMatchInput,
+  stateCode: DesignerStateCode | string = "FL",
+): boolean {
+  const tags = plant.tags ?? [];
+  const hasTagLoose = (tag: string) =>
+    tags.some((t) => t.toLowerCase() === tag.toLowerCase());
+
+  if (!FRUIT_TREE_CATEGORIES.includes(plant.category)) return false;
+  if (hasTagLoose("landscape")) return false;
+  if (
+    plant.category === "Palm" &&
+    !plant.is_edible &&
+    !plant.is_kitchen_essential
+  ) {
+    return false;
+  }
+  const nativeStates = plant.native_states ?? [];
+  const isNative =
+    nativeStates.some((s) => s.toUpperCase() === stateCode.toUpperCase()) ||
+    (stateCode.toUpperCase() === "FL" &&
+      Boolean(plant.is_florida_native) &&
+      nativeStates.length === 0);
+  if (!plant.is_edible && isNative) return false;
+  return true;
+}
+
+/** Catalog / layout row with category + edible (+ optional native). */
+export function catalogRowIsFoodForestTree(
+  row: { category: string; edible?: boolean; native?: boolean },
+  stateCode: DesignerStateCode | string = "FL",
+): boolean {
+  return matchesFruitTreesGroup(
+    {
+      category: row.category as PlantCategory,
+      tags: [],
+      is_edible: row.edible ?? false,
+      is_kitchen_essential: false,
+      is_florida_native: row.native ?? false,
+      native_states: row.native ? [String(stateCode)] : [],
+    },
+    stateCode,
+  );
+}
+
 export function plantMatchesFoodForestGroup(
   plant: Plant,
   group: FoodForestGroup,
@@ -76,24 +123,17 @@ export function plantMatchesFoodForestGroup(
 ): boolean {
   switch (group) {
     case "fruit_trees":
-      if (!FRUIT_TREE_CATEGORIES.includes(plant.category)) return false;
-      if (hasTag(plant, "landscape")) return false;
-      // Trefle maps any Arecaceae (e.g. Bactris) as Palm — only food palms here
-      if (
-        plant.category === "Palm" &&
-        !plant.is_edible &&
-        !plant.is_kitchen_essential
-      ) {
-        return false;
-      }
-      // Native timber/ornamental trees mis-tagged as fruit (legacy FL imports)
-      if (
-        !plant.is_edible &&
-        plantIsNativeForDesignerState(plant, stateCode)
-      ) {
-        return false;
-      }
-      return true;
+      return matchesFruitTreesGroup(
+        {
+          category: plant.category,
+          tags: plant.tags,
+          is_edible: plant.is_edible,
+          is_kitchen_essential: plant.is_kitchen_essential,
+          is_florida_native: plant.is_florida_native,
+          native_states: plant.native_states,
+        },
+        stateCode,
+      );
     case "fruits_vegetables":
       return PRODUCE_CATEGORIES.includes(plant.category);
     case "vines":

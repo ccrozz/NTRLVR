@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { createPortal } from "react-dom";
 import type { DesignerCanvasHandle } from "./DesignerCanvas";
 import {
   clampPanelPosition,
@@ -6,26 +14,19 @@ import {
 } from "../../hooks/useFloatingPanelPosition";
 import { MOBILE_LAYOUT_QUERY, useMatchMedia } from "../../hooks/useMatchMedia";
 import {
-  defaultMobileToolbarPosition,
+  defaultMobileHeaderToolbarPosition,
   loadToolbarExpanded,
   saveToolbarExpanded,
 } from "../../lib/toolbar-dock-prefs";
 import { useDesignerStore } from "../../store/useDesignerStore";
 
-const TOOLBAR_POS_KEY = "ntr-toolbar-pos";
+const MOBILE_TOOLBAR_POS_KEY = "ntr-toolbar-header-pos";
 
-function UndoIcon() {
+function IconUndo() {
   return (
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
       <path
-        d="M9 7H5v4"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 11c1.5-3.5 4.8-6 9-6 5 0 8 4 8 8s-3 8-8 8c-3.2 0-5.8-1.6-7.2-4"
+        d="M9 7H5v4M5 11c1.5-3.5 4.8-6 9-6 5 0 8 4 8 8s-3 8-8 8c-3.2 0-5.8-1.6-7.2-4"
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinecap="round"
@@ -35,18 +36,11 @@ function UndoIcon() {
   );
 }
 
-function RedoIcon() {
+function IconRedo() {
   return (
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
       <path
-        d="M15 7h4v4"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M19 11c-1.5-3.5-4.8-6-9-6-5 0-8 4-8 8s3 8 8 8c3.2 0 5.8-1.6 7.2-4"
+        d="M15 7h4v4M19 11c-1.5-3.5-4.8-6-9-6-5 0-8 4-8 8s3 8 8 8c3.2 0 5.8-1.6 7.2-4"
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinecap="round"
@@ -56,54 +50,157 @@ function RedoIcon() {
   );
 }
 
-function ToolsIcon() {
+function IconGrid() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
       <path
-        d="M14.7 6.3a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0l-1.1 1.1M8.5 10.5 4 15v4h4l4.5-4.5M16.5 7.5l2-2M10 14l-1.5 1.5"
+        d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z"
         stroke="currentColor"
         strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+function IconDots() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
+      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="12"
+      height="12"
+      fill="none"
+      aria-hidden
+      className={`designer-toolbar-chevron${open ? " is-open" : ""}`}
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M12 20v-4M4 12H2M22 12h-2M12 4V2M12 22v-2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
     </svg>
+  );
+}
+
+function ToolbarBtn({
+  label,
+  title,
+  active,
+  disabled,
+  onClick,
+  children,
+  className = "",
+}: {
+  label: string;
+  title?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={`designer-toolbar-btn${active ? " is-active" : ""}${className ? ` ${className}` : ""}`}
+      title={title ?? label}
+      aria-label={label}
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children ?? label}
+    </button>
+  );
+}
+
+function PopoverItem({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className={`designer-toolbar-popover-item${active ? " is-active" : ""}`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
   );
 }
 
 export function CanvasToolbar({
   canvasRef,
+  mobileBoundsRef,
 }: {
   canvasRef: RefObject<DesignerCanvasHandle | null>;
+  mobileBoundsRef?: RefObject<HTMLDivElement | null>;
 }) {
   const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
   const [dockExpanded, setDockExpanded] = useState(() =>
-    loadToolbarExpanded(false),
+    loadToolbarExpanded(isMobile),
   );
 
-  const boundsRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const fallbackBoundsRef = useRef<HTMLDivElement>(null);
+  const boundsRef = mobileBoundsRef ?? fallbackBoundsRef;
 
   const { panelRef, position, setPosition, dragHandleProps } =
-    useFloatingPanelPosition(TOOLBAR_POS_KEY, { x: 12, y: 80 }, boundsRef);
+    useFloatingPanelPosition(
+      MOBILE_TOOLBAR_POS_KEY,
+      { x: 12, y: 10 },
+      boundsRef,
+    );
+
+  useEffect(() => {
+    setDockExpanded(loadToolbarExpanded(isMobile));
+    setMoreOpen(false);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!isMobile) return;
     try {
-      if (localStorage.getItem(TOOLBAR_POS_KEY)) return;
+      if (localStorage.getItem(MOBILE_TOOLBAR_POS_KEY)) return;
     } catch {
       /* ignore */
     }
     const bounds = boundsRef.current;
     if (!bounds) return;
-    setPosition(defaultMobileToolbarPosition(bounds));
-  }, [isMobile, setPosition]);
+    setPosition(defaultMobileHeaderToolbarPosition(bounds));
+  }, [isMobile, boundsRef, setPosition]);
 
   useEffect(() => {
     if (!isMobile || !boundsRef.current || !panelRef.current) return;
@@ -115,10 +212,40 @@ export function CanvasToolbar({
     if (clamped.x !== position.x || clamped.y !== position.y) {
       setPosition(clamped);
     }
-  }, [isMobile, dockExpanded, menuOpen, position, panelRef, setPosition]);
+  }, [isMobile, dockExpanded, moreOpen, position, panelRef, boundsRef, setPosition]);
+
+  useLayoutEffect(() => {
+    if (!moreOpen || isMobile || !moreBtnRef.current) return;
+    const rect = moreBtnRef.current.getBoundingClientRect();
+    setPopoverPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+    });
+  }, [moreOpen, isMobile, dockExpanded]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      const t = e.target as Node;
+      if (moreBtnRef.current?.contains(t)) return;
+      if (popoverRef.current?.contains(t)) return;
+      if (panelRef.current?.contains(t)) return;
+      setMoreOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMoreOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [moreOpen, panelRef]);
 
   const zoom = useDesignerStore((s) => s.zoom);
   const setZoom = useDesignerStore((s) => s.setZoom);
+  const requestCanvasFit = useDesignerStore((s) => s.requestCanvasFit);
   const undo = useDesignerStore((s) => s.undo);
   const redo = useDesignerStore((s) => s.redo);
   const canUndo = useDesignerStore((s) => s.history.length > 0);
@@ -138,25 +265,26 @@ export function CanvasToolbar({
 
   function setExpanded(next: boolean) {
     setDockExpanded(next);
-    saveToolbarExpanded(next);
-    if (!next) setMenuOpen(false);
+    saveToolbarExpanded(next, isMobile);
+    if (!next) setMoreOpen(false);
   }
 
   function uploadPhoto() {
+    setMoreOpen(false);
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
-      const url = URL.createObjectURL(file);
-      setBackgroundImage(url);
+      setBackgroundImage(URL.createObjectURL(file));
       setCanvasMode("photo");
     };
     input.click();
   }
 
   function exportPng() {
+    setMoreOpen(false);
     const data = canvasRef.current?.exportPng();
     if (!data) return;
     const a = document.createElement("a");
@@ -165,224 +293,233 @@ export function CanvasToolbar({
     a.click();
   }
 
+  function openBuild() {
+    setMoreOpen(false);
+    window.dispatchEvent(new CustomEvent("ntr-open-auto-fill"));
+  }
+
+  function toggleSpace() {
+    const next = !workspacePanelOpen;
+    setWorkspacePanelOpen(next);
+    setMoreOpen(false);
+    if (next && !isMobile) setExpanded(false);
+  }
+
+  const morePopover = moreOpen && !isMobile && (
+    <div
+      ref={popoverRef}
+      id="designer-toolbar-more"
+      className="designer-toolbar-popover"
+      role="menu"
+      style={{ top: popoverPos.top, left: popoverPos.left }}
+    >
+      <PopoverItem
+        label="Beds & space"
+        active={workspacePanelOpen}
+        onClick={toggleSpace}
+      />
+      <PopoverItem label="Build for me" onClick={openBuild} />
+      <div className="designer-toolbar-popover-divider" />
+      <PopoverItem
+        label={showRuler ? "Hide foot grid" : "Show foot grid"}
+        active={showRuler}
+        onClick={() => setShowRuler(!showRuler)}
+      />
+      <PopoverItem
+        label={compactCanvasVisuals ? "Full plant rings" : "Simple plant dots"}
+        active={compactCanvasVisuals}
+        onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
+      />
+      <PopoverItem
+        label={
+          canvasView === "cross-section" ? "Top-down view" : "Side profile"
+        }
+        active={canvasView === "cross-section"}
+        onClick={() =>
+          setCanvasView(
+            canvasView === "cross-section" ? "top-down" : "cross-section",
+          )
+        }
+      />
+      <div className="designer-toolbar-popover-divider" />
+      <PopoverItem label="Yard photo" onClick={uploadPhoto} />
+      <PopoverItem label="Save as PNG" onClick={exportPng} />
+    </div>
+  );
+
+  const desktopBar = (
+    <div className="designer-toolbar-strip" role="toolbar" aria-label="Canvas tools">
+      <ToolbarBtn label="Zoom out" onClick={() => setZoom(zoom - 0.1)}>
+        −
+      </ToolbarBtn>
+      <ToolbarBtn label="Zoom in" onClick={() => setZoom(zoom + 0.1)}>
+        +
+      </ToolbarBtn>
+      <ToolbarBtn
+        label="Fit view"
+        title="Center beds and plants"
+        onClick={() => requestCanvasFit()}
+      >
+        Fit
+      </ToolbarBtn>
+      <span className="designer-toolbar-strip-divider" aria-hidden />
+      <ToolbarBtn
+        label="Undo"
+        title="Undo (⌘Z)"
+        disabled={!canUndo}
+        onClick={undo}
+      >
+        <IconUndo />
+      </ToolbarBtn>
+      <ToolbarBtn
+        label="Redo"
+        title="Redo (⌘⇧Z)"
+        disabled={!canRedo}
+        onClick={redo}
+      >
+        <IconRedo />
+      </ToolbarBtn>
+      <span className="designer-toolbar-strip-divider" aria-hidden />
+      <ToolbarBtn
+        label="Foot grid"
+        title="Toggle foot grid"
+        active={showRuler}
+        onClick={() => setShowRuler(!showRuler)}
+      >
+        <IconGrid />
+      </ToolbarBtn>
+      <button
+        ref={moreBtnRef}
+        type="button"
+        className={`designer-toolbar-btn${moreOpen ? " is-active" : ""}`}
+        title="More options"
+        aria-label="More options"
+        aria-expanded={moreOpen}
+        aria-haspopup="menu"
+        onClick={() => setMoreOpen((v) => !v)}
+      >
+        <IconDots />
+      </button>
+      <ToolbarBtn
+        label="Hide tools"
+        title="Hide tools"
+        onClick={() => setExpanded(false)}
+      >
+        <IconClose />
+      </ToolbarBtn>
+    </div>
+  );
+
   const mobileStyle = isMobile
     ? { left: position.x, top: position.y }
     : undefined;
 
+  const mobilePanel = (
+    <div className="designer-toolbar-mobile-sheet">
+      <header className="designer-toolbar-mobile-head">
+        <div
+          role="button"
+          tabIndex={0}
+          className="designer-toolbar-drag-grip"
+          aria-label="Drag tools"
+          title="Drag to move"
+          {...dragHandleProps}
+        >
+          ⠿
+        </div>
+        <span className="designer-toolbar-mobile-title">Canvas tools</span>
+        <ToolbarBtn label="Hide tools" onClick={() => setExpanded(false)}>
+          <IconClose />
+        </ToolbarBtn>
+      </header>
+      <div className="designer-toolbar-mobile-actions">
+        <ToolbarBtn label="Undo" disabled={!canUndo} onClick={undo}>
+          <IconUndo />
+        </ToolbarBtn>
+        <ToolbarBtn label="Redo" disabled={!canRedo} onClick={redo}>
+          <IconRedo />
+        </ToolbarBtn>
+        <ToolbarBtn
+          label="Grid"
+          active={showRuler}
+          onClick={() => setShowRuler(!showRuler)}
+        >
+          <IconGrid />
+        </ToolbarBtn>
+        <ToolbarBtn
+          label="More"
+          active={moreOpen}
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <IconDots />
+        </ToolbarBtn>
+      </div>
+      {moreOpen && (
+        <div className="designer-toolbar-mobile-more" role="menu">
+          <PopoverItem
+            label="Beds & space"
+            active={workspacePanelOpen}
+            onClick={toggleSpace}
+          />
+          <PopoverItem label="Build for me" onClick={openBuild} />
+          <PopoverItem
+            label={compactCanvasVisuals ? "Full rings" : "Simple dots"}
+            active={compactCanvasVisuals}
+            onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
+          />
+          <PopoverItem
+            label={
+              canvasView === "cross-section" ? "Top-down" : "Side profile"
+            }
+            active={canvasView === "cross-section"}
+            onClick={() =>
+              setCanvasView(
+                canvasView === "cross-section" ? "top-down" : "cross-section",
+              )
+            }
+          />
+          <PopoverItem label="Yard photo" onClick={uploadPhoto} />
+          <PopoverItem label="Save PNG" onClick={exportPng} />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
-      {isMobile && (
-        <div ref={boundsRef} className="designer-toolbar-bounds" aria-hidden />
-      )}
       <div
         ref={panelRef as React.Ref<HTMLDivElement>}
-        className={`designer-canvas-dock designer-toolbar${menuOpen ? " is-open" : ""}${isMobile ? " designer-toolbar--mobile-float" : ""}${isMobile && !dockExpanded ? " designer-toolbar--collapsed" : ""}`}
+        className={[
+          "designer-canvas-dock",
+          "designer-toolbar",
+          isMobile
+            ? "designer-toolbar--mobile designer-toolbar--mobile-header"
+            : "designer-toolbar--desktop",
+          dockExpanded ? "is-expanded" : "is-collapsed",
+        ].join(" ")}
         style={mobileStyle}
       >
-        {isMobile && !dockExpanded ? (
-          <div className="designer-toolbar-collapsed">
-            <div
-              role="button"
-              tabIndex={0}
-              className="designer-toolbar-drag-grip"
-              aria-label="Drag canvas tools"
-              title="Drag to move"
-              {...dragHandleProps}
-            >
-              <span aria-hidden>⠿</span>
-            </div>
-            <button
-              type="button"
-              className="designer-toolbar-fab"
-              aria-label="Open canvas tools"
-              aria-expanded={false}
-              title="Canvas tools"
-              onClick={() => setExpanded(true)}
-            >
-              <ToolsIcon />
-            </button>
-          </div>
+        {!dockExpanded ? (
+          <button
+            type="button"
+            className="designer-toolbar-trigger"
+            aria-label="Show canvas tools"
+            onClick={() => setExpanded(true)}
+          >
+            <span>Tools</span>
+            <IconChevron open={false} />
+          </button>
+        ) : isMobile ? (
+          mobilePanel
         ) : (
-          <>
-            <div className="designer-canvas-dock-pill designer-toolbar-pill">
-              {isMobile && (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="designer-toolbar-drag-grip designer-toolbar-drag-grip--inline"
-                  aria-label="Drag canvas tools"
-                  title="Drag to move"
-                  {...dragHandleProps}
-                >
-                  <span aria-hidden>⠿</span>
-                </div>
-              )}
-              <span className="designer-canvas-dock-icon designer-toolbar-icon">
-                <ToolsIcon />
-              </span>
-              <div
-                className="designer-toolbar-quick"
-                role="group"
-                aria-label="Quick canvas controls"
-              >
-                <button
-                  type="button"
-                  className="designer-toolbar-quick-btn"
-                  title="Zoom in"
-                  aria-label="Zoom in"
-                  onClick={() => setZoom(zoom + 0.1)}
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  className="designer-toolbar-quick-btn"
-                  title="Zoom out"
-                  aria-label="Zoom out"
-                  onClick={() => setZoom(zoom - 0.1)}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  className="designer-toolbar-quick-btn designer-toolbar-quick-btn--text"
-                  onClick={() => canvasRef.current?.centerOnContent()}
-                  title="Pan to center your space and plants"
-                >
-                  Center
-                </button>
-                <button
-                  type="button"
-                  className="designer-toolbar-quick-btn designer-toolbar-quick-btn--icon"
-                  onClick={undo}
-                  disabled={!canUndo}
-                  title="Undo (⌘Z)"
-                  aria-label="Undo"
-                >
-                  <UndoIcon />
-                </button>
-                <button
-                  type="button"
-                  className="designer-toolbar-quick-btn designer-toolbar-quick-btn--icon"
-                  onClick={redo}
-                  disabled={!canRedo}
-                  title="Redo (⌘⇧Z)"
-                  aria-label="Redo"
-                >
-                  <RedoIcon />
-                </button>
-              </div>
-              {isMobile ? (
-                <button
-                  type="button"
-                  className="designer-toolbar-collapse"
-                  aria-label="Collapse canvas tools"
-                  title="Hide tools"
-                  onClick={() => setExpanded(false)}
-                >
-                  ×
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className={`designer-toolbar-menu-toggle${menuOpen ? " is-open" : ""}`}
-                aria-expanded={menuOpen}
-                aria-controls="designer-toolbar-menu"
-                aria-label={menuOpen ? "Close more tools" : "More canvas tools"}
-                title={menuOpen ? "Close menu" : "More tools"}
-                onClick={() => setMenuOpen((v) => !v)}
-              >
-                <span className="designer-toolbar-dots" aria-hidden>
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </button>
-            </div>
-
-            {menuOpen && (
-              <div
-                id="designer-toolbar-menu"
-                className="designer-canvas-dock-menu designer-toolbar-menu"
-                role="menu"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={`designer-canvas-dock-menu-item${workspacePanelOpen ? " is-active" : ""}`}
-                  onClick={() => {
-                    const next = !workspacePanelOpen;
-                    setWorkspacePanelOpen(next);
-                    if (next) setMenuOpen(false);
-                  }}
-                >
-                  Your garden space
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="designer-canvas-dock-menu-item"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("ntr-open-auto-fill"));
-                  }}
-                >
-                  Build your garden
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={`designer-canvas-dock-menu-item${showRuler ? " is-active" : ""}`}
-                  onClick={() => setShowRuler(!showRuler)}
-                  title="Foot grid and scale bar"
-                >
-                  {showRuler ? "Hide grid" : "Foot grid"}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={`designer-canvas-dock-menu-item${compactCanvasVisuals ? " is-active" : ""}`}
-                  onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
-                  title="Simple plant icons vs full canopy rings"
-                >
-                  {compactCanvasVisuals ? "Show canopy rings" : "Simple icons"}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="designer-canvas-dock-menu-item"
-                  onClick={uploadPhoto}
-                >
-                  Yard photo
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="designer-canvas-dock-menu-item"
-                  onClick={exportPng}
-                >
-                  Export PNG
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={`designer-canvas-dock-menu-item${canvasView === "cross-section" ? " is-active" : ""}`}
-                  onClick={() =>
-                    setCanvasView(
-                      canvasView === "cross-section"
-                        ? "top-down"
-                        : "cross-section",
-                    )
-                  }
-                  title="Side profile of vertical plant stacking"
-                >
-                  Cross section
-                </button>
-              </div>
-            )}
-          </>
+          desktopBar
         )}
       </div>
+      {morePopover &&
+        createPortal(
+          morePopover,
+          document.querySelector(".designer-root") ?? document.body,
+        )}
     </>
   );
 }

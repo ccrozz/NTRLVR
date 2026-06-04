@@ -1,5 +1,6 @@
 import type { DesignerStateCode } from "./designer-states.js";
 import { designerStateConfig } from "./designer-states.js";
+import { plantMatchesStateCatalog } from "./plant-state-filter.js";
 import { plantZonesOverlapState } from "./us-states.js";
 import type { Plant } from "../schema.js";
 import {
@@ -24,18 +25,7 @@ export function stateTag(stateCode: DesignerStateCode): string {
 }
 
 export function plantGrowsInState(plant: Plant, stateCode: DesignerStateCode): boolean {
-  const zones = plant.florida_hardiness_zones ?? [];
-  if (zones.length && plantZonesOverlapState(zones, stateCode)) return true;
-  const st = stateCode.toUpperCase();
-  if (plant.native_states.some((s) => s.toUpperCase() === st)) return true;
-  if (
-    st === "FL" &&
-    plant.is_florida_native &&
-    plant.native_states.length === 0
-  ) {
-    return true;
-  }
-  return false;
+  return plantMatchesStateCatalog(plant, stateCode);
 }
 
 export function tagPlantForState(
@@ -46,18 +36,13 @@ export function tagPlantForState(
   const tags = new Set(plant.tags ?? []);
   tags.add("food-forest");
   tags.add(tag);
-  const native = new Set(plant.native_states ?? []);
-  if (plant.is_florida_native && stateCode === "FL") native.add("FL");
   return {
     ...plant,
     tags: [...tags],
-    native_states: native.size ? [...native] : [stateCode],
+    native_states: plant.native_states ?? [],
     grows_in_us: true,
     is_florida_native:
-      stateCode === "FL"
-        ? plant.is_florida_native ||
-          plant.native_states.includes("FL")
-        : false,
+      stateCode === "FL" ? plant.is_florida_native : false,
   };
 }
 

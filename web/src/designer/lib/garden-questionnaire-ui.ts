@@ -31,13 +31,13 @@ export const GARDEN_STYLE_OPTIONS: {
     id: "pollinator",
     title: "Pollinator garden",
     description:
-      "Flowers and friendly plants for bees, butterflies, and birds — still can include some food.",
+      "Perennial and annual flowers, flowering herbs, and nectar plants for bees, butterflies, and birds.",
   },
   {
     id: "visual",
     title: "Visual garden",
     description:
-      "A space that looks gorgeous from the window or patio — with some edible plants tucked in.",
+      "Ornamental flowers, foliage, and landscape plants — beauty first, no fruit trees.",
   },
   {
     id: "easy_care",

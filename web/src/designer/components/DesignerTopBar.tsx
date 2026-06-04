@@ -33,7 +33,29 @@ export function DesignerTopBar({
           aria-label={helpOpen ? "Hide instructions" : "Show how to use the designer"}
           title="How to use the designer"
         >
-          ?
+          <svg
+            className="designer-top-help-icon"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            aria-hidden
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke="currentColor"
+              strokeWidth="1.75"
+            />
+            <path
+              d="M9.5 9.25a2.5 2.5 0 0 1 4.6 1.15c0 1.35-1.35 1.6-2.1 2.05-.55.35-.75.7-.75 1.3v.25"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+            />
+            <circle cx="12" cy="16.75" r="1" fill="currentColor" />
+          </svg>
         </button>
       </div>
     </header>

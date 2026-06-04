@@ -1,4 +1,7 @@
 import type { GuildFunction, Plant } from "../schema.js";
+import { effectiveIsFloridaNative } from "./plant-native-status.js";
+import { isWikiDump } from "./wiki-text.js";
+import { sanitizeNativeOriginLabel } from "./native-origin.js";
 
 const PLACEHOLDER_BENEFIT_RE =
   /^(learn more|see also|read more|https?:\/\/|wikipedia\.org)/i;
@@ -35,6 +38,7 @@ export function sanitizeBenefits(benefits: string[]): string[] {
       (b) =>
         b.length > 8 &&
         b.length < 220 &&
+        !isWikiDump(b) &&
         !PLACEHOLDER_BENEFIT_RE.test(b) &&
         !/^table\)?\.?$/i.test(b),
     );
@@ -86,8 +90,11 @@ export function inferBenefitsFromPlant(plant: Plant): string[] {
     benefits.push("Support species that strengthens the whole guild");
   }
 
-  if (plant.is_florida_native) {
-    benefits.push("Florida native — low maintenance and adapted to local climate");
+  const originLabel = sanitizeNativeOriginLabel(plant.native_origin);
+  if (originLabel) {
+    benefits.push(originLabel);
+  } else if (effectiveIsFloridaNative(plant)) {
+    benefits.push("Native to Florida — adapted to local climate");
   }
 
   if (plant.water_needs === "Drought Tolerant") {

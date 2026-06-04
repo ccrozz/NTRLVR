@@ -16,6 +16,8 @@ function whyForPlant(
   if (priority === 1) {
     if (style === "kitchen_garden") return "Core crop for your kitchen garden";
     if (style === "pollinator") return "Pollinator magnet — plant early";
+    if (style === "visual") return "Showpiece — sets the look of the bed";
+    if (style === "food_forest") return "Canopy anchor — fruit tree for your food forest";
     return "Anchor for your guild structure";
   }
   const layer = plant.canopy_layer;
@@ -29,7 +31,22 @@ function whyForPlant(
   return "Supports diversity and resilience in the bed";
 }
 
-function placementNote(plant: PlantListItem): string {
+function placementNote(
+  plant: PlantListItem,
+  style: GardenStyle | undefined,
+): string {
+  if (style === "food_forest") {
+    return "Placed as a canopy tree — drag shrubs and herbs from Browse Plants underneath.";
+  }
+  if (style === "kitchen_garden") {
+    return "Kitchen-bed placement — keep harvest paths clear and sun on your crops.";
+  }
+  if (style === "pollinator") {
+    return "Group with other nectar plants so pollinators find the bed quickly.";
+  }
+  if (style === "visual") {
+    return "Place where it reads from the patio or window — color and height matter.";
+  }
   switch (plant.canopy_layer) {
     case "Overstory":
       return "Place toward the north or west edge so shade falls where you want it.";
@@ -98,7 +115,7 @@ export function buildRecommendationMeta(
         plant_id: id,
         priority,
         why: whyForPlant(plant, priority, style),
-        placement_note: placementNote(plant),
+        placement_note: placementNote(plant, style),
       };
     })
     .filter((x): x is RecommendedPlantMeta => x != null);

@@ -1,3 +1,8 @@
+import {
+  isDesignerStateCode,
+  type DesignerStateCode,
+} from "./designer-states.js";
+
 /** Keep first occurrence of each id, preserving order. */
 export function dedupeOrderedIds(ids: string[]): string[] {
   const seen = new Set<string>();
@@ -98,6 +103,50 @@ export function dedupeOrderedIdsByName(
   return dedupeOrderedIds(out);
 }
 
+/** Designer state catalogs: keep every curated id (cultivars share species). */
+export function dedupePlantsById<T extends { id: string }>(plants: T[]): T[] {
+  const byId = new Map<string, T>();
+  for (const p of plants) {
+    const prev = byId.get(p.id);
+    byId.set(p.id, prev ? preferPlantRecord(prev, p) : p);
+  }
+  return [...byId.values()];
+}
+
+/** Prefer state curated ids when collapsing catalog duplicates for that state. */
+export function preferCatalogPlant<T extends PlantLike>(
+  a: T,
+  b: T,
+  stateCode?: string,
+): T {
+  if (stateCode && isDesignerStateCode(stateCode)) {
+    return preferDesignerPlantForState(a, b, stateCode);
+  }
+  return preferPlantRecord(a, b);
+}
+
+/** One row per species for public catalog browse (CT/TN/FL seeds + DB). */
+export function dedupeCatalogPlants<T extends PlantLike>(
+  plants: T[],
+  stateCode?: string,
+): T[] {
+  const bySpecies = new Map<string, T>();
+  const order: string[] = [];
+
+  for (const p of plants) {
+    const key = speciesDedupKey(p.common_name, p.scientific_name);
+    const prev = bySpecies.get(key);
+    if (!prev) {
+      bySpecies.set(key, p);
+      order.push(key);
+    } else {
+      bySpecies.set(key, preferCatalogPlant(prev, p, stateCode));
+    }
+  }
+
+  return order.map((key) => bySpecies.get(key)!);
+}
+
 export function dedupePlantsByName<T extends PlantLike>(plants: T[]): T[] {
   const bySpecies = new Map<string, T>();
   const order: string[] = [];
@@ -114,4 +163,67 @@ export function dedupePlantsByName<T extends PlantLike>(plants: T[]): T[] {
   }
 
   return order.map((key) => bySpecies.get(key)!);
+}
+
+/** TN/CT curated ids (`tn-`, `ct-`) should not appear in other states' designer lists. */
+export function isOtherStateDesignerId(
+  id: string,
+  stateCode: DesignerStateCode,
+): boolean {
+  if (stateCode !== "TN" && id.startsWith("tn-")) return true;
+  if (stateCode !== "CT" && id.startsWith("ct-")) return true;
+  return false;
+}
+
+function preferDesignerPlantForState<T extends PlantLike>(
+  a: T,
+  b: T,
+  stateCode: DesignerStateCode,
+): T {
+  const score = (p: T) => {
+    if (isOtherStateDesignerId(p.id, stateCode)) return 0;
+    if (stateCode === "TN" && p.id.startsWith("tn-")) return 4;
+    if (stateCode === "CT" && p.id.startsWith("ct-")) return 4;
+    if (p.id.startsWith("trefle-")) return 1;
+    return 3;
+  };
+  const sa = score(a);
+  const sb = score(b);
+  if (sb !== sa) return sb > sa ? b : a;
+  return preferPlantRecord(a, b);
+}
+
+/**
+ * Drop duplicate display names from cross-state imports (zone overlap).
+ * Keeps distinct cultivars — only collapses rows that share the same common_name.
+ */
+export function dedupeDesignerCatalogPlants<T extends PlantLike>(
+  plants: T[],
+  stateCode: DesignerStateCode,
+): T[] {
+  const byCommon = new Map<string, T[]>();
+
+  for (const p of plants) {
+    const key = normalizePlantName(p.common_name);
+    const group = byCommon.get(key);
+    if (group) group.push(p);
+    else byCommon.set(key, [p]);
+  }
+
+  const out: T[] = [];
+  for (const group of byCommon.values()) {
+    if (group.length === 1) {
+      out.push(group[0]!);
+      continue;
+    }
+    const inState = group.filter(
+      (p) => !isOtherStateDesignerId(p.id, stateCode),
+    );
+    const pool = inState.length > 0 ? inState : group;
+    out.push(
+      pool.reduce((best, p) => preferDesignerPlantForState(best, p, stateCode)),
+    );
+  }
+
+  return out.sort((a, b) => a.common_name.localeCompare(b.common_name));
 }

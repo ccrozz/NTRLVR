@@ -23,6 +23,7 @@ import {
   growsInUsFromTrefleDetail,
 } from "./us-distribution.js";
 import { curatedPatchForPlant } from "./curated-plant-knowledge.js";
+import { enrichPlantNativeOrigin } from "./native-origin.js";
 import { parseWikipediaExtract } from "./wiki-parse.js";
 import { fetchBestPlantImage } from "./plant-images.js";
 import { fetchWikipediaForPlant } from "./wikipedia.js";
@@ -241,6 +242,15 @@ export async function enrichPlantFromWeb(plant: Plant): Promise<EnrichmentResult
   current = applyFinalBenefits(current);
   if (JSON.stringify(current.benefits) !== benefitsBefore) {
     if (!sources.includes("Plant profile")) sources.push("Plant profile");
+  }
+
+  const originBefore = current.native_origin;
+  current = enrichPlantNativeOrigin(current, {
+    trefleDetail,
+    wikiText: wikiFullText,
+  });
+  if (current.native_origin && current.native_origin !== originBefore) {
+    if (!sources.includes("Native range")) sources.push("Native range");
   }
 
   return {

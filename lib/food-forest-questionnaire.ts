@@ -175,7 +175,7 @@ export function preferencesFromGardenStyle(style: GardenStyle): GardenPreference
     case "kitchen_garden":
       return {
         ...base,
-        uses: ["daily_cooking", "herbs_tea", "fresh_fruit"],
+        uses: ["daily_cooking", "herbs_tea"],
         priorities: ["salad_greens", "root_crops", "fast_harvest"],
         time: "few_hours_week",
         experience: "beginner",
@@ -193,8 +193,8 @@ export function preferencesFromGardenStyle(style: GardenStyle): GardenPreference
     case "visual":
       return {
         ...base,
-        uses: ["visual_beauty", "fresh_fruit", "shade_comfort"],
-        priorities: ["berries", "fast_harvest"],
+        uses: ["visual_beauty", "shade_comfort"],
+        priorities: ["florida_natives", "fast_harvest"],
         time: "few_hours_week",
         experience: "beginner",
         household: "just_me",
@@ -243,6 +243,21 @@ export function normalizePreferences(
 export function deriveGoalsFromPreferences(
   prefs: GardenPreferences,
 ): FoodForestLayoutGoal[] {
+  switch (prefs.gardenStyle) {
+    case "food_forest":
+      return ["fruit_trees"];
+    case "kitchen_garden":
+      return prefs.time === "under_1hr_week" || prefs.experience === "beginner"
+        ? ["herbs_produce", "low_maintenance"]
+        : ["herbs_produce"];
+    case "pollinator":
+      return ["pollinators", "natives"];
+    case "visual":
+      return ["pollinators"];
+    default:
+      break;
+  }
+
   const goals = new Set<FoodForestLayoutGoal>();
 
   if (prefs.time === "under_1hr_week" || prefs.experience === "beginner") {
@@ -343,6 +358,28 @@ export function targetPlantCountFromPreferences(
   return Math.max(minCount, Math.min(cap, base));
 }
 
+/** How many fruit trees to place on the canvas for a food-forest Build For Me plan. */
+export function targetFoodForestTreeCount(
+  areaSqFt: number,
+  density: PlantingDensity = "balanced",
+): number {
+  let base: number;
+  if (areaSqFt < 80) base = 2;
+  else if (areaSqFt < 150) base = 3;
+  else if (areaSqFt < 300) base = 4;
+  else if (areaSqFt < 500) base = 5;
+  else base = 6;
+
+  switch (density) {
+    case "dense":
+      return Math.min(8, base + 2);
+    case "spacious":
+      return Math.max(2, base - 1);
+    default:
+      return base;
+  }
+}
+
 const USE_LABELS: Record<GardenUse, string> = {
   fresh_fruit: "fresh fruit & snacking",
   daily_cooking: "daily cooking",
@@ -401,13 +438,13 @@ const HOUSE_LABELS: Record<GardenHousehold, string> = {
 
 const STYLE_PROFILE: Record<GardenStyle, string> = {
   food_forest:
-    "A layered food forest: a few fruit trees or shrubs with helpful companion plants underneath.",
+    "A food forest canopy: fruit trees only on the canvas first — shrubs and herbs come later from Browse Plants.",
   kitchen_garden:
-    "A kitchen garden: herbs, greens, and everyday foods they can harvest near the house.",
+    "A kitchen garden: herbs, vegetables, tomatoes, peppers, beans, and greens for everyday cooking — no fruit trees.",
   pollinator:
-    "A pollinator-friendly garden: flowers and support plants for bees, butterflies, and birds.",
+    "A pollinator garden: perennial and annual flowers, flowering herbs, and nectar plants for bees and butterflies — no fruit trees.",
   visual:
-    "A beautiful, inviting garden that also grows some food — looks good from the patio.",
+    "A visual garden: the prettiest ornamental flowers, foliage, and landscape plants — no fruit trees.",
   easy_care:
     "A low-maintenance garden: tough, easy plants and not too much to manage.",
 };
@@ -534,6 +571,25 @@ export function scoreCatalogRow(
 
   if (prefs.household === "family" || prefs.household === "community") {
     if (row.edible && row.radius_ft <= 4) score += 2;
+  }
+
+  const isTreeCat =
+    cat.includes("fruit tree") ||
+    cat === "citrus" ||
+    cat.includes("tropical fruit") ||
+    cat === "palm";
+  if (prefs.gardenStyle === "kitchen_garden") {
+    if (cat === "herb" || cat === "vegetable") score += 8;
+    if (isTreeCat || layer === "Overstory") score -= 20;
+  }
+  if (prefs.gardenStyle === "pollinator") {
+    if (cat.includes("flower") || cat === "edible flower") score += 8;
+    if (cat === "vegetable" || isTreeCat) score -= 12;
+  }
+  if (prefs.gardenStyle === "visual") {
+    if (cat.includes("flower") || cat === "native shrub") score += 8;
+    if (isTreeCat || cat === "vegetable") score -= 20;
+    if (prefs.uses.includes("visual_beauty") && !row.edible) score += 4;
   }
 
   return score;

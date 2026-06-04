@@ -1,11 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type {
-  CanopyLayer,
-  GuildFunction,
-  PlantCategory,
-  PlantFilters,
-} from "../schema.js";
+import type { PlantFilters } from "../schema.js";
+import { parsePlantFilters } from "./parse-plant-filters.js";
 import {
   countPlants,
   listGrowingZoneCounts,
@@ -20,7 +16,9 @@ import {
   plantNeedsAnyEnrichment,
 } from "../lib/plant-enrichment.js";
 import { dbBackend } from "../db/db-config.js";
+import { hasDatabaseUrl } from "../db/supabase-config.js";
 import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
+import { isWikiDump } from "../lib/wiki-text.js";
 import {
   enrichSeedPlant,
   listPlantsWithTrefle,
@@ -66,6 +64,42 @@ app.use(
   }),
 );
 
+app.get("/api/ping", (c) =>
+  c.json({
+    ok: true,
+    database: dbBackend(),
+    has_database_url: hasDatabaseUrl(),
+  }),
+);
+
+app.get("/api/health", async (c) => {
+  try {
+    const { countPlantsBreakdown } = await import("../db/plant-repository.js");
+    const inventory = await countPlantsBreakdown();
+    return c.json({
+      status: "ok",
+      database: dbBackend(),
+      plant_count: inventory.total,
+      plants_by_source: inventory.by_source,
+      apis: {
+        catalog: "/api/plants — full ingested DB (Trefle + seeds)",
+        designer:
+          "/api/designer/plants — curated FL/TN/CT food-forest catalog only",
+      },
+    });
+  } catch (err) {
+    console.error("[health]", err);
+    return c.json(
+      {
+        status: "error",
+        database: dbBackend(),
+        message: err instanceof Error ? err.message : String(err),
+      },
+      500,
+    );
+  }
+});
+
 app.get("/api/states", (c) => {
   return c.json({
     data: US_STATES.map((s) => ({
@@ -97,74 +131,25 @@ app.get("/api/growing-zones", async (c) => {
   });
 });
 
-function parsePlantFilters(c: {
-  req: { query: (key: string) => string | undefined };
-}): PlantFilters & { trefleLive?: boolean } {
-  const searchParams = c.req.query.bind(c.req);
-  const q = (key: string) => searchParams(key);
-
-  return {
-    search: q("search"),
-    category: q("category") as PlantCategory | undefined,
-    canopy_layer: q("canopy_layer") as CanopyLayer | undefined,
-    florida_native_only:
-      q("florida_native") === "true" || q("florida_native_only") === "true",
-    kitchen_essentials_only:
-      q("kitchen_only") === "true" || q("kitchen_essentials_only") === "true",
-    edible_only: q("edible_only") === "true",
-    exclude_invasive: q("exclude_invasive") === "true",
-    native_state: q("state") ?? q("native_state"),
-    native_to_state_only: q("native_to_state") === "true",
-    for_my_area:
-      q("for_my_area") === "true" ||
-      (q("state") != null &&
-        q("native_to_state") !== "true" &&
-        q("for_my_area") !== "false"),
-    us_only: q("us_only") === "true",
-    food_forest_only:
-      q("food_forest") === "true" || q("food_forest_only") === "true",
-    food_forest_group: q("food_forest_group") ?? q("designer_group"),
-    hardiness_zone: q("growing_zone") ?? q("hardiness_zone"),
-    guild_function: q("guild_function") as GuildFunction | undefined,
-    ids: q("ids")
-      ?.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-    names: q("names")
-      ?.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-    limit: parseInt(q("limit") ?? "100", 10),
-    offset: parseInt(q("offset") ?? "0", 10),
-    trefleLive: q("trefle_live") === "true",
-  };
-}
-
 app.get("/api/plants", async (c) => {
-  const parsed = parsePlantFilters(c);
-  const { trefleLive, ...filters } = parsed;
-  const limit = filters.limit ?? 100;
-  const offset = filters.offset ?? 0;
-
   try {
-    const { data, total } = await listPlantsWithTrefle(filters, {
-      trefleLive,
-    });
-
-    return c.json({
-      data,
-      meta: {
-        total,
-        limit,
-        offset,
-        has_more: offset + data.length < total,
-      },
-    });
+    const { handlePlantListHttp } = await import("./plant-list-http.js");
+    return handlePlantListHttp(c.req.raw, "catalog");
   } catch (e) {
     return c.json(
-      {
-        error: e instanceof Error ? e.message : "Failed to list plants",
-      },
+      { error: e instanceof Error ? e.message : "Failed to list plants" },
+      500,
+    );
+  }
+});
+
+app.get("/api/designer/plants", async (c) => {
+  try {
+    const { handlePlantListHttp } = await import("./plant-list-http.js");
+    return handlePlantListHttp(c.req.raw, "designer");
+  } catch (e) {
+    return c.json(
+      { error: e instanceof Error ? e.message : "Failed to list plants" },
       500,
     );
   }
@@ -220,8 +205,17 @@ app.get("/api/plants/:id", async (c) => {
     await upsertPlant(plant);
   }
 
+  const profiled = applyDesignerProfile(plant);
+  if (
+    isWikiDump(plant.native_origin ?? "") ||
+    isWikiDump(plant.care_summary ?? "") ||
+    profiled.native_origin !== plant.native_origin
+  ) {
+    await upsertPlant(profiled);
+  }
+
   return c.json({
-    data: applyDesignerProfile(plant),
+    data: profiled,
     meta: {
       enriched: sources.length > 0,
       sources,

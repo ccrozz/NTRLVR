@@ -16,7 +16,6 @@ function filtersToParams(
   if (search) p.set("search", search);
   if (categoryFilter) p.set("food_forest_group", categoryFilter);
   if (trefleLive) p.set("trefle_live", "true");
-  p.set("food_forest_only", "true");
   p.set("state", stateCode);
   p.set("for_my_area", "true");
   p.set("limit", String(PAGE_SIZE));
@@ -47,7 +46,8 @@ export function usePlants(
       nextOffset: number | null;
     }> => {
       const res = await fetch(
-        `${API}/api/plants?${filtersToParams(search, categoryFilter, designerState, pageParam, opts?.trefleLive)}`,
+        `${API}/api/designer/plants?${filtersToParams(search, categoryFilter, designerState, pageParam, opts?.trefleLive)}`,
+        { cache: "no-store" },
       );
       if (!res.ok) throw new Error("Failed to load plants");
       const json = await res.json();

@@ -9,6 +9,7 @@
  * pooler — to avoid statement timeouts.
  */
 import { loadEnv } from "../lib/load-env.js";
+import { getDatabaseUrl } from "../db/supabase-config.js";
 import { getDb, DB_PATH, closeDb } from "../db/client.js";
 import {
   configurePgMigrationSession,
@@ -36,12 +37,11 @@ function parseOffset(argv: string[]): number {
 }
 
 async function main() {
-  if (!process.env.DATABASE_URL?.trim()) {
+  const url = getDatabaseUrl();
+  if (!url) {
     console.error("Set DATABASE_URL to your Supabase Postgres connection string.");
     process.exit(1);
   }
-
-  const url = process.env.DATABASE_URL;
   if (url.includes("pooler") || url.includes(":6543")) {
     console.warn(
       "Warning: pooler URLs often timeout on bulk migration. Prefer direct host:5432 in DATABASE_URL.",

@@ -1,5 +1,8 @@
+import { plantIsNativeToState } from "@lib/plant-native-status";
+import { sanitizeNativeOriginLabel } from "@lib/native-origin";
+import { shortenNativeOriginBadge } from "@lib/wiki-text";
 import { Link } from "react-router-dom";
-import type { PlantSummary } from "../types";
+import type { Plant, PlantSummary } from "../types";
 import { plantCardZoneLabels } from "../zones";
 import { PlantPlaceholderIcon } from "./Icons";
 
@@ -21,17 +24,26 @@ export function PlantCard({
   const zoneLabels = showZones
     ? plantCardZoneLabels(plant.growing_zones ?? [], { stateZones, myZone })
     : [];
+  const originLabel = sanitizeNativeOriginLabel(plant.native_origin);
+  const originBadge = originLabel
+    ? shortenNativeOriginBadge(originLabel)
+    : "";
   const nativeHere =
+    !originLabel &&
     myStateCode &&
-    plant.native_states?.some(
-      (s) => s.toUpperCase() === myStateCode.toUpperCase(),
-    );
+    plantIsNativeToState(plant as Plant, myStateCode);
 
   const overlayBadges: { key: string; label: string; className?: string }[] = [];
   if (plant.is_edible) {
     overlayBadges.push({ key: "edible", label: "Edible", className: "badge-accent" });
   }
-  if (nativeHere) {
+  if (originBadge) {
+    overlayBadges.push({
+      key: "origin",
+      label: originBadge,
+      className: "badge-origin",
+    });
+  } else if (nativeHere) {
     overlayBadges.push({
       key: "native",
       label: myStateName ? `Native to ${myStateName}` : "Native here",

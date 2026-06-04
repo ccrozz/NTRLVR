@@ -33,11 +33,13 @@ function GardenPlantRow({
   selected,
   outsideZone,
   onSelect,
+  onOpenProfile,
 }: {
   plant: CanvasPlant;
   selected: boolean;
   outsideZone: boolean;
   onSelect: () => void;
+  onOpenProfile: () => void;
 }) {
   const layer = canopyColor(plant.canopy_layer);
   const accent =
@@ -52,6 +54,10 @@ function GardenPlantRow({
         type="button"
         className={`garden-panel-item${selected ? " active" : ""}${outsideZone ? " garden-panel-item--outside" : ""}`}
         onClick={onSelect}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          onOpenProfile();
+        }}
       >
         <span
           className="garden-panel-item-accent"
@@ -93,12 +99,14 @@ function GardenCategorySection({
   hasZones,
   zones,
   onSelectPlant,
+  onOpenPlantProfile,
 }: {
   group: GardenCategoryGroup;
   selectedCanvasPlantId: string | null;
   hasZones: boolean;
   zones: ReturnType<typeof useDesignerStore.getState>["zones"];
   onSelectPlant: (cp: CanvasPlant) => void;
+  onOpenPlantProfile: (cp: CanvasPlant) => void;
 }) {
   const accent =
     GARDEN_CATEGORY_ACCENT[group.category] ?? "var(--color-accent)";
@@ -122,6 +130,7 @@ function GardenCategorySection({
             selected={selectedCanvasPlantId === cp.canvasId}
             outsideZone={hasZones && plantOutsideOwnedZone(cp, zones)}
             onSelect={() => onSelectPlant(cp)}
+            onOpenProfile={() => onOpenPlantProfile(cp)}
           />
         ))}
       </ul>
@@ -138,7 +147,7 @@ export function GardenPanel() {
   const zoneGardenPlans = useDesignerStore((s) => s.zoneGardenPlans);
   const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
   const selectCanvasPlant = useDesignerStore((s) => s.selectCanvasPlant);
-  const selectSidebarPlant = useDesignerStore((s) => s.selectSidebarPlant);
+  const openCanvasPlantProfile = useDesignerStore((s) => s.openCanvasPlantProfile);
   const removeZone = useDesignerStore((s) => s.removeZone);
 
   const boundsRef = useRef<HTMLDivElement>(null);
@@ -218,7 +227,10 @@ export function GardenPanel() {
 
   function onSelectPlant(cp: CanvasPlant) {
     selectCanvasPlant(cp.canvasId);
-    selectSidebarPlant(cp.plantId);
+  }
+
+  function onOpenPlantProfile(cp: CanvasPlant) {
+    openCanvasPlantProfile(cp.canvasId);
   }
 
   function confirmRemoveSpace() {
@@ -395,8 +407,8 @@ export function GardenPanel() {
 
             <p className="garden-panel-hint">
               {showCategoryGroups
-                ? "Plants grouped by type in this space. Tap to select on the canvas."
-                : "Tap a plant to select it on the canvas and view details."}
+                ? "Tap to select on the canvas; double-tap for the plant profile."
+                : "Tap to select on the canvas; double-tap for the plant profile."}
             </p>
 
             <div className="garden-panel-scroll">
@@ -409,6 +421,7 @@ export function GardenPanel() {
                     hasZones={hasZones}
                     zones={zones}
                     onSelectPlant={onSelectPlant}
+                    onOpenPlantProfile={onOpenPlantProfile}
                   />
                 ))
               ) : (
@@ -422,6 +435,7 @@ export function GardenPanel() {
                         hasZones && plantOutsideOwnedZone(cp, zones)
                       }
                       onSelect={() => onSelectPlant(cp)}
+                      onOpenProfile={() => onOpenPlantProfile(cp)}
                     />
                   ))}
                 </ul>

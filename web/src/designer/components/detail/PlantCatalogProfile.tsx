@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { CanopyLayer, Plant } from "../../../types";
+import { designerStateConfig } from "@lib/designer-states";
+import { useDesignerStore } from "../../store/useDesignerStore";
 import { canopyColor } from "../../lib/canopy-colors";
 import {
   plantGrowingFacts,
@@ -28,6 +30,9 @@ export function PlantCatalogProfile({
   reasonsLoading: boolean;
   onFindCompanion: (name: string) => void;
 }) {
+  const designerState = useDesignerStore((s) => s.designerState);
+  const stateName =
+    designerStateConfig(designerState)?.name ?? "your region";
   const roles = plantRoleTags(plant);
   const facts = plantGrowingFacts(plant);
   const uses = plant.uses ?? [];
@@ -85,7 +90,7 @@ export function PlantCatalogProfile({
         <section className="designer-detail-block">
           <h3 className="designer-detail-block-title">Plant with</h3>
           <p className="designer-detail-hint">
-            Good neighbors for this species in a Florida food forest.
+            Good neighbors for this species in a {stateName} food forest.
           </p>
           <ul className="designer-detail-companion-preview">
             {companionNames.map((name) => {

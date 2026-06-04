@@ -10,6 +10,9 @@ import { plantIdsPlacedInZone } from "../../lib/zone-plant-groups";
 
 export function BuildForMeResults() {
   const profile = useDesignerStore((s) => s.gardenProfile);
+  const lastGenerateResult = useDesignerStore((s) => s.lastGenerateResult);
+  const gardenStyle = lastGenerateResult?.preferences.gardenStyle;
+  const isFoodForestPlan = gardenStyle === "food_forest";
   const recommendedPlantIds = useDesignerStore((s) => s.recommendedPlantIds);
   const recommendationMeta = useDesignerStore((s) => s.recommendationMeta);
   const pendingGardenPlan = useDesignerStore((s) => s.pendingGardenPlan);
@@ -141,9 +144,17 @@ export function BuildForMeResults() {
       </div>
 
       <footer className="sidebar-build-results-foot">
-        {hasOtherBeds && (
+        {(hasOtherBeds || gardenStyle) && (
           <p className="sidebar-build-results-place-hint">
-            Places a new bed beside your layout — existing beds stay unchanged.
+            {isFoodForestPlan
+              ? "Food forest: only fruit trees go on the canvas now — add shrubs and herbs from Browse Plants."
+              : gardenStyle === "kitchen_garden"
+                ? "Kitchen garden: herbs, veggies, and cooking crops — no fruit trees on the canvas."
+                : gardenStyle === "pollinator"
+                  ? "Pollinator garden: flowers and nectar plants for bees and butterflies."
+                  : gardenStyle === "visual"
+                    ? "Visual garden: ornamental plants only — no fruit trees."
+                    : "Places a new bed beside your layout — existing beds stay unchanged."}
           </p>
         )}
         <button
@@ -152,7 +163,11 @@ export function BuildForMeResults() {
           disabled={placingGardenOnCanvas}
           onClick={() => void placeRecommendedOnCanvas()}
         >
-          {placingGardenOnCanvas ? "Placing on canvas…" : "Add plants to canvas"}
+          {placingGardenOnCanvas
+            ? "Placing on canvas…"
+            : isFoodForestPlan
+              ? "Place trees on canvas"
+              : "Add plants to canvas"}
         </button>
         <button
           type="button"

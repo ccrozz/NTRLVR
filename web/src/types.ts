@@ -42,6 +42,7 @@ export interface PlantSummary {
   is_kitchen_essential: boolean;
   is_edible: boolean;
   native_states: string[];
+  native_origin?: string | null;
   growing_zones: string[];
   is_invasive_in_florida: boolean;
   canvas_radius_feet: number;
@@ -91,6 +92,8 @@ export interface PlantsResponse {
 
 export interface PlantFilters {
   search?: string;
+  /** Designer-style food-forest group (fruit trees, herbs, …). */
+  food_forest_group?: string;
   category?: string;
   canopy_layer?: string;
   growing_zone?: string;
@@ -98,7 +101,7 @@ export interface PlantFilters {
   exclude_invasive?: boolean;
   state?: string;
   native_to_state?: boolean;
-  /** When false, skip area-based matching (e.g. native-only mode). */
+  /** Zone / state match — opt-in on catalog browse (designer always uses this). */
   for_my_area?: boolean;
   limit?: number;
   offset?: number;

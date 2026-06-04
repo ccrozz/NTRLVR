@@ -107,7 +107,7 @@ export async function fetchPlantsForAutoPopulate(
   zone: string,
 ): Promise<PlantListItem[]> {
   const fetchPage = async (params: URLSearchParams) => {
-    const res = await fetch(`${API}/api/plants?${params}`);
+    const res = await fetch(`${API}/api/designer/plants?${params}`);
     if (!res.ok) throw new Error("Could not load plants for your zone");
     const json = await res.json();
     return (json.data ?? []) as PlantListItem[];

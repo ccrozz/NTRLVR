@@ -1,3 +1,5 @@
+import { sanitizeWikiCareSummary } from "./wiki-text.js";
+
 const WIKI_USER_AGENT =
   "Naturelover/1.0 (Florida food forest plant guide; local educational use)";
 
@@ -77,15 +79,27 @@ async function fetchWikiFullExtract(title: string): Promise<string | null> {
   return page?.extract ?? null;
 }
 
+function wikiSearchQueries(
+  scientificName: string,
+  commonName: string,
+): string[] {
+  const sci = scientificName.trim();
+  const queries: string[] = [sci];
+  const tokens = sci.replace(/×/g, " ").split(/\s+/).filter(Boolean);
+  const speciesLevel = tokens.length >= 2 || /×/i.test(sci);
+  if (!speciesLevel && tokens[0]?.length > 2) {
+    queries.push(tokens[0]);
+  }
+  const cn = commonName.replace(/\(.*?\)/g, "").trim();
+  if (cn.length > 2) queries.push(cn);
+  return [...new Set(queries)].filter((q) => q.length > 2);
+}
+
 async function resolveWikiTitle(
   scientificName: string,
   commonName: string,
 ): Promise<{ title: string; summary: WikipediaSummary } | null> {
-  const queries = [
-    scientificName,
-    scientificName.split(" ")[0],
-    commonName.replace(/\(.*?\)/g, "").trim(),
-  ].filter((q, i, arr) => q.length > 2 && arr.indexOf(q) === i);
+  const queries = wikiSearchQueries(scientificName, commonName);
 
   for (const query of queries) {
     let title = wikiTitleFromName(query);
@@ -125,10 +139,11 @@ export async function fetchWikipediaForPlant(
   }
 
   const { summary } = resolved;
-  const text = [summary.description, summary.extract]
+  const raw = [summary.description, summary.extract]
     .filter(Boolean)
     .join("\n\n")
     .trim();
+  const text = sanitizeWikiCareSummary(raw) || null;
   const full_extract = await fetchWikiFullExtract(summary.title);
 
   return {

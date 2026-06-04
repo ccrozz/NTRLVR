@@ -8,6 +8,7 @@ import {
 import { layoutPlantsInZone, type LayoutPlacement } from "./auto-populate";
 import { createRectangleZone, defaultZoneAnchor } from "../store/workspace-slice";
 import type { WorkspaceZone } from "../types/workspace";
+import { catalogRowMatchesGardenStyle } from "@lib/garden-style-catalog";
 import {
   dedupeOrderedIds,
   dedupePlantsByName,
@@ -47,7 +48,7 @@ export async function fetchRecommendedPlants(
   p.set("for_my_area", "true");
   p.set("limit", String(Math.max(uniqueIds.length, 80)));
   p.set("ids", uniqueIds.join(","));
-  const res = await fetch(`${API}/api/plants?${p}`);
+  const res = await fetch(`${API}/api/designer/plants?${p}`);
   if (!res.ok) throw new Error("Could not load recommended plants");
   const json = await res.json();
   const items = (json.data ?? []) as PlantListItem[];
@@ -84,10 +85,28 @@ export async function layoutForPlan(
   zone: WorkspaceZone;
   placements: LayoutPlacement[];
 }> {
-  const plants = await fetchRecommendedPlants(
+  let plants = await fetchRecommendedPlants(
     result.plant_ids,
     result.designer_state ?? "FL",
   );
+  const style = result.preferences.gardenStyle;
+  if (style && style !== "easy_care") {
+    const stateCode = result.designer_state ?? "FL";
+    plants = plants.filter((p) =>
+      catalogRowMatchesGardenStyle(
+        {
+          category: p.category,
+          canopy_layer: p.canopy_layer,
+          edible: p.is_edible,
+          tags: p.tags,
+          is_kitchen_essential: p.is_kitchen_essential,
+          native: p.is_florida_native,
+        },
+        style,
+        stateCode,
+      ),
+    );
+  }
   if (existingZone) {
     const placements = layoutPlantsInZone(
       existingZone,

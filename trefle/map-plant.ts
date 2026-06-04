@@ -14,6 +14,7 @@ import {
   inferBenefitsFromPlant,
 } from "../lib/infer-plant-benefits.js";
 import { applyEdibleFlag, inferIsEdibleFromPlant } from "../lib/infer-is-edible.js";
+import { enrichPlantNativeOrigin } from "../lib/native-origin.js";
 import {
   zonesFromTrefleGrowth,
 } from "../lib/infer-hardiness-zones.js";
@@ -212,16 +213,9 @@ function inferEdible(
 }
 
 function floridaNativeFromDistribution(sp: TrefleSpecies | null): boolean {
-  const regions = [
-    ...(sp?.distribution?.native ?? []),
-    ...(sp?.distribution?.introduced ?? []),
-  ].map((r) => r.toLowerCase());
+  const regions = (sp?.distribution?.native ?? []).map((r) => r.toLowerCase());
   return regions.some(
-    (r) =>
-      r === "florida" ||
-      r.includes("florida") ||
-      r.includes("southwest u.s") ||
-      r.includes("southeast u.s"),
+    (r) => r === "florida" || r.includes("florida"),
   );
 }
 
@@ -268,6 +262,7 @@ export function mapListToPlant(
     guild_functions: inferGuild(null, edible),
     is_florida_native: false,
     native_states: [],
+    native_origin: null,
     grows_in_us: growsInUsFromObservations(item.observations ?? null),
     is_kitchen_essential: false,
     is_edible: edible,
@@ -333,6 +328,7 @@ export function mapDetailToPlant(
     guild_functions: inferGuild(sp, edible),
     is_florida_native: floridaNativeFromDistribution(sp),
     native_states: [],
+    native_origin: null,
     grows_in_us: growsInUsFromTrefleDetail(detail),
     is_kitchen_essential: Boolean(
       edible &&
@@ -363,5 +359,7 @@ export function mapDetailToPlant(
   };
 
   plant.benefits = finalizePlantBenefits(plant);
-  return applyEdibleFlag(plant);
+  return enrichPlantNativeOrigin(applyEdibleFlag(plant), {
+    trefleDetail: detail,
+  });
 }

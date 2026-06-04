@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Group,
   Circle,
@@ -14,11 +14,17 @@ import {
   CENTER_DOT_RATIO,
   hexToRgba,
 } from "../../lib/canopy-colors";
-import { radiusPx } from "../../lib/canvas-utils";
+import { createCanvasPlantTapHandlers } from "../../lib/canvas-plant-tap";
+import {
+  CANVAS_MAX_CENTER_DOT_PX,
+  CANVAS_USE_PLANT_PHOTOS,
+  radiusPx,
+} from "../../lib/canvas-utils";
 import {
   getCategoryIllustration,
   loadCategoryIllustrationImage,
 } from "../../lib/plant-illustrations";
+
 export type PlantCircleProps = {
   canvasId: string;
   plantId: string;
@@ -36,7 +42,10 @@ export type PlantCircleProps = {
   layerDimmed: boolean;
   placementFlash?: boolean;
   compactVisuals?: boolean;
+  draggable?: boolean;
+  dragDistance?: number;
   onSelect: () => void;
+  onOpenProfile: () => void;
   onDragEnd: (x: number, y: number) => void;
   onHover: (hovering: boolean) => void;
 };
@@ -58,23 +67,38 @@ export function PlantCircle({
   layerDimmed,
   placementFlash = false,
   compactVisuals = false,
+  draggable = true,
+  dragDistance = 3,
   onSelect,
+  onOpenProfile,
   onDragEnd,
   onHover,
 }: PlantCircleProps) {
   const colors = canopyColor(canopy_layer);
   const r = radiusPx(canvas_radius_feet, 1);
   const active = selected || hovered;
-  const showCanopyRing = !compactVisuals || active || placementFlash;
+  const showCanopyRing =
+    !compactVisuals || selected || hovered || placementFlash;
   const showNameLabel = !compactVisuals || active;
   const isVine = canopy_layer === "Vine";
   const dotRatio = CENTER_DOT_RATIO[canopy_layer];
-  const dotR = Math.max(4, r * dotRatio);
+  const dotR = Math.min(
+    CANVAS_MAX_CENTER_DOT_PX,
+    Math.max(4, r * dotRatio),
+  );
   const groupOpacity = layerDimmed ? 0.1 : 1;
+  const hitR = Math.max(r, dotR + 12);
+  const draggedRef = useRef(false);
 
   const [photoImg, setPhotoImg] = useState<HTMLImageElement | null>(null);
   const [illusImg, setIllusImg] = useState<HTMLImageElement | null>(null);
   const [flashOpacity, setFlashOpacity] = useState(0);
+
+  const tapHandlers = createCanvasPlantTapHandlers(
+    onSelect,
+    onOpenProfile,
+    () => draggedRef.current,
+  );
 
   useEffect(() => {
     if (!placementFlash) {
@@ -91,7 +115,7 @@ export function PlantCircle({
   }, [placementFlash]);
 
   useEffect(() => {
-    if (!image_url) {
+    if (!CANVAS_USE_PLANT_PHOTOS || !image_url) {
       setPhotoImg(null);
       return;
     }
@@ -120,8 +144,8 @@ export function PlantCircle({
     };
   }, [photoImg, category, colors.stroke, dotR]);
 
-  const hitPadding = Math.max(6, 22 - r);
-  const strokeColor = active
+  const hitPadding = Math.max(8, 24 - r);
+  const strokeColor = selected
     ? "#7ec850"
     : outsideZone
       ? "#e8a040"
@@ -133,6 +157,21 @@ export function PlantCircle({
 
   const ill = getCategoryIllustration(category);
   const illScale = dotR / (ill.viewSize / 2);
+
+  const pointerHandlers = {
+    onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
+      e.cancelBubble = true;
+      tapHandlers.onClick();
+    },
+    onTap: (e: Konva.KonvaEventObject<Event>) => {
+      e.cancelBubble = true;
+      tapHandlers.onTap();
+    },
+    onDblClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
+      e.cancelBubble = true;
+      tapHandlers.onDblClick();
+    },
+  };
 
   const cursorHandlers = {
     onMouseEnter: (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -149,9 +188,19 @@ export function PlantCircle({
     },
     onDragStart: (e: Konva.KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
+      draggedRef.current = true;
       const stage = e.target.getStage();
       if (stage) stage.container().style.cursor = "grabbing";
       onHover(true);
+    },
+    onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
+      const stage = e.target.getStage();
+      if (stage) stage.container().style.cursor = "grab";
+      onDragEnd(e.target.x(), e.target.y());
+      window.setTimeout(() => {
+        draggedRef.current = false;
+      }, 80);
     },
   };
 
@@ -160,10 +209,23 @@ export function PlantCircle({
       x={x}
       y={y}
       opacity={groupOpacity}
-      draggable
-      onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
+      canvasPlant
+      draggable={draggable}
+      dragDistance={draggable ? dragDistance : 0}
+      {...(draggable ? {} : {})}
       {...cursorHandlers}
     >
+      {selected && (
+        <Circle
+          radius={hitR + 4}
+          stroke="#7ec850"
+          strokeWidth={2.5}
+          dash={[6, 4]}
+          opacity={0.95}
+          listening={false}
+        />
+      )}
+
       {placementFlash && flashOpacity > 0 && (
         <Circle
           radius={r + 10}
@@ -202,25 +264,17 @@ export function PlantCircle({
           radiusX={r}
           radiusY={r * 0.55}
           stroke={strokeColor}
-          strokeWidth={2}
+          strokeWidth={selected ? 2.5 : 2}
           dash={[8, 6]}
           fill={hexToRgba(colors.fill, 0.12)}
-          hitStrokeWidth={hitPadding}
-          onClick={(e) => {
-            e.cancelBubble = true;
-            onSelect();
-          }}
-          onTap={(e) => {
-            e.cancelBubble = true;
-            onSelect();
-          }}
+          listening={false}
         />
       ) : showCanopyRing ? (
         <>
           <Circle
             radius={r}
             stroke={strokeColor}
-            strokeWidth={active ? 2 : 1.5}
+            strokeWidth={active ? 2.5 : 1.5}
             dash={[8, 6]}
             opacity={active ? 1 : 0.28}
             fillRadialGradientStartPoint={{ x: 0, y: 0 }}
@@ -233,15 +287,7 @@ export function PlantCircle({
               1,
               hexToRgba(colors.fill, 0),
             ]}
-            hitStrokeWidth={hitPadding}
-            onClick={(e) => {
-              e.cancelBubble = true;
-              onSelect();
-            }}
-            onTap={(e) => {
-              e.cancelBubble = true;
-              onSelect();
-            }}
+            listening={false}
           />
           {dotRatio > 0 && (
             <Circle
@@ -254,33 +300,25 @@ export function PlantCircle({
           )}
         </>
       ) : (
-        <>
+        dotRatio > 0 && (
           <Circle
-            radius={Math.max(r, dotR + 10)}
-            fill="transparent"
-            hitStrokeWidth={hitPadding}
-            onClick={(e) => {
-              e.cancelBubble = true;
-              onSelect();
-            }}
-            onTap={(e) => {
-              e.cancelBubble = true;
-              onSelect();
-            }}
+            radius={dotR}
+            fill={hexToRgba(colors.fill, active ? 0.55 : 0.42)}
+            stroke={hexToRgba(colors.stroke, 0.75)}
+            strokeWidth={1.5}
+            listening={false}
           />
-          {dotRatio > 0 && (
-            <Circle
-              radius={dotR}
-              fill={hexToRgba(colors.fill, active ? 0.55 : 0.42)}
-              stroke={hexToRgba(colors.stroke, 0.75)}
-              strokeWidth={1.5}
-              listening={false}
-            />
-          )}
-        </>
+        )
       )}
 
-      {photoImg && dotRatio > 0 && (
+      <Circle
+        radius={hitR}
+        fill="transparent"
+        hitStrokeWidth={hitPadding}
+        {...pointerHandlers}
+      />
+
+      {CANVAS_USE_PLANT_PHOTOS && photoImg && dotRatio > 0 && (
         <Group
           clipFunc={(ctx) => {
             ctx.beginPath();

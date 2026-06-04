@@ -27,17 +27,17 @@ export function PlantDetailPanel() {
   );
 
   const canvasPlant = canvasPlants.find((p) => p.canvasId === selectedCanvasPlantId);
-  const plantId = selectedPlantId ?? canvasPlant?.plantId ?? null;
+  const plantId = selectedPlantId;
   /** Canvas selection wins only when viewing that same plant (sidebar click keeps catalog profile). */
   const isOnCanvas = Boolean(
     canvasPlant &&
       selectedCanvasPlantId === canvasPlant.canvasId &&
-      (!selectedPlantId || selectedPlantId === canvasPlant.plantId),
+      selectedPlantId === canvasPlant.plantId,
   );
-  const catalogOnly = Boolean(selectedPlantId && plantId && !isOnCanvas);
+  const catalogOnly = Boolean(selectedPlantId && !isOnCanvas);
 
   const { data: plant, isLoading } = usePlantDetail(plantId);
-  const open = Boolean(plantId);
+  const open = Boolean(selectedPlantId);
 
   const companionNames = plant?.companion_plants ?? [];
   const { data: resolvedCompanions = [] } = useCompanionPlants(
@@ -139,9 +139,13 @@ export function PlantDetailPanel() {
                   {plant.is_kitchen_essential && (
                     <span className="designer-detail-badge">Kitchen staple</span>
                   )}
-                  {plant.is_florida_native && (
+                  {plant.native_origin?.trim() ? (
+                    <span className="designer-detail-badge designer-detail-badge--origin">
+                      {plant.native_origin.trim()}
+                    </span>
+                  ) : plant.is_florida_native ? (
                     <span className="designer-detail-badge">Florida native</span>
-                  )}
+                  ) : null}
                   {plant.is_invasive_in_florida && (
                     <span className="designer-detail-badge designer-detail-badge--warn">
                       Invasive

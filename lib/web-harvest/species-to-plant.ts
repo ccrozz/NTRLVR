@@ -89,6 +89,7 @@ export function discoveredSpeciesToPlant(
     guild_functions: [],
     is_florida_native: false,
     native_states: row.source === "usda" ? [stateCode] : [],
+    native_origin: null,
     grows_in_us: true,
     is_kitchen_essential: false,
     is_edible: false,

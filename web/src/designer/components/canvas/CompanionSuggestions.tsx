@@ -15,14 +15,18 @@ import type { PlantSummary } from "../../../types";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
-async function fetchCompanions(names: string[]): Promise<PlantSummary[]> {
+async function fetchCompanions(
+  names: string[],
+  stateCode: string,
+): Promise<PlantSummary[]> {
   if (!names.length) return [];
   const params = new URLSearchParams({
     names: names.join(","),
     food_forest_only: "true",
+    state: stateCode,
     limit: String(names.length),
   });
-  const res = await fetch(`${API}/api/plants?${params}`);
+  const res = await fetch(`${API}/api/designer/plants?${params}`);
   if (!res.ok) return [];
   const json = await res.json();
   return (json.data ?? []) as PlantSummary[];
@@ -45,6 +49,7 @@ export function CompanionSuggestions({
 }: Props) {
   const addPlantNearHost = useDesignerStore((s) => s.addPlantNearHost);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
+  const designerState = useDesignerStore((s) => s.designerState);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
@@ -52,9 +57,9 @@ export function CompanionSuggestions({
   const companionNames = plant?.companion_plants ?? [];
 
   const { data: companions = [] } = useQuery({
-    queryKey: ["companions", plantId, companionNames.join("|")],
+    queryKey: ["companions", designerState, plantId, companionNames.join("|")],
     enabled: companionNames.length > 0,
-    queryFn: () => fetchCompanions(companionNames),
+    queryFn: () => fetchCompanions(companionNames, designerState),
   });
 
   const host = useMemo(

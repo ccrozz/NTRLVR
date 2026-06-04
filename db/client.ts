@@ -75,6 +75,10 @@ function migrate(database: SqliteDatabase): void {
     );
   }
 
+  if (!cols.has("native_origin")) {
+    add("ALTER TABLE plants ADD COLUMN native_origin TEXT");
+  }
+
   if (!cols.has("trefle_id")) {
     add("ALTER TABLE plants ADD COLUMN trefle_id INTEGER");
     add("ALTER TABLE plants ADD COLUMN trefle_slug TEXT");

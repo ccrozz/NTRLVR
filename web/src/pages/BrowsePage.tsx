@@ -1,36 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchPlants, fetchStates } from "../api";
-import { CatalogHeader } from "../components/CatalogHeader";
+import { CatalogCategoryFilters } from "../components/CatalogCategoryFilters";
+import { CatalogHero } from "../components/CatalogHeader";
+import { CatalogQuickPicks } from "../components/CatalogQuickPicks";
 import { PlantCard } from "../components/PlantCard";
+import {
+  catalogGroupFiltersForState,
+  type CatalogGroupFilter,
+} from "../lib/catalog-category-filters";
+import { nativesGroupLabel } from "@lib/food-forest-groups";
 import "../styles/catalog.css";
-import { CloseIcon, SearchIcon, SlidersIcon, SproutIcon } from "../components/Icons";
+import { SearchIcon, SproutIcon } from "../components/Icons";
+import {
+  CATALOG_STATE_STORAGE_KEY,
+  writeCatalogStateCode,
+} from "../lib/catalog-state";
 import type { PlantSummary, UsStateOption } from "../types";
-
-const STORAGE_STATE_KEY = "naturelover-my-state";
-
-const CATEGORIES = [
-  "",
-  "Fruit Tree",
-  "Citrus",
-  "Tropical Fruit",
-  "Berry",
-  "Herb",
-  "Vegetable",
-  "Palm",
-  "Native Shrub",
-  "Vine",
-] as const;
-
-const CANOPY_LAYERS = [
-  "",
-  "Overstory",
-  "Understory",
-  "Shrub",
-  "Herbaceous",
-  "Groundcover",
-  "Vine",
-] as const;
 
 const PAGE_SIZE = 24;
 
@@ -48,18 +34,35 @@ function SkeletonGrid() {
   );
 }
 
+function activeFilterLabel(
+  groupFilter: CatalogGroupFilter | null,
+  edibleOnly: boolean,
+  nativeToMyState: boolean,
+  groupFilters: { key: CatalogGroupFilter; label: string }[],
+): string | null {
+  const parts: string[] = [];
+  if (edibleOnly) parts.push("Something to eat");
+  if (nativeToMyState) parts.push("Natives only");
+  if (groupFilter) {
+    const label = groupFilters.find((f) => f.key === groupFilter)?.label;
+    if (label) parts.push(label);
+  }
+  if (!parts.length) return null;
+  return parts.join(" · ");
+}
+
 export function BrowsePage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [canopyLayer, setCanopyLayer] = useState("");
+  const [groupFilter, setGroupFilter] = useState<CatalogGroupFilter | null>(
+    null,
+  );
   const [edibleOnly, setEdibleOnly] = useState(false);
   const [myState, setMyState] = useState(
-    () => localStorage.getItem(STORAGE_STATE_KEY) ?? "",
+    () => localStorage.getItem(CATALOG_STATE_STORAGE_KEY) ?? "",
   );
   const [nativeToMyState, setNativeToMyState] = useState(false);
   const [states, setStates] = useState<UsStateOption[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [plants, setPlants] = useState<PlantSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -77,53 +80,45 @@ export function BrowsePage() {
 
   const stateName = selectedState?.name ?? myState;
 
-  const activeFilterCount = useMemo(() => {
-    let n = 0;
-    if (category) n++;
-    if (canopyLayer) n++;
-    if (edibleOnly) n++;
-    if (nativeToMyState) n++;
-    return n;
-  }, [category, canopyLayer, edibleOnly, nativeToMyState]);
+  const groupFilters = useMemo(
+    () => catalogGroupFiltersForState(myState || "FL"),
+    [myState],
+  );
 
-  const activeChips = useMemo(() => {
-    const chips: { key: string; label: string; clear: () => void }[] = [];
-    if (category) {
-      chips.push({
-        key: "category",
-        label: category,
-        clear: () => setCategory(""),
-      });
-    }
-    if (canopyLayer) {
-      chips.push({
-        key: "layer",
-        label: canopyLayer,
-        clear: () => setCanopyLayer(""),
-      });
-    }
-    if (edibleOnly) {
-      chips.push({
-        key: "edible",
-        label: "Edible only",
-        clear: () => setEdibleOnly(false),
-      });
-    }
-    if (nativeToMyState) {
-      chips.push({
-        key: "native",
-        label: `Native to ${stateName}`,
-        clear: () => setNativeToMyState(false),
-      });
-    }
-    return chips;
-  }, [category, canopyLayer, edibleOnly, nativeToMyState, stateName]);
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(
+        groupFilter || edibleOnly || nativeToMyState || debouncedSearch,
+      ),
+    [groupFilter, edibleOnly, nativeToMyState, debouncedSearch],
+  );
+
+  const filterSummary = useMemo(
+    () =>
+      activeFilterLabel(
+        groupFilter,
+        edibleOnly,
+        nativeToMyState,
+        groupFilters,
+      ),
+    [groupFilter, edibleOnly, nativeToMyState, groupFilters],
+  );
 
   const clearAllFilters = () => {
-    setCategory("");
-    setCanopyLayer("");
+    setSearch("");
+    setGroupFilter(null);
     setEdibleOnly(false);
     setNativeToMyState(false);
+  };
+
+  const handleEdibleLens = (on: boolean) => {
+    setEdibleOnly(on);
+    if (!on) return;
+    if (groupFilter === "flowers" || groupFilter === "support") {
+      setGroupFilter("fruits_vegetables");
+      return;
+    }
+    if (!groupFilter) setGroupFilter("fruits_vegetables");
   };
 
   useEffect(() => {
@@ -138,22 +133,8 @@ export function BrowsePage() {
   }, []);
 
   useEffect(() => {
-    if (myState) localStorage.setItem(STORAGE_STATE_KEY, myState);
-    else localStorage.removeItem(STORAGE_STATE_KEY);
+    writeCatalogStateCode(myState);
   }, [myState]);
-
-  useEffect(() => {
-    if (!filtersOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFiltersOpen(false);
-    };
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [filtersOpen]);
 
   const load = useCallback(
     async (append: boolean, nextOffset: number) => {
@@ -174,12 +155,11 @@ export function BrowsePage() {
       try {
         const res = await fetchPlants({
           search: debouncedSearch || undefined,
-          category: category || undefined,
-          canopy_layer: canopyLayer || undefined,
+          food_forest_group: groupFilter ?? undefined,
           edible_only: edibleOnly,
           state: myState,
           native_to_state: nativeToMyState || undefined,
-          for_my_area: nativeToMyState ? false : undefined,
+          for_my_area: !nativeToMyState,
           limit: PAGE_SIZE,
           offset: nextOffset,
         });
@@ -196,7 +176,7 @@ export function BrowsePage() {
         setLoadingMore(false);
       }
     },
-    [debouncedSearch, category, canopyLayer, edibleOnly, myState, nativeToMyState],
+    [debouncedSearch, groupFilter, edibleOnly, myState, nativeToMyState],
   );
 
   useEffect(() => {
@@ -220,100 +200,18 @@ export function BrowsePage() {
     return () => observer.disconnect();
   }, [hasMore, loading, loadingMore, offset, load, error, myState]);
 
-  const filtersPanel = (
-    <aside
-      className={`filters-panel${filtersOpen ? " open" : ""}`}
-      aria-label="Filters"
-    >
-      <div className="filters-panel-header">
-        <h2>Refine results</h2>
-        <button
-          type="button"
-          className="filters-close"
-          onClick={() => setFiltersOpen(false)}
-          aria-label="Close filters"
-        >
-          <CloseIcon />
-        </button>
-      </div>
-
-      <div className="filters-panel-body">
-        <div className="filter-group">
-          <p className="filter-group-title">Plant type</p>
-          <label className="field">
-            <span>Category</span>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c || "all"} value={c}>
-                  {c || "All categories"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field" style={{ marginTop: "0.65rem" }}>
-            <span>Canopy layer</span>
-            <select
-              value={canopyLayer}
-              onChange={(e) => setCanopyLayer(e.target.value)}
-            >
-              {CANOPY_LAYERS.map((l) => (
-                <option key={l || "all"} value={l}>
-                  {l || "All layers"}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="filter-group">
-          <p className="filter-group-title">Range</p>
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={nativeToMyState}
-              onChange={(e) => setNativeToMyState(e.target.checked)}
-            />
-            <span className="toggle-copy">
-              <strong>Native to my state only</strong>
-              <span>
-                Documented natives in {stateName || "your state"} — a smaller
-                list than everything that can grow there.
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <div className="filter-group">
-          <p className="filter-group-title">Harvest</p>
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={edibleOnly}
-              onChange={(e) => setEdibleOnly(e.target.checked)}
-            />
-            <span className="toggle-copy">
-              <strong>Edible only</strong>
-              <span>Fruits, herbs, and other food-bearing species.</span>
-            </span>
-          </label>
-        </div>
-      </div>
-    </aside>
-  );
-
-  const resultsSummary =
+  const resultsLine =
     !myState ? null : loading && plants.length === 0 ? (
-      "Loading catalog…"
+      "Finding plants for your area…"
     ) : (
       <>
-        <strong>{total.toLocaleString()}</strong> plants
-        {nativeToMyState ? (
-          <> native to {stateName}</>
+        <strong>{total.toLocaleString()}</strong>
+        {edibleOnly ? (
+          <> edible picks in {stateName}</>
+        ) : nativeToMyState ? (
+          <> natives in {stateName}</>
         ) : (
-          <> that can grow in {stateName}</>
+          <> plants for {stateName}</>
         )}
         {debouncedSearch && (
           <>
@@ -324,112 +222,95 @@ export function BrowsePage() {
       </>
     );
 
+  const statePicker = (
+    <label className="catalog-state-field">
+      <span className="catalog-state-label">State</span>
+      <select
+        value={myState}
+        onChange={(e) => setMyState(e.target.value)}
+        aria-labelledby="location-heading"
+      >
+        <option value="">Select your state…</option>
+        {states.map((s) => (
+          <option key={s.code} value={s.code}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
-    <main className="browse-page">
-      <CatalogHeader
+    <main className="browse-page catalog-browse">
+      <CatalogHero
+        statePicker={statePicker}
         stateName={myState ? stateName : undefined}
         total={myState ? total : undefined}
         loading={myState ? loading && plants.length === 0 : false}
       />
 
-      <section className="catalog-setup" id="get-started">
-        <article className="catalog-setup-card" aria-labelledby="location-heading">
-          <h2 id="location-heading">Where are you planting?</h2>
-          <p>Pick your state to see plants that can grow in your area.</p>
-          <label className="field">
-            <span>State</span>
-            <select
-              value={myState}
-              onChange={(e) => setMyState(e.target.value)}
-            >
-              <option value="">Select your state…</option>
-              {states.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {selectedState && (
-            <p className="catalog-setup-hint">
-              Showing plants that can grow in {stateName}.
-            </p>
-          )}
-        </article>
-      </section>
-
       {!myState && (
         <div className="catalog-prompt">
           <SproutIcon />
-          <p>Select a state above to browse plants for your area.</p>
-          <Link to="/">← Back to NTR LVR</Link>
-          {" · "}
-          <Link to="/designer">Open garden designer</Link>
+          <h2>Choose a state to get started</h2>
+          <p>
+            We filter thousands of plants down to what fits your climate — so
+            you are not scrolling through species that will not survive winter.
+          </p>
+          <Link to="/designer" className="btn btn-primary">
+            Or design a garden layout
+          </Link>
         </div>
       )}
 
       {myState && (
-        <section className="catalog-toolbar" aria-label="Search and filters">
-          <div className="catalog-bar">
-            <div className="search-bar">
+        <>
+          <div className="catalog-sticky-dock" aria-label="Search and filters">
+            <div className="catalog-dock-search search-bar">
               <SearchIcon />
               <input
                 type="search"
-                placeholder="Search mango, pawpaw, nitrogen fixer…"
+                placeholder="Try tomato, apple, bee balm…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search plants"
               />
             </div>
-            <div className="catalog-bar-row">
-              <p className="results-summary">{resultsSummary}</p>
-              <button
-                type="button"
-                className="filter-toggle"
-                onClick={() => setFiltersOpen(true)}
-                aria-expanded={filtersOpen}
-              >
-                <SlidersIcon />
-                Filters
-                {activeFilterCount > 0 && ` (${activeFilterCount})`}
-              </button>
+
+            <div className="catalog-dock-section">
+              <p className="catalog-dock-label">What are you looking for?</p>
+              <CatalogCategoryFilters
+                filters={groupFilters}
+                active={groupFilter}
+                onSelect={setGroupFilter}
+                className="catalog-dock-categories"
+              />
             </div>
-            {activeChips.length > 0 && (
-              <div className="active-filters">
-                {activeChips.map((chip) => (
-                  <span key={chip.key} className="filter-chip">
-                    {chip.label}
-                    <button
-                      type="button"
-                      onClick={chip.clear}
-                      aria-label={`Remove ${chip.label} filter`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+
+            <div className="catalog-dock-section">
+              <p className="catalog-dock-label">Popular starting points</p>
+              <CatalogQuickPicks
+                nativesLabel={nativesGroupLabel(myState)}
+                edibleOnly={edibleOnly}
+                onEdibleOnly={handleEdibleLens}
+                nativeToMyState={nativeToMyState}
+                onNativeToMyState={setNativeToMyState}
+              />
+            </div>
+
+            <div className="catalog-dock-footer">
+              <p className="catalog-dock-results">{resultsLine}</p>
+              {hasActiveFilters && (
                 <button
                   type="button"
-                  className="clear-filters"
+                  className="catalog-dock-clear"
                   onClick={clearAllFilters}
                 >
-                  Clear all
+                  {filterSummary ? `Clear: ${filterSummary}` : "Clear filters"}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </section>
-      )}
-
-      <div
-        className={`filter-backdrop${filtersOpen ? " open" : ""}`}
-        onClick={() => setFiltersOpen(false)}
-        aria-hidden={!filtersOpen}
-      />
-
-      {myState && (
-        <div className="browse-body">
-          {filtersPanel}
 
           <section className="catalog-main">
             {error && (
@@ -450,30 +331,27 @@ export function BrowsePage() {
             {!error && loading && plants.length === 0 && <SkeletonGrid />}
 
             {!error && !loading && plants.length === 0 && (
-              <div className="empty-state">
+              <div className="empty-state catalog-empty">
                 <SproutIcon />
                 <h3>No plants match yet</h3>
                 <p>
-                  Try clearing filters or broadening your search. You can also
-                  browse without the native-only filter.
+                  Try <strong>All</strong> plants, pick a different category, or
+                  clear your filters above.
                 </p>
-                {(activeChips.length > 0 || debouncedSearch) && (
+                {hasActiveFilters && (
                   <button
                     type="button"
                     className="btn btn-ghost"
-                    onClick={() => {
-                      setSearch("");
-                      clearAllFilters();
-                    }}
+                    onClick={clearAllFilters}
                   >
-                    Reset search &amp; filters
+                    Clear filters
                   </button>
                 )}
               </div>
             )}
 
             {!error && plants.length > 0 && (
-              <section className="plant-grid">
+              <section className="plant-grid" aria-label="Plant results">
                 {plants.map((plant) => (
                   <PlantCard
                     key={plant.id}
@@ -495,7 +373,7 @@ export function BrowsePage() {
               )}
             </div>
           </section>
-        </div>
+        </>
       )}
     </main>
   );

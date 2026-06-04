@@ -4,11 +4,13 @@ import {
   plantMatchesFoodForestGroup,
 } from "./food-forest-groups.js";
 import { SEED_BY_ID, SEED_PLANTS } from "../data/plants.seed.js";
+import { designerSeedsForState } from "../data/state-seed-catalog.js";
 import { stateByCode } from "./us-states.js";
 import {
   listPlants,
   plantToSummary,
   getPlantById,
+  getPlantsByIds,
   getPlantByTrefleSlug,
 } from "../db/plant-repository.js";
 import {
@@ -23,8 +25,20 @@ import {
 } from "./trefle-api.js";
 import { applyDesignerProfile } from "./designer-plant-profiles.js";
 import { listStateDesignerPlants } from "./state-designer-catalog.js";
-import { DEFAULT_DESIGNER_STATE, isDesignerStateCode } from "./designer-states.js";
-import { dedupePlantsByName } from "./plant-dedupe.js";
+import {
+  DEFAULT_DESIGNER_STATE,
+  isDesignerStateCode,
+  type DesignerStateCode,
+} from "./designer-states.js";
+import { plantMatchesEdibleFilter } from "./infer-is-edible.js";
+import { plantIsNativeToState } from "./plant-native-status.js";
+import {
+  dedupeCatalogPlants,
+  dedupePlantsByName,
+  preferCatalogPlant,
+  speciesDedupKey,
+} from "./plant-dedupe.js";
+import { listPlantsByCommonNames as resolvePlantsByCommonNames } from "./companion-catalog-lookup.js";
 export async function listLocalSummaries(filters: PlantFilters): Promise<{
   data: PlantSummary[];
   total: number;
@@ -74,7 +88,7 @@ function seedMatchesFilters(plant: Plant, filters: PlantFilters): boolean {
 
   if (filters.florida_native_only && !plant.is_florida_native) return false;
   if (filters.kitchen_essentials_only && !plant.is_kitchen_essential) return false;
-  if (filters.edible_only && !plant.is_edible) return false;
+  if (filters.edible_only && !plantMatchesEdibleFilter(plant)) return false;
   if (filters.exclude_invasive && plant.is_invasive_in_florida) return false;
 
   if (
@@ -90,13 +104,7 @@ function seedMatchesFilters(plant: Plant, filters: PlantFilters): boolean {
   }
 
   if (filters.native_to_state_only && filters.native_state) {
-    const st = filters.native_state.toUpperCase();
-    const native =
-      plant.native_states.some((s) => s.toUpperCase() === st) ||
-      (st === "FL" &&
-        plant.is_florida_native &&
-        plant.native_states.length === 0);
-    if (!native) return false;
+    if (!plantIsNativeToState(plant, filters.native_state)) return false;
   }
 
   if (filters.for_my_area && filters.native_state) {
@@ -107,11 +115,7 @@ function seedMatchesFilters(plant: Plant, filters: PlantFilters): boolean {
       const inZone = state.hardiness_zones.some((z) =>
         zones.includes(z.toLowerCase()),
       );
-      const native =
-        plant.native_states.some((s) => s.toUpperCase() === st) ||
-        (st === "FL" &&
-          plant.is_florida_native &&
-          plant.native_states.length === 0);
+      const native = plantIsNativeToState(plant, st);
       if (!inZone && !native) return false;
     }
   }
@@ -141,25 +145,65 @@ function coalesceImageUrl(
   return null;
 }
 
-async function listSeedSummaries(filters: PlantFilters): Promise<PlantListItem[]> {
-  const out: PlantListItem[] = [];
-  for (const seed of SEED_PLANTS.filter((p) => seedMatchesFilters(p, filters))) {
-      const stored = await getPlantById(seed.id);
-      const plant: Plant = stored
-        ? {
-            ...seed,
-            ...stored,
-            image_url: coalesceImageUrl(stored.image_url, seed.image_url),
-          }
-        : seed;
-    out.push(
-      summaryFromLocal({
-        ...plantToSummary(plant),
-        is_invasive_in_florida: plant.is_invasive_in_florida,
-      }),
-    );
+function catalogSeedPool(stateCode?: string): Plant[] {
+  const st = stateCode?.trim().toUpperCase();
+  if (st && isDesignerStateCode(st)) {
+    return designerSeedsForState(st);
   }
-  return out;
+  return SEED_PLANTS;
+}
+
+function tryAddCatalogItem(
+  items: PlantListItem[],
+  seenIds: Set<string>,
+  seenSpecies: Map<string, PlantListItem>,
+  candidate: PlantListItem,
+  stateCode?: string,
+): boolean {
+  const key = speciesDedupKey(candidate.common_name, candidate.scientific_name);
+  const prev = seenSpecies.get(key);
+  if (prev) {
+    const pick = preferCatalogPlant(prev, candidate, stateCode);
+    if (pick.id !== prev.id) {
+      const idx = items.findIndex(
+        (i) => speciesDedupKey(i.common_name, i.scientific_name) === key,
+      );
+      if (idx >= 0) items[idx] = pick;
+      seenIds.delete(prev.id);
+      seenIds.add(pick.id);
+    }
+    seenSpecies.set(key, pick);
+    return false;
+  }
+  if (seenIds.has(candidate.id)) return false;
+  seenIds.add(candidate.id);
+  seenSpecies.set(key, candidate);
+  items.push(candidate);
+  return true;
+}
+
+async function listSeedSummaries(filters: PlantFilters): Promise<PlantListItem[]> {
+  const stateCode = filters.native_state;
+  const seeds = catalogSeedPool(stateCode).filter((p) =>
+    seedMatchesFilters(p, filters),
+  );
+  const storedById = new Map(
+    (await getPlantsByIds(seeds.map((s) => s.id))).map((p) => [p.id, p]),
+  );
+  return seeds.map((seed) => {
+    const stored = storedById.get(seed.id);
+    const plant: Plant = stored
+      ? {
+          ...seed,
+          ...stored,
+          image_url: coalesceImageUrl(stored.image_url, seed.image_url),
+        }
+      : seed;
+    return summaryFromLocal({
+      ...plantToSummary(plant),
+      is_invasive_in_florida: plant.is_invasive_in_florida,
+    });
+  });
 }
 
 function plantToListItem(plant: Plant): PlantListItem {
@@ -173,56 +217,16 @@ async function resolvePlantRecord(id: string): Promise<Plant | null> {
   return (await getPlantById(id)) ?? SEED_BY_ID[id] ?? null;
 }
 
-function scoreCommonNameMatch(plantName: string, query: string): number {
-  const cn = plantName.trim().toLowerCase();
-  const q = query.trim().toLowerCase();
-  if (!cn || !q) return 0;
-  if (cn === q) return 100;
-  if (cn.endsWith(` ${q}`)) return 85;
-  const words = cn.split(/\s+/);
-  if (words.includes(q)) return 75;
-  if (cn.includes(q)) return 65;
-  if (q.includes(cn)) return 50;
-  return 0;
-}
-
-async function findPlantByCommonName(name: string): Promise<Plant | null> {
-  const target = name.trim().toLowerCase();
-  if (!target) return null;
-
-  let best: Plant | null = null;
-  let bestScore = 0;
-
-  const consider = (plant: Plant) => {
-    const score = scoreCommonNameMatch(plant.common_name, target);
-    if (score > bestScore) {
-      bestScore = score;
-      best = plant;
-    }
-  };
-
-  for (const seed of SEED_PLANTS) {
-    const stored = await getPlantById(seed.id);
-    consider(stored ? { ...seed, ...stored } : seed);
-  }
-
-  const { data } = await listPlants({ search: name.trim(), limit: 16 });
-  for (const row of data) {
-    consider(row);
-  }
-
-  return bestScore >= 65 ? best : null;
-}
-
 /** Batch lookup by id (designer companions). */
 export async function listPlantsByIds(ids: string[]): Promise<PlantListItem[]> {
+  const keys = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  const stored = await getPlantsByIds(keys);
+  const storedById = new Map(stored.map((p) => [p.id, p]));
   const out: PlantListItem[] = [];
-  const seen = new Set<string>();
-  for (const id of ids) {
-    const key = id.trim();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    const plant = await resolvePlantRecord(key);
+  for (const key of keys) {
+    const plant =
+      storedById.get(key) ??
+      (await resolvePlantRecord(key));
     if (plant) out.push(plantToListItem(plant));
   }
   return dedupePlantsByName(out);
@@ -231,22 +235,19 @@ export async function listPlantsByIds(ids: string[]): Promise<PlantListItem[]> {
 /** Batch lookup by display name (companion_plants strings). */
 export async function listPlantsByCommonNames(
   names: string[],
+  stateCode?: DesignerStateCode,
 ): Promise<PlantListItem[]> {
-  const out: PlantListItem[] = [];
-  const seen = new Set<string>();
-  for (const name of names) {
-    const key = name.trim().toLowerCase();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    const plant = await findPlantByCommonName(name);
-    if (plant) out.push(plantToListItem(plant));
-  }
-  return out;
+  const plants = await resolvePlantsByCommonNames(names, stateCode);
+  return plants.map((p) => plantToListItem(p));
 }
 
-export async function listPlantsWithTrefle(
+/**
+ * Garden designer only — curated FL/TN/CT seeds + vetted DB rows (`listStateDesignerPlants`).
+ * Never use for public catalog browse.
+ */
+export async function listDesignerPlants(
   filters: PlantFilters,
-  opts: { trefleLive?: boolean; search?: string },
+  opts: { search?: string } = {},
 ): Promise<{ data: PlantListItem[]; total: number }> {
   const search = opts.search?.trim() ?? filters.search?.trim();
   const offset = filters.offset ?? 0;
@@ -258,33 +259,120 @@ export async function listPlantsWithTrefle(
   }
 
   if (filters.names?.length) {
-    const data = await listPlantsByCommonNames(filters.names);
+    const state =
+      filters.native_state && isDesignerStateCode(filters.native_state)
+        ? (filters.native_state as DesignerStateCode)
+        : DEFAULT_DESIGNER_STATE;
+    const data = await listPlantsByCommonNames(filters.names, state);
     return { data, total: data.length };
   }
 
-  /** Designer catalog: curated state seeds + DB plants for that state. */
-  if (filters.food_forest_only) {
-    const state =
-      filters.native_state && isDesignerStateCode(filters.native_state)
-        ? filters.native_state
-        : DEFAULT_DESIGNER_STATE;
-    const mergedFilters: PlantFilters = {
-      ...filters,
-      exclude_invasive: true,
-      search: search ?? filters.search,
-      native_state: state,
-      for_my_area: filters.for_my_area !== false,
-    };
-    const all = (await listStateDesignerPlants(mergedFilters)).map((plant) =>
-      summaryFromLocal({
-        ...plantToSummary(plant),
-        is_invasive_in_florida: plant.is_invasive_in_florida,
-      }),
+  const state =
+    filters.native_state && isDesignerStateCode(filters.native_state)
+      ? filters.native_state
+      : DEFAULT_DESIGNER_STATE;
+  const mergedFilters: PlantFilters = {
+    ...filters,
+    food_forest_only: undefined,
+    food_forest_group: filters.food_forest_group,
+    exclude_invasive: true,
+    search: search ?? filters.search,
+    native_state: state,
+    for_my_area: filters.for_my_area !== false,
+  };
+  const all = (await listStateDesignerPlants(mergedFilters)).map((plant) =>
+    summaryFromLocal({
+      ...plantToSummary(plant),
+      is_invasive_in_florida: plant.is_invasive_in_florida,
+    }),
+  );
+  return {
+    data: all.slice(offset, offset + limit),
+    total: all.length,
+  };
+}
+
+const CATALOG_GROUP_POOL = 14_000;
+
+async function listCatalogPlantsByGroup(
+  filters: PlantFilters,
+): Promise<{ data: PlantListItem[]; total: number }> {
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 100;
+  const group = filters.food_forest_group;
+  if (!group || !isFoodForestGroup(group)) {
+    return { data: [], total: 0 };
+  }
+
+  const stateCode = filters.native_state ?? "FL";
+  const base: PlantFilters = { ...filters, food_forest_group: undefined };
+
+  const seeds = dedupeCatalogPlants(
+    await listSeedSummaries(filters),
+    stateCode,
+  );
+  const seen = new Set<string>();
+  const seenSpecies = new Map<string, PlantListItem>();
+  const items: PlantListItem[] = [];
+  for (const seed of seeds) {
+    tryAddCatalogItem(items, seen, seenSpecies, seed, stateCode);
+  }
+
+  const { data: rows } = await listPlants({
+    ...base,
+    limit: CATALOG_GROUP_POOL,
+    offset: 0,
+  });
+  for (const plant of rows) {
+    if (!plantMatchesFoodForestGroup(plant, group, stateCode)) continue;
+    if (!seedMatchesFilters(plant, filters)) continue;
+    tryAddCatalogItem(
+      items,
+      seen,
+      seenSpecies,
+      plantToListItem(plant),
+      stateCode,
     );
-    return {
-      data: all.slice(offset, offset + limit),
-      total: all.length,
-    };
+  }
+
+  items.sort((a, b) => a.common_name.localeCompare(b.common_name));
+  return {
+    data: items.slice(offset, offset + limit),
+    total: items.length,
+  };
+}
+
+/**
+ * Public catalog browse — full ingested plant DB (Trefle scrape + FL seeds), not designer curation.
+ */
+export async function listCatalogPlants(
+  filters: PlantFilters,
+  opts: { trefleLive?: boolean; search?: string } = {},
+): Promise<{ data: PlantListItem[]; total: number }> {
+  const search = opts.search?.trim() ?? filters.search?.trim();
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 100;
+
+  if (
+    filters.food_forest_group &&
+    isFoodForestGroup(filters.food_forest_group)
+  ) {
+    return listCatalogPlantsByGroup(filters);
+  }
+
+  if (filters.ids?.length) {
+    const data = await listPlantsByIds(filters.ids);
+    return { data, total: data.length };
+  }
+
+  if (filters.names?.length) {
+    const data = await listPlantsByCommonNames(
+      filters.names,
+      filters.native_state && isDesignerStateCode(filters.native_state)
+        ? (filters.native_state as DesignerStateCode)
+        : undefined,
+    );
+    return { data, total: data.length };
   }
 
   if (opts.trefleLive && search) {
@@ -293,50 +381,48 @@ export async function listPlantsWithTrefle(
     return { data, total: data.length };
   }
 
-  const seeds = await listSeedSummaries(filters);
-  const seedCount = seeds.length;
+  const stateCode = filters.native_state;
+  const seeds = dedupeCatalogPlants(
+    await listSeedSummaries(filters),
+    stateCode,
+  );
+  const seedTotal = seeds.length;
   const seen = new Set<string>();
+  const seenSpecies = new Map<string, PlantListItem>();
   const items: PlantListItem[] = [];
+  const windowEnd = offset + limit;
 
-  let dbTotal = 0;
+  for (let i = offset; i < Math.min(windowEnd, seedTotal); i++) {
+    tryAddCatalogItem(items, seen, seenSpecies, seeds[i], stateCode);
+  }
 
-  if (offset === 0) {
-    const dbLimit = Math.max(0, limit - seedCount);
-    const { data: local, total } = await listLocalSummaries({
-      ...filters,
-      limit: dbLimit,
-      offset: 0,
-    });
-    dbTotal = total;
-    for (const seed of seeds) {
-      seen.add(seed.id);
-      items.push(seed);
-    }
-    for (const p of local) {
-      const row = summaryFromLocal({
-        ...p,
-        is_invasive_in_florida: p.is_invasive_in_florida ?? false,
+  const { total: dbTotal } = await listLocalSummaries({
+    ...filters,
+    limit: 1,
+    offset: 0,
+  });
+
+  if (items.length < limit) {
+    const dbOffset = Math.max(0, offset - seedTotal);
+    let scanOffset = dbOffset;
+    const BATCH = 48;
+    while (items.length < limit) {
+      const { data: local } = await listLocalSummaries({
+        ...filters,
+        limit: BATCH,
+        offset: scanOffset,
       });
-      if (seen.has(row.id)) continue;
-      seen.add(row.id);
-      items.push(row);
-    }
-  } else {
-    const dbOffset = Math.max(0, offset - seedCount);
-    const { data: local, total } = await listLocalSummaries({
-      ...filters,
-      limit,
-      offset: dbOffset,
-    });
-    dbTotal = total;
-    for (const p of local) {
-      const row = summaryFromLocal({
-        ...p,
-        is_invasive_in_florida: p.is_invasive_in_florida ?? false,
-      });
-      if (seen.has(row.id)) continue;
-      seen.add(row.id);
-      items.push(row);
+      if (!local.length) break;
+      for (const p of local) {
+        if (items.length >= limit) break;
+        const row = summaryFromLocal({
+          ...p,
+          is_invasive_in_florida: p.is_invasive_in_florida ?? false,
+        });
+        tryAddCatalogItem(items, seen, seenSpecies, row, stateCode);
+      }
+      scanOffset += BATCH;
+      if (local.length < BATCH) break;
     }
   }
 
@@ -344,14 +430,24 @@ export async function listPlantsWithTrefle(
     const trefleHits = await searchTrefle(search);
     for (const hit of trefleHits) {
       const row = summaryFromTrefle(hit);
-      if (seen.has(row.trefle_slug ?? row.id)) continue;
-      seen.add(row.trefle_slug ?? row.id);
-      items.push(row);
+      tryAddCatalogItem(items, seen, seenSpecies, row, stateCode);
       if (items.length >= limit) break;
     }
   }
 
-  return { data: items, total: dbTotal + seedCount };
+  const dedupedTotal = Math.max(seedTotal, seedTotal + dbTotal - (seen.size - items.length));
+  return { data: items, total: dedupedTotal };
+}
+
+/** @deprecated Use listCatalogPlants or listDesignerPlants */
+export async function listPlantsWithTrefle(
+  filters: PlantFilters,
+  opts: { trefleLive?: boolean; search?: string },
+): Promise<{ data: PlantListItem[]; total: number }> {
+  if (filters.food_forest_only) {
+    return listDesignerPlants(filters, opts);
+  }
+  return listCatalogPlants(filters, opts);
 }
 
 export async function resolvePlantById(id: string): Promise<Plant | null> {

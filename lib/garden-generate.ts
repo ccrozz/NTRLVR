@@ -3,8 +3,16 @@ import {
   type FoodForestLayoutResponse,
 } from "./food-forest-layout.js";
 import type { GardenPreferences } from "./food-forest-questionnaire.js";
+import type { GardenStyle } from "./food-forest-questionnaire.js";
+import {
+  aiPickingRulesForGardenStyle,
+  filterCatalogForGardenStyle,
+  filterIdsForGardenStyle,
+  topUpIdsForGardenStyle,
+} from "./garden-style-catalog.js";
 import {
   maxPlantsForCanvas,
+  targetFoodForestTreeCount,
   targetPlantCountFromPreferences,
 } from "./food-forest-questionnaire.js";
 import {
@@ -50,6 +58,10 @@ type CatalogRow = {
   category: string;
   radius_ft: number;
   sunlight: string;
+  edible: boolean;
+  native: boolean;
+  tags: string[];
+  is_kitchen_essential: boolean;
 };
 
 async function loadCatalogForOnboarding(
@@ -92,6 +104,10 @@ async function loadCatalogForOnboarding(
         category: s.category,
         radius_ft: s.canvas_radius_feet || 3,
         sunlight: p.sunlight,
+        edible: p.is_edible,
+        native: s.is_florida_native,
+        tags: p.tags,
+        is_kitchen_essential: p.is_kitchen_essential,
       };
     });
 }
@@ -126,6 +142,44 @@ function defaultGardenCopy(
   const stateName =
     designerStateConfig(answers.designer_state ?? DEFAULT_DESIGNER_STATE)?.name ??
     "Florida";
+  const style = answers.garden_style;
+  if (style === "food_forest") {
+    return {
+      garden_name: "Your Food Forest Canopy",
+      garden_description:
+        `A ${stateName} food forest starter with fruit trees spaced for real-world canopy room — tuned to your light, water, and goals.`,
+      design_philosophy:
+        "We place fruit trees on the map first so spacing and shade make sense. Add shrubs, herbs, and support plants from Browse Plants as you build out each guild.",
+    };
+  }
+  if (style === "kitchen_garden") {
+    return {
+      garden_name: "Your Kitchen Garden",
+      garden_description:
+        `Herbs, vegetables, and everyday cooking crops for your ${stateName} bed — picked for your sun, water, and how much you want to tend it.`,
+      design_philosophy:
+        "Everything here is harvestable for the kitchen: greens, tomatoes, peppers, beans, and herbs — no fruit trees on the canvas.",
+    };
+  }
+  if (style === "pollinator") {
+    return {
+      garden_name: "Your Pollinator Garden",
+      garden_description:
+        `Flowers and nectar plants that bring bees, butterflies, and hummingbirds to your ${stateName} yard.`,
+      design_philosophy:
+        "Bloom layers from ground to shrub height — perennial flowers, annuals, and flowering herbs without orchard trees.",
+    };
+  }
+  if (style === "visual") {
+    return {
+      garden_name: "Your Visual Garden",
+      garden_description:
+        `The prettiest ornamental plants for your ${stateName} space — color, texture, and fragrance from the window or patio.`,
+      design_philosophy:
+        "Beauty-first planting: flowers, foliage, and landscape plants — no fruit trees cluttering the view.",
+    };
+  }
+
   return {
     garden_name: names[primary ?? "food_production"] ?? `Your ${stateName} Garden`,
     garden_description:
@@ -160,6 +214,12 @@ async function callAnthropicGarden(
   const stateName =
     designerStateConfig(answers.designer_state ?? DEFAULT_DESIGNER_STATE)?.name ??
     "Florida";
+  const styleRules = aiPickingRulesForGardenStyle(
+    answers.garden_style,
+    target,
+    density,
+  );
+
   const system = `You are an expert permaculture designer specializing in ${stateName} food forests and edible landscapes. You have deep knowledge of plant guilds, companion planting, canopy layering, and ${stateName}-specific growing conditions. You give practical, specific, enthusiastic advice that makes beginners feel capable and experts feel respected.
 
 Pick plants ONLY from the catalog (first column = id). Return valid JSON only, no markdown:
@@ -172,7 +232,7 @@ Pick plants ONLY from the catalog (first column = id). Return valid JSON only, n
 }
 
 Rules:
-- Pick exactly ${target} different plant ids from the catalog.
+${styleRules}
 - USDA zone ${zone}, bed ${widthFeet}×${heightFeet} ft, density ${density}.
 - Match sunlight and maintenance from the profile; favor perennials for minimal maintenance.
 - ${answers.experience === "beginner" ? "Favor foolproof, forgiving species." : ""}
@@ -253,10 +313,14 @@ export async function generateGardenFromOnboarding(
   const preferences = onboardingToGardenPreferences(answers);
   const { widthFeet, heightFeet, areaSqFt } =
     resolveOnboardingBedDimensions(answers);
-  const target = Math.min(
-    maxPlantsForCanvas(areaSqFt, preferences.density ?? "balanced"),
-    targetPlantCountFromPreferences(areaSqFt, preferences),
-  );
+  const foodForestTreesOnly = answers.garden_style === "food_forest";
+  const density = preferences.density ?? "balanced";
+  const target = foodForestTreesOnly
+    ? targetFoodForestTreeCount(areaSqFt, density)
+    : Math.min(
+        maxPlantsForCanvas(areaSqFt, density),
+        targetPlantCountFromPreferences(areaSqFt, preferences),
+      );
 
   let catalog = await loadCatalogForOnboarding(
     hardiness_zone,
@@ -269,6 +333,13 @@ export async function generateGardenFromOnboarding(
   if (!catalog.length) {
     throw new Error("No plants in catalog for this zone and sunlight.");
   }
+
+  catalog = filterCatalogForGardenStyle(
+    catalog,
+    answers.garden_style,
+    stateCode,
+    answers.garden_style === "food_forest" ? 2 : 10,
+  );
 
   const copy = defaultGardenCopy(answers);
   const useAi =
@@ -292,7 +363,7 @@ export async function generateGardenFromOnboarding(
       heightFeet,
       preferences,
     );
-    const aiMin = Math.min(8, target);
+    const aiMin = foodForestTreesOnly ? Math.min(2, target) : Math.min(8, target);
     if (fromAi && fromAi.plant_ids.length >= aiMin) {
       plant_ids = fromAi.plant_ids.slice(0, target);
       source = "ai";
@@ -303,7 +374,8 @@ export async function generateGardenFromOnboarding(
     }
   }
 
-  if (plant_ids.length < Math.min(8, target)) {
+  const layoutMin = foodForestTreesOnly ? Math.min(2, target) : Math.min(8, target);
+  if (plant_ids.length < layoutMin) {
     const layout: FoodForestLayoutResponse = await generateFoodForestLayout({
       hardiness_zone,
       native_state: stateCode,
@@ -318,9 +390,43 @@ export async function generateGardenFromOnboarding(
   }
 
   const nameById = new Map(catalog.map((c) => [c.id, c]));
+  const style = answers.garden_style;
+  if (style && style !== "easy_care") {
+    plant_ids = filterIdsForGardenStyle(plant_ids, catalog, style, stateCode);
+    plant_ids = topUpIdsForGardenStyle(
+      plant_ids,
+      catalog,
+      target,
+      style,
+      stateCode,
+    );
+    if (plant_ids.length < 1) {
+      const err: Record<GardenStyle, string> = {
+        food_forest:
+          "No fruit trees matched your zone for this food forest. Try a different region or add trees from Browse Plants.",
+        kitchen_garden:
+          "No kitchen-garden plants matched your zone. Try different sun or region settings, or add herbs and veggies from Browse Plants.",
+        pollinator:
+          "No pollinator plants matched your zone. Try a different region or add flowers from Browse Plants.",
+        visual:
+          "No ornamental plants matched your zone. Try a different region or add flowers from Browse Plants.",
+        easy_care: "No plants matched your zone.",
+      };
+      throw new Error(err[style]);
+    }
+    if (style === "food_forest") {
+      message =
+        message ??
+        "Fruit trees placed on the canvas — browse Plants to add shrubs, herbs, and companions.";
+    }
+  }
+
   plant_ids = dedupeOrderedIdsByName(dedupeOrderedIds(plant_ids), (id) =>
     nameById.get(id),
   );
+  if (foodForestTreesOnly) {
+    plant_ids = plant_ids.slice(0, target);
+  }
 
   return {
     garden_name,

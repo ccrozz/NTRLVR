@@ -93,6 +93,39 @@ export function statesForUsdaRegion(region: string): string[] {
   }
 }
 
+/** Higher = warmer USDA subzone (8b > 8a > 4b). */
+export function usdaZoneWarmth(zone: string): number {
+  const m = /^(\d+)([ab])$/i.exec(zone.trim());
+  if (!m) return -1;
+  return parseInt(m[1], 10) * 2 + (m[2].toLowerCase() === "b" ? 1 : 0);
+}
+
+export type PlantStateClimateFit = "unknown" | "good" | "marginal" | "unlikely";
+
+/** Whether the plant's listed zones are realistically achievable in the state. */
+export function assessPlantClimateInState(
+  plantZones: string[],
+  stateCode: string,
+): PlantStateClimateFit {
+  if (!plantZones.length || !stateCode.trim()) return "unknown";
+  const state = stateByCode(stateCode);
+  if (!state?.hardiness_zones.length) return "unknown";
+
+  const plantMins = plantZones
+    .map(usdaZoneWarmth)
+    .filter((w) => w >= 0);
+  if (!plantMins.length) return "unknown";
+
+  const stateWarmest = Math.max(
+    ...state.hardiness_zones.map(usdaZoneWarmth),
+  );
+  const plantMinRequired = Math.min(...plantMins);
+
+  if (stateWarmest < plantMinRequired) return "unlikely";
+  if (stateWarmest === plantMinRequired) return "marginal";
+  return "good";
+}
+
 export function plantZonesOverlapState(
   plantZones: string[],
   stateCode: string,

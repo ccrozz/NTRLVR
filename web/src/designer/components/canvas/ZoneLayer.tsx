@@ -1,5 +1,5 @@
 import type Konva from "konva";
-import { Circle, Line, Rect, Text } from "react-konva";
+import { Circle, Group, Line, Rect, Text } from "react-konva";
 import { feetToPx } from "../../lib/zone-geometry";
 import { zoneColor } from "../workspace/WorkspacePanel";
 import { useDesignerStore } from "../../store/useDesignerStore";
@@ -44,12 +44,13 @@ function DraggableZone({
   const updateZoneDrag = useDesignerStore((s) => s.updateZoneDrag);
   const endZoneDrag = useDesignerStore((s) => s.endZoneDrag);
   const setActiveZoneId = useDesignerStore((s) => s.setActiveZoneId);
+  const isResizing = useDesignerStore((s) => Boolean(s.zoneResizeOrigin));
 
   const stroke = zoneStroke(index, active);
   const fill = `${zoneColor(index)}22`;
 
   const dragHandlers = {
-    draggable,
+    draggable: draggable && !isResizing,
     onDragStart: (e: Konva.KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
       beginZoneDrag(zone.id);
@@ -82,20 +83,33 @@ function DraggableZone({
   if (zone.shape === "rectangle") {
     const w = feetToPx(zone.widthFeet ?? 0);
     const h = feetToPx(zone.heightFeet ?? 0);
+    const zx = zone.x ?? 0;
+    const zy = zone.y ?? 0;
     return (
-      <Rect
-        key={zone.id}
-        x={zone.x ?? 0}
-        y={zone.y ?? 0}
-        width={w}
-        height={h}
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={active ? 2.5 : 1.5}
-        dash={active ? undefined : [8, 6]}
-        opacity={draggable ? 1 : 0.95}
-        {...dragHandlers}
-      />
+      <Group key={zone.id}>
+        <Rect
+          x={zx}
+          y={zy}
+          width={w}
+          height={h}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={active ? 2.5 : 1.5}
+          dash={active ? undefined : [8, 6]}
+          opacity={draggable ? 1 : 0.95}
+          {...dragHandlers}
+        />
+        {active && draggable && (
+          <Text
+            x={zx + 6}
+            y={zy + 6}
+            text={`${zone.widthFeet ?? "?"}′ × ${zone.heightFeet ?? "?"}′`}
+            fontSize={10}
+            fill="rgba(200, 230, 200, 0.85)"
+            listening={false}
+          />
+        )}
+      </Group>
     );
   }
 
@@ -148,6 +162,7 @@ export function ZoneLayer({
   workspaceTool: "select" | "draw-zone";
 }) {
   const zoneDraggable = workspaceTool === "select";
+  const activeZone = zones.find((z) => z.id === activeZoneId);
 
   return (
     <>
@@ -165,7 +180,11 @@ export function ZoneLayer({
         <Text
           x={12}
           y={28}
-          text="Drag moves this bed and its plants only"
+          text={
+            activeZone?.shape === "rectangle"
+              ? "Drag bed to move · corner handles to resize"
+              : "Drag moves this bed and its plants only"
+          }
           fontSize={10}
           fill="rgba(168, 196, 168, 0.7)"
           listening={false}
