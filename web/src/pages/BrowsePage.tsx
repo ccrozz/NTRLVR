@@ -62,6 +62,7 @@ export function BrowsePage() {
     () => localStorage.getItem(CATALOG_STATE_STORAGE_KEY) ?? "",
   );
   const [nativeToMyState, setNativeToMyState] = useState(false);
+  const [showFullCatalog, setShowFullCatalog] = useState(false);
   const [states, setStates] = useState<UsStateOption[]>([]);
 
   const [plants, setPlants] = useState<PlantSummary[]>([]);
@@ -88,9 +89,13 @@ export function BrowsePage() {
   const hasActiveFilters = useMemo(
     () =>
       Boolean(
-        groupFilter || edibleOnly || nativeToMyState || debouncedSearch,
+        groupFilter ||
+          edibleOnly ||
+          nativeToMyState ||
+          showFullCatalog ||
+          debouncedSearch,
       ),
-    [groupFilter, edibleOnly, nativeToMyState, debouncedSearch],
+    [groupFilter, edibleOnly, nativeToMyState, showFullCatalog, debouncedSearch],
   );
 
   const filterSummary = useMemo(
@@ -109,6 +114,7 @@ export function BrowsePage() {
     setGroupFilter(null);
     setEdibleOnly(false);
     setNativeToMyState(false);
+    setShowFullCatalog(false);
   };
 
   const handleEdibleLens = (on: boolean) => {
@@ -159,7 +165,7 @@ export function BrowsePage() {
           edible_only: edibleOnly,
           state: myState,
           native_to_state: nativeToMyState || undefined,
-          for_my_area: !nativeToMyState,
+          for_my_area: !nativeToMyState && !showFullCatalog,
           limit: PAGE_SIZE,
           offset: nextOffset,
         });
@@ -176,7 +182,7 @@ export function BrowsePage() {
         setLoadingMore(false);
       }
     },
-    [debouncedSearch, groupFilter, edibleOnly, myState, nativeToMyState],
+    [debouncedSearch, groupFilter, edibleOnly, myState, nativeToMyState, showFullCatalog],
   );
 
   useEffect(() => {
@@ -210,6 +216,8 @@ export function BrowsePage() {
           <> edible picks in {stateName}</>
         ) : nativeToMyState ? (
           <> natives in {stateName}</>
+        ) : showFullCatalog ? (
+          <> plants in the full catalog</>
         ) : (
           <> plants for {stateName}</>
         )}
@@ -295,6 +303,8 @@ export function BrowsePage() {
                 onEdibleOnly={handleEdibleLens}
                 nativeToMyState={nativeToMyState}
                 onNativeToMyState={setNativeToMyState}
+                showFullCatalog={showFullCatalog}
+                onShowFullCatalog={setShowFullCatalog}
               />
             </div>
 

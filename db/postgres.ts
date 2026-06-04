@@ -60,11 +60,20 @@ export async function normalizePgJsonbArrays(): Promise<void> {
   }
 }
 
+/** Patches for Supabase DBs created before schema.pg.sql included new columns. */
+export async function ensurePgSchemaPatches(): Promise<void> {
+  const db = getSql();
+  await db.unsafe(`
+    ALTER TABLE plants ADD COLUMN IF NOT EXISTS native_origin TEXT;
+  `);
+}
+
 export async function ensurePgSchema(): Promise<void> {
   const schemaPath = path.join(__dirname, "schema.pg.sql");
   const schemaSql = fs.readFileSync(schemaPath, "utf-8");
   const db = getSql();
   await db.unsafe(schemaSql);
+  await ensurePgSchemaPatches();
 }
 
 /** Longer timeouts for bulk migration (Supabase direct connection recommended). */

@@ -1,5 +1,5 @@
 import type { Plant, PlantFilters } from "../schema.js";
-import { stateByCode } from "../lib/us-states.js";
+import { stateByCode, stateZoneNumbers } from "../lib/us-states.js";
 import { sqliteCatalogEdibleClause } from "../lib/infer-is-edible.js";
 import { sqliteStateTagClause } from "../lib/plant-state-filter.js";
 import { getDb } from "./client.js";
@@ -287,6 +287,15 @@ export function listPlants(filters: PlantFilters = {}): {
       });
       const zoneClause = zoneParts.join(" OR ");
       const tagExtra = sqliteStateTagClause(st);
+      const warmUnzoned =
+        stateZoneNumbers(st).length &&
+        Math.min(...stateZoneNumbers(st)) >= 6
+          ? `OR (
+              (florida_hardiness_zones IS NULL OR florida_hardiness_zones = '[]')
+              AND (grows_in_us = 1 OR data_source = 'trefle')
+              AND is_edible = 1
+            )`
+          : "";
       conditions.push(
         `(
           (${zoneClause})
@@ -297,6 +306,7 @@ export function listPlants(filters: PlantFilters = {}): {
             AND (native_states IS NULL OR native_states = '[]')
           )
           OR (${tagExtra.sql})
+          ${warmUnzoned}
         )`,
       );
       params.for_my_area_state = st;

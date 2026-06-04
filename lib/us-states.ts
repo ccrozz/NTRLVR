@@ -126,6 +126,26 @@ export function assessPlantClimateInState(
   return "good";
 }
 
+function zoneNumber(z: string): number | null {
+  const m = z.trim().toLowerCase().match(/^(\d{1,2})/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return n >= 1 && n <= 13 ? n : null;
+}
+
+/** USDA zone numbers for a state (e.g. 8 from 8a, 8b). */
+export function stateZoneNumbers(stateCode: string): number[] {
+  const state = stateByCode(stateCode);
+  if (!state) return [];
+  return [
+    ...new Set(
+      state.hardiness_zones
+        .map((z) => zoneNumber(z))
+        .filter((n): n is number => n != null),
+    ),
+  ];
+}
+
 export function plantZonesOverlapState(
   plantZones: string[],
   stateCode: string,
@@ -133,7 +153,12 @@ export function plantZonesOverlapState(
   if (!plantZones.length) return false;
   const state = stateByCode(stateCode);
   if (!state) return false;
-  return plantZones.some((z) => state.hardiness_zones.includes(z));
+  if (plantZones.some((z) => state.hardiness_zones.includes(z))) return true;
+  const stateNums = new Set(stateZoneNumbers(stateCode));
+  return plantZones.some((z) => {
+    const n = zoneNumber(z);
+    return n != null && stateNums.has(n);
+  });
 }
 
 /** Typical representative zone for a state (middle of range). */

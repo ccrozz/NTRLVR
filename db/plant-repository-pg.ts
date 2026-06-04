@@ -1,6 +1,6 @@
 import type { Plant, PlantFilters } from "../schema.js";
 import { pgCatalogEdibleClause } from "../lib/infer-is-edible.js";
-import { stateByCode } from "../lib/us-states.js";
+import { stateByCode, stateZoneNumbers } from "../lib/us-states.js";
 import { isDesignerStateCode } from "../lib/designer-states.js";
 import { getSql } from "./postgres.js";
 import {
@@ -245,12 +245,18 @@ function buildListWhere(filters: PlantFilters): {
     const state = stateByCode(st);
     if (state?.hardiness_zones.length) {
       const zoneParts: string[] = [];
+      const zonesJson = pgJsonbAsArray("florida_hardiness_zones");
       for (const z of state.hardiness_zones) {
         n += 1;
-        zoneParts.push(
-          `${pgJsonbAsArray("florida_hardiness_zones")} @> $${n}::jsonb`,
-        );
+        zoneParts.push(`${zonesJson} @> $${n}::jsonb`);
         params.push(JSON.stringify([z]));
+      }
+      for (const zn of stateZoneNumbers(st)) {
+        n += 1;
+        zoneParts.push(
+          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${zonesJson}) z WHERE z ~ $${n})`,
+        );
+        params.push(`^${zn}[ab]?$`);
       }
       n += 1;
       const stateParam = n;
@@ -262,6 +268,15 @@ function buildListWhere(filters: PlantFilters): {
       const tagMatch = `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${pgJsonbAsArray("tags")}) t WHERE LOWER(t.value) = LOWER($${tagParam}))`;
       const idPrefix =
         isDesignerStateCode(st) ? `OR id LIKE '${tag}-%'` : "";
+      const warmUnzoned =
+        stateZoneNumbers(st).length &&
+        Math.min(...stateZoneNumbers(st)) >= 6
+          ? `OR (
+              jsonb_array_length(${zonesJson}) = 0
+              AND (grows_in_us = true OR data_source = 'trefle')
+              AND is_edible = true
+            )`
+          : "";
       conditions.push(
         `(
           (${zoneParts.join(" OR ")})
@@ -277,6 +292,7 @@ function buildListWhere(filters: PlantFilters): {
           )
           OR ${tagMatch}
           ${idPrefix}
+          ${warmUnzoned}
         )`,
       );
     }

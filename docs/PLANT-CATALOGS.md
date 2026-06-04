@@ -4,7 +4,7 @@
 
 - **Used by:** Browse Plants page (`web/src/pages/BrowsePage.tsx`)
 - **Data:** Full SQLite/Postgres `plants` table — your ~13k Trefle scrape plus FL seeds and enrichments
-- **Default:** When you pick a state, results are filtered to that state (`for_my_area=true`: zones, natives, state tags like `tn`/`ct`/`fl`). Toggle **Show full US catalog** to see all ingested rows.
+- **Default:** When you pick a state, results are filtered to that state (`for_my_area=true`: zone overlap, natives, state tags, and US edibles missing zone data in warm states). Toggle **Full US catalog** in Quick picks to skip the climate filter.
 - **Not** the designer food-forest curation
 
 ## Garden designer (`/api/designer/plants`)

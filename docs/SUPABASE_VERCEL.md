@@ -46,6 +46,12 @@ Check progress:
 npm run db:status:supabase
 ```
 
+If migrate fails with `column "native_origin" of relation "plants" does not exist`, pull latest code and re-run migrate (schema patches run automatically), or in SQL Editor:
+
+```sql
+ALTER TABLE plants ADD COLUMN IF NOT EXISTS native_origin TEXT;
+```
+
 Fix bad JSONB after an old migration (`cannot extract elements from a scalar`):
 
 ```bash

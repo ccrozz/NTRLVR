@@ -4,6 +4,8 @@ export type CatalogQuickPicksProps = {
   onEdibleOnly: (on: boolean) => void;
   nativeToMyState: boolean;
   onNativeToMyState: (on: boolean) => void;
+  showFullCatalog: boolean;
+  onShowFullCatalog: (on: boolean) => void;
 };
 
 export function CatalogQuickPicks({
@@ -12,6 +14,8 @@ export function CatalogQuickPicks({
   onEdibleOnly,
   nativeToMyState,
   onNativeToMyState,
+  showFullCatalog,
+  onShowFullCatalog,
 }: CatalogQuickPicksProps) {
   return (
     <div className="catalog-quick-picks" role="group" aria-label="Quick picks">
@@ -36,6 +40,20 @@ export function CatalogQuickPicks({
         <span className="catalog-quick-pick-text">
           <span className="catalog-quick-pick-title">{nativesLabel}</span>
           <span className="catalog-quick-pick-hint">Wildlife-friendly picks</span>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        className={`catalog-quick-pick${showFullCatalog ? " is-active" : ""}`}
+        aria-pressed={showFullCatalog}
+        onClick={() => onShowFullCatalog(!showFullCatalog)}
+      >
+        <span className="catalog-quick-pick-text">
+          <span className="catalog-quick-pick-title">Full US catalog</span>
+          <span className="catalog-quick-pick-hint">
+            Skip climate filter — browse everything
+          </span>
         </span>
       </button>
     </div>

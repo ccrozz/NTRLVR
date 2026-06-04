@@ -5,7 +5,6 @@ import {
 } from "./food-forest-groups.js";
 import { SEED_BY_ID, SEED_PLANTS } from "../data/plants.seed.js";
 import { designerSeedsForState } from "../data/state-seed-catalog.js";
-import { stateByCode } from "./us-states.js";
 import {
   listPlants,
   plantToSummary,
@@ -31,7 +30,10 @@ import {
   type DesignerStateCode,
 } from "./designer-states.js";
 import { plantMatchesEdibleFilter } from "./infer-is-edible.js";
-import { plantIsNativeToState } from "./plant-native-status.js";
+import {
+  plantIsNativeToState,
+} from "./plant-native-status.js";
+import { plantMatchesCatalogForState } from "./plant-state-filter.js";
 import {
   dedupeCatalogPlants,
   dedupePlantsByName,
@@ -108,16 +110,7 @@ function seedMatchesFilters(plant: Plant, filters: PlantFilters): boolean {
   }
 
   if (filters.for_my_area && filters.native_state) {
-    const st = filters.native_state.toUpperCase();
-    const state = stateByCode(st);
-    if (state?.hardiness_zones.length) {
-      const zones = plant.florida_hardiness_zones.map((z) => z.toLowerCase());
-      const inZone = state.hardiness_zones.some((z) =>
-        zones.includes(z.toLowerCase()),
-      );
-      const native = plantIsNativeToState(plant, st);
-      if (!inZone && !native) return false;
-    }
+    if (!plantMatchesCatalogForState(plant, filters.native_state)) return false;
   }
 
   if (filters.hardiness_zone) {

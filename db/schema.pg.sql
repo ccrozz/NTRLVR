@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS plants (
   is_edible BOOLEAN NOT NULL DEFAULT false,
   florida_hardiness_zones JSONB NOT NULL DEFAULT '[]'::jsonb,
   native_states JSONB NOT NULL DEFAULT '[]'::jsonb,
+  native_origin TEXT,
   grows_in_us BOOLEAN NOT NULL DEFAULT false,
   is_invasive_in_florida BOOLEAN NOT NULL DEFAULT false,
   mature_height_min DOUBLE PRECISION NOT NULL,
