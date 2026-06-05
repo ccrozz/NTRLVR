@@ -23,7 +23,6 @@ import {
   EDGE_RULER_TOP,
 } from "../lib/canvas-ruler-insets";
 import { CanvasBottomStack } from "../components/canvas/CanvasBottomStack";
-import { DesignerMobileWelcome } from "../components/canvas/DesignerMobileWelcome";
 import { DrawZoneDock } from "../components/workspace/DrawZoneDock";
 import { GardenPanel } from "../components/garden/GardenPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
@@ -46,6 +45,7 @@ import {
   plantFromDragEvent,
 } from "../lib/designer-drag-drop";
 import { focusDesignerCanvas } from "../lib/focus-designer-canvas";
+import { placeCatalogPlantInDesigner } from "../lib/place-catalog-plant";
 import type { PlantListItem } from "../types";
 import "../styles/designer.css";
 
@@ -115,10 +115,20 @@ export function DesignerPage() {
   const [plantDragActive, setPlantDragActive] = useState(false);
 
   const prepareDesignerOnLoad = useDesignerStore((s) => s.prepareDesignerOnLoad);
+  const placedPlantParamRef = useRef<string | null>(null);
 
   useEffect(() => {
     prepareDesignerOnLoad();
   }, [prepareDesignerOnLoad]);
+
+  useEffect(() => {
+    const plantId = params.get("plant")?.trim();
+    if (!plantId || placedPlantParamRef.current === plantId) return;
+    placedPlantParamRef.current = plantId;
+    void placeCatalogPlantInDesigner(plantId).catch(() => {
+      placedPlantParamRef.current = null;
+    });
+  }, [params]);
 
   useEffect(() => {
     document.documentElement.classList.add("designer-mode");
@@ -271,7 +281,6 @@ export function DesignerPage() {
             <DrawZoneDock />
             <CanvasToolbar canvasRef={canvasRef} />
             <DesignerCanvas ref={canvasRef} />
-            {isMobile && <DesignerMobileWelcome />}
             <CanvasBottomStack plantDragActive={plantDragActive} />
             {detailOpen && (
               <button

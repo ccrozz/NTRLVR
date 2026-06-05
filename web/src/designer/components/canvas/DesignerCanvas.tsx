@@ -32,6 +32,7 @@ import { bindCanvasTouchViewport } from "../../lib/canvas-touch-viewport";
 import { handleCanvasWheel } from "../../lib/canvas-wheel";
 import { mobileGardenFitZoom } from "../../lib/canvas-mobile-fit";
 import { MobileCanvasZoomControls } from "./MobileCanvasZoomControls";
+import { DesignerMobileWelcome } from "./DesignerMobileWelcome";
 import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import { useMatchMedia } from "../../hooks/useMatchMedia";
 import type { CanvasPlant } from "../../types";
@@ -243,8 +244,10 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
 
     useEffect(() => {
       if (!canvasFitTick || canvasView !== "top-down") return;
-      const layout = contentLayoutBounds(zones, canvasPlants, 12);
-      let fitZoom = zoom;
+      const { zones: fitZones, canvasPlants: fitPlants, zoom: currentZoom } =
+        useDesignerStore.getState();
+      const layout = contentLayoutBounds(fitZones, fitPlants, 12);
+      let fitZoom = currentZoom;
       if (
         isMobile &&
         layout.width > 0 &&
@@ -261,17 +264,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
         setZoom(fitZoom);
       }
       setStagePos(stagePosToCenterBounds(layout, size.w, size.h, fitZoom));
-    }, [
-      canvasFitTick,
-      canvasView,
-      isMobile,
-      zones,
-      canvasPlants,
-      size.w,
-      size.h,
-      setZoom,
-      setStagePos,
-    ]);
+    }, [canvasFitTick, canvasView, isMobile, size.w, size.h, setZoom, setStagePos]);
 
     if (canvasView === "cross-section") {
       return (
@@ -306,6 +299,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           visible={showScaleGrid}
         />
         {isMobile && !mobileToolsOpen && <MobileCanvasZoomControls />}
+        {isMobile && <DesignerMobileWelcome />}
         {showScaleGrid && (
           <div className="designer-canvas-scale-legend" aria-hidden>
             <span className="designer-canvas-scale-bar" />

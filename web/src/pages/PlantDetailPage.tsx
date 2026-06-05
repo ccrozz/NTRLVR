@@ -10,6 +10,7 @@ import {
 import { effectiveNativeStates } from "@lib/plant-native-status";
 import { sanitizeNativeOriginLabel } from "@lib/native-origin";
 import { BenefitsGroups } from "../components/BenefitsGroups";
+import { CatalogDesignerPlantCta } from "../components/CatalogDesignerPlantCta";
 import { CatalogPlantGuideSection } from "../components/CatalogPlantGuide";
 import { buildCatalogPlantGuide } from "../lib/catalog-plant-guide";
 import { useCatalogGrowingContext } from "../lib/catalog-state";
@@ -232,7 +233,7 @@ export function PlantDetailPage() {
       </header>
 
       <div className="detail-sections">
-        <CatalogPlantGuideSection guide={growingGuide} />
+        <CatalogPlantGuideSection key={plant.id} guide={growingGuide} />
 
         <DetailSection title="Growing conditions">
           <MetaGrid
@@ -303,6 +304,8 @@ export function PlantDetailPage() {
         <DetailSection title="Avoid planting near">
           <RelationList items={plant.avoid_planting_near} />
         </DetailSection>
+
+        <CatalogDesignerPlantCta plantId={plant.id} plantName={plant.common_name} />
       </div>
     </article>
   );

@@ -5729,15 +5729,20 @@
     display: none;
   }
 
-  .designer-mobile-welcome {
+  .designer-canvas-wrap > .designer-mobile-welcome {
     position: absolute;
     inset: 0;
-    z-index: 6;
+    z-index: 14;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.25rem;
+    padding: 1rem;
     pointer-events: none;
+  }
+
+  .designer-canvas-wrap:has(.designer-edge-rulers) > .designer-mobile-welcome {
+    top: 30px;
+    left: 32px;
   }
 
   .designer-mobile-welcome-card {
@@ -5772,7 +5777,7 @@
   }
 
   .designer-layout {
-    --designer-mobile-bar-height: calc(3.35rem + env(safe-area-inset-bottom));
+    --designer-mobile-bar-height: calc(3.55rem + env(safe-area-inset-bottom, 0px));
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr);
     position: relative;
@@ -6301,8 +6306,23 @@
   }
 
   .designer-canvas-scale-legend {
-    left: max(0.55rem, env(safe-area-inset-left));
-    bottom: 0.65rem;
+    left: max(
+      0.55rem,
+      calc(var(--edge-ruler-left, 32px) + 0.45rem),
+      env(safe-area-inset-left)
+    );
+    bottom: 0.75rem;
+    z-index: 26;
+    max-width: calc(100% - var(--edge-ruler-left, 32px) - 5.5rem);
+  }
+
+  .designer-canvas-scale-bar {
+    width: min(96px, 28vw);
+  }
+
+  .designer-canvas-scale-label,
+  .designer-canvas-scale-note {
+    font-size: 0.62rem;
   }
 
   .designer-mobile-zoom {
