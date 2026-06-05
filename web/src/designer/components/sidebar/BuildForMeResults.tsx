@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { focusDesignerCanvas } from "../../lib/focus-designer-canvas";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { useRecommendedPlants } from "../../hooks/useRecommendedPlants";
@@ -228,6 +229,7 @@ export function BuildForMeResults() {
               : `${recPlants.length} recommended`}
           </p>
         )}
+        <EvergreenInstallCta compact />
       </footer>
     </div>
   );

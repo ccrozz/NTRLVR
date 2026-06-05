@@ -6,6 +6,8 @@ import {
   useFloatingPanelPosition,
 } from "../../hooks/useFloatingPanelPosition";
 import type { PanelPosition } from "../../hooks/useFloatingPanelPosition";
+import { countCanvasPlantsInZone } from "../../lib/zone-plant-groups";
+import { zoneSummary } from "../../lib/zone-summary";
 import { plantInsideZones } from "../../lib/zone-geometry";
 
 const ZONE_COLORS = ["#7ec850", "#5eb8d4", "#e8b84a", "#c49ae8", "#f08080"];
@@ -22,11 +24,14 @@ export function WorkspacePanel() {
   const open = useDesignerStore((s) => s.workspacePanelOpen);
   const setOpen = useDesignerStore((s) => s.setWorkspacePanelOpen);
   const zones = useDesignerStore((s) => s.zones);
+  const activeZoneId = useDesignerStore((s) => s.activeZoneId);
   const workspaceTool = useDesignerStore((s) => s.workspaceTool);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
 
   const addRectangleZone = useDesignerStore((s) => s.addRectangleZone);
   const addCircleZone = useDesignerStore((s) => s.addCircleZone);
+  const setActiveZoneId = useDesignerStore((s) => s.setActiveZoneId);
+  const removeZone = useDesignerStore((s) => s.removeZone);
   const setWorkspaceTool = useDesignerStore((s) => s.setWorkspaceTool);
   const cancelDrawZone = useDesignerStore((s) => s.cancelDrawZone);
   const setDrawCursor = useDesignerStore((s) => s.setDrawCursor);
@@ -250,6 +255,67 @@ export function WorkspacePanel() {
                   Draw custom outline
                 </button>
               </div>
+
+              {zones.length > 0 && (
+                <section className="workspace-zone-list">
+                  <h3>Beds on canvas</h3>
+                  <ul>
+                    {zones.map((zone, index) => {
+                      const plantCount = countCanvasPlantsInZone(
+                        canvasPlants,
+                        zone,
+                        zones,
+                      );
+                      const isEmpty = plantCount === 0;
+                      const isActive = activeZoneId === zone.id;
+                      return (
+                        <li key={zone.id}>
+                          <button
+                            type="button"
+                            className={`workspace-zone-item${isActive ? " active" : ""}`}
+                            onClick={() => setActiveZoneId(zone.id)}
+                          >
+                            <span
+                              className="workspace-zone-swatch"
+                              style={{ background: zoneColor(index) }}
+                              aria-hidden
+                            />
+                            <span className="workspace-zone-meta">
+                              <strong>{zone.name}</strong>
+                              <span>
+                                {zoneSummary(zone)}
+                                {isEmpty
+                                  ? " · Empty"
+                                  : ` · ${plantCount} plant${plantCount === 1 ? "" : "s"}`}
+                              </span>
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`workspace-zone-remove${isEmpty ? "" : " workspace-zone-remove--disabled"}`}
+                            disabled={!isEmpty}
+                            title={
+                              isEmpty
+                                ? `Delete ${zone.name}`
+                                : "Remove plants from this bed first"
+                            }
+                            aria-label={
+                              isEmpty
+                                ? `Delete ${zone.name}`
+                                : `Cannot delete ${zone.name} while it has plants`
+                            }
+                            onClick={() => {
+                              if (isEmpty) removeZone(zone.id);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
             </>
           )}
         </aside>

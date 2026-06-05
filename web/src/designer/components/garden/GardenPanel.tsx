@@ -8,11 +8,15 @@ import {
   topCenterPanelPosition,
   useFloatingPanelPosition,
 } from "../../hooks/useFloatingPanelPosition";
-import { canvasPlantsInZone } from "../../lib/zone-plant-groups";
+import {
+  canvasPlantsInZone,
+  zoneHasPlants,
+} from "../../lib/zone-plant-groups";
 import { plantOutsideOwnedZone } from "../../lib/zone-geometry";
 import { ZoneSpaceSwitcher } from "../shared/ZoneSpaceSwitcher";
 import { ZoneRenameField } from "../shared/ZoneRenameField";
 import { zoneColor } from "../workspace/WorkspacePanel";
+import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import type { CanvasPlant } from "../../types";
 import type { GardenCategoryGroup } from "../../lib/garden-plant-groups";
@@ -95,6 +99,8 @@ function GardenPlantRow({
 
 function GardenCategorySection({
   group,
+  collapsible,
+  defaultOpen,
   selectedCanvasPlantId,
   hasZones,
   zones,
@@ -102,6 +108,8 @@ function GardenCategorySection({
   onOpenPlantProfile,
 }: {
   group: GardenCategoryGroup;
+  collapsible: boolean;
+  defaultOpen: boolean;
   selectedCanvasPlantId: string | null;
   hasZones: boolean;
   zones: ReturnType<typeof useDesignerStore.getState>["zones"];
@@ -111,30 +119,55 @@ function GardenCategorySection({
   const accent =
     GARDEN_CATEGORY_ACCENT[group.category] ?? "var(--color-accent)";
 
-  return (
-    <section className="garden-panel-category">
-      <header className="garden-panel-category-head">
-        <span
-          className="garden-panel-category-chip"
-          style={{ background: accent }}
-          aria-hidden
+  const plantList = (
+    <ul className="garden-panel-category-list">
+      {group.plants.map((cp) => (
+        <GardenPlantRow
+          key={cp.canvasId}
+          plant={cp}
+          selected={selectedCanvasPlantId === cp.canvasId}
+          outsideZone={hasZones && plantOutsideOwnedZone(cp, zones)}
+          onSelect={() => onSelectPlant(cp)}
+          onOpenProfile={() => onOpenPlantProfile(cp)}
         />
-        <h3>{group.category}</h3>
-        <span className="garden-panel-category-count">{group.plants.length}</span>
-      </header>
-      <ul className="garden-panel-category-list">
-        {group.plants.map((cp) => (
-          <GardenPlantRow
-            key={cp.canvasId}
-            plant={cp}
-            selected={selectedCanvasPlantId === cp.canvasId}
-            outsideZone={hasZones && plantOutsideOwnedZone(cp, zones)}
-            onSelect={() => onSelectPlant(cp)}
-            onOpenProfile={() => onOpenPlantProfile(cp)}
-          />
-        ))}
-      </ul>
-    </section>
+      ))}
+    </ul>
+  );
+
+  const categoryLabel = (
+    <>
+      <span
+        className="garden-panel-category-chip"
+        style={{ background: accent }}
+        aria-hidden
+      />
+      <span className="garden-panel-category-title">{group.category}</span>
+      <span className="garden-panel-category-count">{group.plants.length}</span>
+      {collapsible && (
+        <span className="garden-panel-category-chevron" aria-hidden>
+          ▾
+        </span>
+      )}
+    </>
+  );
+
+  if (!collapsible) {
+    return (
+      <section className="garden-panel-category">
+        <header className="garden-panel-category-head">{categoryLabel}</header>
+        {plantList}
+      </section>
+    );
+  }
+
+  return (
+    <details
+      className="garden-panel-category garden-panel-category--collapsible"
+      open={defaultOpen}
+    >
+      <summary className="garden-panel-category-head">{categoryLabel}</summary>
+      {plantList}
+    </details>
   );
 }
 
@@ -190,6 +223,7 @@ export function GardenPanel() {
     () => (showCategoryGroups ? groupGardenPlantsByCategory(sorted) : []),
     [showCategoryGroups, sorted],
   );
+  const categorySectionsCollapsible = categoryGroups.length > 1;
 
   const hasZones = zones.length > 0;
   const listCount = sorted.length;
@@ -283,6 +317,14 @@ export function GardenPanel() {
         aria-hidden={!open}
       >
         {open && (
+          <button
+            type="button"
+            className="garden-panel-backdrop"
+            aria-label="Close garden list"
+            onClick={() => setOpen(false)}
+          />
+        )}
+        {open && (
           <aside
             id="designer-garden-panel"
             ref={panelRef}
@@ -370,7 +412,39 @@ export function GardenPanel() {
                     )}
                   </div>
                 </div>
-                {confirmDelete ? (
+                {listCount === 0 ? (
+                  confirmDelete ? (
+                    <div className="garden-panel-delete-confirm" role="alert">
+                      <p>
+                        Delete empty bed <strong>{focusedZone.name}</strong>?
+                      </p>
+                      <div className="garden-panel-delete-actions">
+                        <button
+                          type="button"
+                          className="garden-panel-delete-cancel"
+                          onClick={() => setConfirmDelete(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="garden-panel-delete-confirm-btn"
+                          onClick={confirmRemoveSpace}
+                        >
+                          Delete bed
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="garden-panel-delete-space"
+                      onClick={() => setConfirmDelete(true)}
+                    >
+                      Delete empty bed
+                    </button>
+                  )
+                ) : confirmDelete ? (
                   <div className="garden-panel-delete-confirm" role="alert">
                     <p>
                       Remove <strong>{focusedZone.name}</strong> and all plants
@@ -393,7 +467,7 @@ export function GardenPanel() {
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : zoneHasPlants(canvasPlants, focusedZone, zones) ? (
                   <button
                     type="button"
                     className="garden-panel-delete-space"
@@ -401,22 +475,27 @@ export function GardenPanel() {
                   >
                     Delete this garden space
                   </button>
-                )}
+                ) : null}
               </div>
             )}
 
             <p className="garden-panel-hint">
-              {showCategoryGroups
-                ? "Tap to select on the canvas; double-tap for the plant profile."
-                : "Tap to select on the canvas; double-tap for the plant profile."}
+              Tap to select on the canvas; double-tap for the plant profile.
+              {categorySectionsCollapsible
+                ? " Tap a category to expand or collapse."
+                : ""}
             </p>
 
             <div className="garden-panel-scroll">
               {showCategoryGroups ? (
-                categoryGroups.map((group) => (
+                categoryGroups.map((group, index) => (
                   <GardenCategorySection
                     key={group.category}
                     group={group}
+                    collapsible={categorySectionsCollapsible}
+                    defaultOpen={
+                      !categorySectionsCollapsible || index === 0
+                    }
                     selectedCanvasPlantId={selectedCanvasPlantId}
                     hasZones={hasZones}
                     zones={zones}
@@ -446,6 +525,7 @@ export function GardenPanel() {
                   Build for me.
                 </p>
               )}
+              {savedPlan && <EvergreenInstallCta compact />}
             </div>
           </aside>
         )}

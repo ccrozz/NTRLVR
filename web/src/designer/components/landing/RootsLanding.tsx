@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DESIGNER_STATES } from "@lib/designer-states";
 import { AppNav } from "../../../components/AppNav";
+import { EvergreenHeaderLink } from "../../../components/EvergreenHeaderLink";
+import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
+import { EVERGREEN_SOLUTIONS_URL } from "../../../lib/evergreen-partner";
 
 /** Bundled in web/public/images/landing/ */
 const STATE_VISUALS: Record<
@@ -86,7 +89,9 @@ export function RootsLanding() {
           NTR LVR
         </Link>
         <AppNav variant="dark" />
-        <div className="designer-top-bar-end" aria-hidden />
+        <div className="designer-top-bar-end">
+          <EvergreenHeaderLink />
+        </div>
       </header>
 
       <main className="rr-landing-main">
@@ -177,21 +182,21 @@ export function RootsLanding() {
             ))}
           </ol>
         </section>
+
+        <EvergreenInstallCta landing />
       </main>
 
       <footer className="rr-landing-footer">
         <p className="rr-landing-footer-note">
-          Natives, edibles, and guild roles — filtered by state and zone.
-        </p>
-        <p className="rr-landing-powered">
-          Powered by{" "}
+          Plan in NTR LVR · install with{" "}
           <a
-            href="https://www.evergreensolutionsfl.com/"
+            href={EVERGREEN_SOLUTIONS_URL}
             target="_blank"
             rel="noopener noreferrer"
           >
             Evergreen Solutions FL
-          </a>
+          </a>{" "}
+          — native restoration and land management in Florida.
         </p>
       </footer>
     </div>

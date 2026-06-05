@@ -1,18 +1,65 @@
+import { zoneHasPlants } from "../../lib/zone-plant-groups";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { useMatchMedia } from "../../hooks/useMatchMedia";
 import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 
-export function SelectionActionBar() {
+type SelectionActionBarProps = {
+  plantDragActive?: boolean;
+};
+
+export function SelectionActionBar({
+  plantDragActive = false,
+}: SelectionActionBarProps) {
   const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
   const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
+  const zones = useDesignerStore((s) => s.zones);
+  const activeZoneId = useDesignerStore((s) => s.activeZoneId);
+  const workspaceTool = useDesignerStore((s) => s.workspaceTool);
   const openCanvasPlantProfile = useDesignerStore((s) => s.openCanvasPlantProfile);
   const deleteSelectedCanvasPlant = useDesignerStore(
     (s) => s.deleteSelectedCanvasPlant,
   );
+  const removeZone = useDesignerStore((s) => s.removeZone);
 
   const plant = canvasPlants.find((p) => p.canvasId === selectedCanvasPlantId);
+  const activeZone = activeZoneId
+    ? zones.find((z) => z.id === activeZoneId)
+    : undefined;
+
+  const showZoneDelete =
+    !plantDragActive &&
+    !plant &&
+    workspaceTool === "select" &&
+    activeZone &&
+    !zoneHasPlants(canvasPlants, activeZone, zones);
+
+  if (showZoneDelete) {
+    return (
+      <div
+        className="designer-selection-bar designer-selection-bar--zone"
+        role="toolbar"
+        aria-label="Empty bed"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <span className="designer-zone-delete-bar-label">
+          <strong>{activeZone.name}</strong> is empty
+        </span>
+        <button
+          type="button"
+          className="designer-btn-delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeZone(activeZone.id);
+          }}
+        >
+          Delete bed
+        </button>
+      </div>
+    );
+  }
+
   if (!plant) return null;
 
   const profileOpen =

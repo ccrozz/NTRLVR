@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppNav } from "../../components/AppNav";
+import { EvergreenHeaderLink } from "../../components/EvergreenHeaderLink";
 
 export function DesignerTopBar({
   helpOpen,
@@ -17,6 +18,7 @@ export function DesignerTopBar({
       </Link>
       <AppNav variant="dark" />
       <div className="designer-top-bar-end">
+        <EvergreenHeaderLink />
         <button
           type="button"
           className="designer-top-autofill"

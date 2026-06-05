@@ -899,7 +899,11 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     });
   },
 
-  setActiveZoneId: (activeZoneId) => set({ activeZoneId }),
+  setActiveZoneId: (activeZoneId) =>
+    set({
+      activeZoneId,
+      selectedCanvasPlantId: null,
+    }),
 
   setWorkspaceTool: (workspaceTool) =>
     set({

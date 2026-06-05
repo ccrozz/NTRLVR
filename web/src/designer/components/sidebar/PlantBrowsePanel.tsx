@@ -7,6 +7,7 @@ import { dedupePlantsById } from "@lib/plant-dedupe";
 import { usePlants } from "../../hooks/usePlants";
 import { FilterBar } from "./FilterBar";
 import { PlantCardDraggable } from "./PlantCardDraggable";
+import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { LayerVisibilityPanel } from "./LayerVisibilityPanel";
 
 export function PlantBrowsePanel() {
@@ -93,6 +94,7 @@ export function PlantBrowsePanel() {
       </div>
 
       <footer className="designer-sidebar-footer">
+        <EvergreenInstallCta compact className="designer-sidebar-evergreen" />
         {isMobile && (
           <p className="designer-mobile-drag-hint">
             Hold the ⠿ grip, then drag onto the bed.

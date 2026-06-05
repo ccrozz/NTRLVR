@@ -106,6 +106,10 @@ export const DESIGNER_HELP_SECTIONS = [
     title: "Remove a plant",
     body: "Select a plant on the canvas, then Delete or Backspace, or Remove from layout in the profile panel.",
   },
+  {
+    title: "Want us to build it for you?",
+    body: "After you have a plan, Evergreen Solutions FL can install native restoration, food forests, and land-management work on Florida properties. Use Request a quote in Build For Me results or the full plan sheet — or visit evergreensolutionsfl.com.",
+  },
 ] as const;
 
 export function DesignerHelpOverlay({ onClose }: { onClose: () => void }) {

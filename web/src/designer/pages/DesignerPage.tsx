@@ -22,7 +22,7 @@ import {
   EDGE_RULER_LEFT,
   EDGE_RULER_TOP,
 } from "../lib/canvas-ruler-insets";
-import { SelectionActionBar } from "../components/canvas/SelectionActionBar";
+import { CanvasBottomStack } from "../components/canvas/CanvasBottomStack";
 import { DrawZoneDock } from "../components/workspace/DrawZoneDock";
 import { GardenPanel } from "../components/garden/GardenPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
@@ -279,7 +279,7 @@ export function DesignerPage() {
             <DrawZoneDock />
             {!isMobile && <CanvasToolbar canvasRef={canvasRef} />}
             <DesignerCanvas ref={canvasRef} />
-            <SelectionActionBar />
+            <CanvasBottomStack plantDragActive={plantDragActive} />
             {detailOpen && (
               <button
                 type="button"

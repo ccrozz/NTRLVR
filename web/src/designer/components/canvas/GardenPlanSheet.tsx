@@ -1,3 +1,4 @@
+import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { focusDesignerCanvas } from "../../lib/focus-designer-canvas";
 import { useDesignerStore } from "../../store/useDesignerStore";
 
@@ -111,6 +112,7 @@ export function GardenPlanSheet() {
               </button>
             </>
           )}
+          <EvergreenInstallCta compact className="garden-plan-sheet-evergreen" />
         </div>
       </div>
     </>

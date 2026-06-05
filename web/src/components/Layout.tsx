@@ -2,6 +2,7 @@ import { Link, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { fetchHealth } from "../api";
 import { AppNav } from "./AppNav";
+import { EvergreenHeaderLink } from "./EvergreenHeaderLink";
 
 export function Layout() {
   const [plantCount, setPlantCount] = useState<number | null>(null);
@@ -25,6 +26,7 @@ export function Layout() {
         </Link>
         <AppNav variant="dark" />
         <div className="designer-top-bar-end">
+          <EvergreenHeaderLink />
           {plantCount !== null && (
             <span className="rr-stat-pill">
               {plantCount.toLocaleString()} species
