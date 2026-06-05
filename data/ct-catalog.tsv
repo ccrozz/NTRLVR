@@ -244,8 +244,10 @@ New Jersey Tea	Ceanothus americanus	Native Shrub	Shrub	k nat N pollinator
 Witch Hazel	Hamamelis virginiana	Native Shrub	Understory	k nat medicinal	
 Blackhaw Viburnum	Viburnum prunifolium	Native Shrub	Shrub	k nat wildlife	
 Nannyberry Viburnum	Viburnum lentago	Native Shrub	Shrub	k nat wildlife	
-Wild Hydrangea	Hydrangea arborescens	Native Shrub	Shrub	k nat	
-Oakleaf Hydrangea	Hydrangea quercifolia	Native Shrub	Shrub	k nat	
+Wild Hydrangea	Hydrangea arborescens	Native Shrub	Shrub	k nat pollinator	
+Oakleaf Hydrangea	Hydrangea quercifolia	Native Shrub	Shrub	k nat pollinator	
+Panicle Hydrangea	Hydrangea paniculata	Native Shrub	Shrub	k landscape pollinator	Grows 6–8 ft in CT; prune in late winter.
+Bigleaf Hydrangea	Hydrangea macrophylla	Native Shrub	Shrub	k z6 landscape pollinator	Classic CT shrub; morning sun and acidic soil.
 Pasture Rose	Rosa carolina	Native Shrub	Shrub	k nat	
 Swamp Rose	Rosa palustris	Native Shrub	Shrub	k nat	
 Chokecherry	Prunus virginiana	Native Shrub	Shrub	k nat	

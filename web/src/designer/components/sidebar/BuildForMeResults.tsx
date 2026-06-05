@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { focusDesignerCanvas } from "../../lib/focus-designer-canvas";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { useRecommendedPlants } from "../../hooks/useRecommendedPlants";
 import { PlantCardDraggable } from "./PlantCardDraggable";
@@ -28,6 +29,9 @@ export function BuildForMeResults() {
     (s) => s.placeRecommendedOnCanvas,
   );
   const placingGardenOnCanvas = useDesignerStore((s) => s.placingGardenOnCanvas);
+  const gardenPlanPlacedOnCanvas = useDesignerStore(
+    (s) => s.gardenPlanPlacedOnCanvas,
+  );
   const setSidebarMode = useDesignerStore((s) => s.setSidebarMode);
 
   const recQuery = useRecommendedPlants(recommendedPlantIds);
@@ -144,45 +148,79 @@ export function BuildForMeResults() {
       </div>
 
       <footer className="sidebar-build-results-foot">
-        {(hasOtherBeds || gardenStyle) && (
-          <p className="sidebar-build-results-place-hint">
-            {isFoodForestPlan
-              ? "Food forest: only fruit trees go on the canvas now — add shrubs and herbs from Browse Plants."
-              : gardenStyle === "kitchen_garden"
-                ? "Kitchen garden: herbs, veggies, and cooking crops — no fruit trees on the canvas."
-                : gardenStyle === "pollinator"
-                  ? "Pollinator garden: flowers and nectar plants for bees and butterflies."
-                  : gardenStyle === "visual"
-                    ? "Visual garden: ornamental plants only — no fruit trees."
-                    : "Places a new bed beside your layout — existing beds stay unchanged."}
-          </p>
+        {gardenPlanPlacedOnCanvas ? (
+          <>
+            <p className="sidebar-build-results-placed">
+              On your canvas — add companions and fill-in plants from Browse
+              Plants.
+            </p>
+            <button
+              type="button"
+              className="rr-btn rr-btn-primary sidebar-build-results-place"
+              onClick={() => focusDesignerCanvas()}
+            >
+              View on canvas
+            </button>
+            <button
+              type="button"
+              className="rr-btn rr-btn-secondary sidebar-build-results-secondary"
+              onClick={() => setPlanSheetOpen(true)}
+            >
+              View full plan
+            </button>
+            <button
+              type="button"
+              className="sidebar-build-results-link"
+              onClick={() => setSidebarMode("browse")}
+            >
+              Browse more plants →
+            </button>
+          </>
+        ) : (
+          <>
+            {(hasOtherBeds || gardenStyle) && (
+              <p className="sidebar-build-results-place-hint">
+                {isFoodForestPlan
+                  ? "Food forest: only fruit trees go on the canvas now — add shrubs and herbs from Browse Plants."
+                  : gardenStyle === "kitchen_garden"
+                    ? "Kitchen garden: herbs, veggies, and cooking crops — no fruit trees on the canvas."
+                    : gardenStyle === "pollinator"
+                      ? "Pollinator garden: flowers and nectar plants for bees and butterflies."
+                      : gardenStyle === "visual"
+                        ? "Visual garden: ornamental plants only — no fruit trees."
+                        : hasOtherBeds
+                          ? "Adds a new bed beside your layout — existing beds stay unchanged."
+                          : null}
+              </p>
+            )}
+            <button
+              type="button"
+              className="rr-btn rr-btn-primary sidebar-build-results-place"
+              disabled={placingGardenOnCanvas}
+              onClick={() => void placeRecommendedOnCanvas()}
+            >
+              {placingGardenOnCanvas
+                ? "Placing on canvas…"
+                : isFoodForestPlan
+                  ? "Place trees on canvas"
+                  : "Add plants to canvas"}
+            </button>
+            <button
+              type="button"
+              className="rr-btn rr-btn-secondary sidebar-build-results-secondary"
+              onClick={() => setPlanSheetOpen(true)}
+            >
+              View full plan
+            </button>
+            <button
+              type="button"
+              className="sidebar-build-results-link"
+              onClick={() => setSidebarMode("browse")}
+            >
+              Browse all plants separately →
+            </button>
+          </>
         )}
-        <button
-          type="button"
-          className="rr-btn rr-btn-primary sidebar-build-results-place"
-          disabled={placingGardenOnCanvas}
-          onClick={() => void placeRecommendedOnCanvas()}
-        >
-          {placingGardenOnCanvas
-            ? "Placing on canvas…"
-            : isFoodForestPlan
-              ? "Place trees on canvas"
-              : "Add plants to canvas"}
-        </button>
-        <button
-          type="button"
-          className="rr-btn rr-btn-secondary sidebar-build-results-secondary"
-          onClick={() => setPlanSheetOpen(true)}
-        >
-          View full plan
-        </button>
-        <button
-          type="button"
-          className="sidebar-build-results-link"
-          onClick={() => setSidebarMode("browse")}
-        >
-          Browse all plants separately →
-        </button>
         {!isLoading && plants.length > 0 && (
           <p className="designer-sidebar-count">
             {zones.length >= 2 && spaceListZoneId !== "all"

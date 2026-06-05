@@ -7,15 +7,12 @@ export const DESIGNER_TOOLBAR_QUICK: HelpToolItem[] = [
   {
     name: "Tools",
     description:
-      "Tap to open the canvas toolbar. On desktop it stays as a small pill until you need it; tap × or hide to collapse again.",
+      "Opens the canvas toolbar. On desktop it starts as a compact pill — expand to reach zoom, grid, and ⋯.",
   },
   {
-    name: "− / +",
-    description: "Zoom out and in on the layout.",
-  },
-  {
-    name: "Fit",
-    description: "Re-center the view on your beds and plants.",
+    name: "− / + / Fit",
+    description:
+      "Zoom the top-down layout in and out, or Fit to re-center on your beds and plants.",
   },
   {
     name: "Undo / Redo",
@@ -28,7 +25,7 @@ export const DESIGNER_TOOLBAR_QUICK: HelpToolItem[] = [
   {
     name: "⋯",
     description:
-      "More options — beds, Build for me, display modes, yard photo, and export (opens as a small menu, not a big panel).",
+      "More — beds, Build for me, display modes, side profile, yard photo, and PNG export.",
   },
 ];
 
@@ -37,12 +34,12 @@ export const DESIGNER_TOOLBAR_MENU: HelpToolItem[] = [
   {
     name: "Beds & space",
     description:
-      "Add or edit beds in feet — rectangle, circle, or draw a custom outline on the grid.",
+      "Add rectangle or circle beds in feet, or draw a custom outline on the grid.",
   },
   {
     name: "Build for me",
     description:
-      "Opens the Build For Me tab in the left sidebar to answer a short questionnaire.",
+      "Opens the Build For Me tab in the left sidebar for the step-by-step questionnaire.",
   },
   {
     name: "Simple plant dots / Full plant rings",
@@ -52,7 +49,7 @@ export const DESIGNER_TOOLBAR_MENU: HelpToolItem[] = [
   {
     name: "Side profile / Top-down view",
     description:
-      "Switch between planning on the grid and a vertical stack of canopy layers.",
+      "Switch to a side elevation of plant height and spread (drag to pan, scroll to zoom), or back to the plan view.",
   },
   {
     name: "Yard photo",
@@ -67,19 +64,19 @@ export const DESIGNER_TOOLBAR_MENU: HelpToolItem[] = [
 export const DESIGNER_HELP_SECTIONS = [
   {
     title: "Let's build your garden",
-    body: "Use the top-bar button or Build For Me in the left sidebar (or ⋯ → Build for me). Pick your state, draw or size a bed, then answer the questionnaire. Food forest = fruit trees only on canvas. Kitchen garden = herbs and veggies. Pollinator = flowers and nectar plants. Visual = ornamental beauty, no fruit trees. Use Place on canvas when you're ready.",
+    body: "Tap Let's build your garden in the top bar, or open Build For Me in the left sidebar (⋯ → Build for me). Pick your state and sub-region, size or draw a bed, then answer the questionnaire. Food forest places fruit trees on the canvas first; kitchen, pollinator, visual, and easy-care styles each place a different plant mix. Use Place trees on canvas or Add plants to canvas when you're ready, then fill in companions from Browse Plants.",
   },
   {
     title: "Beds & space",
-    body: "Open Beds & space from ⋯. Add a rectangle or circle by size in feet, or tap Draw custom outline and click corners on the grid (at least 3 points, then Finish zone in the bottom bar). In Select mode, drag a zone to move it and every plant inside together.",
+    body: "Open Beds & space from ⋯. Add a rectangle or circle by size in feet, or tap Draw custom outline and click corners on the grid (at least 3 points, then Finish zone in the bottom bar). In Select mode, drag a zone to move it and every plant inside together. Resize a selected bed by dragging its corner handles.",
   },
   {
     title: "Find plants (left sidebar)",
-    body: "Browse Plants is the default — search, filter by category, and switch state (Florida, Tennessee, Connecticut). After Build For Me, recommendations show with priority badges; use Show all plants to return to the full catalog. Full catalog at the bottom opens the complete list.",
+    body: "Browse Plants is the default — search, filter by category (fruit trees, herbs, flowers, natives, and more), and switch state with the Florida / Tennessee / Connecticut tabs. Tap a row to open its profile without placing it. After Build For Me, recommendations show with priority badges; use Show all plants to return to the full regional catalog.",
   },
   {
     title: "Place plants",
-    body: "Drag from the list onto the grid (on mobile, use the ⠿ handle on each row). Each plant shows a canopy ring sized to mature spread — toggle Simple plant dots in ⋯ for a cleaner view. Build For Me beds are rectangles: click the bed to select it, then drag corners to resize (plants scale with the bed).",
+    body: "Drag from the list onto the grid (on mobile, long-press the ⠿ handle on each row). Each plant shows a canopy ring sized to mature spread — toggle Simple plant dots in ⋯ for a cleaner view. Build For Me can auto-place its picks; you can still drag extras from Browse Plants.",
   },
   {
     title: "Plants on the canvas",
@@ -90,12 +87,16 @@ export const DESIGNER_HELP_SECTIONS = [
     body: "After you place plants, Your garden appears at the top of the canvas — a quick list of everything on the grid. With multiple beds, space tabs filter plants per zone in the sidebar and garden list.",
   },
   {
-    title: "Plant profile & companions",
-    body: "Tap a plant in the sidebar (without dragging) to read its profile. Double-click a canvas plant for the same panel. When selected on canvas, use Plant nearby — tap + to place a companion on its ring, or Why? for a short pairing note.",
+    title: "Plant profile & growing guide",
+    body: "Tap a plant in the sidebar (without dragging) to read its profile. Double-click a canvas plant for the same panel. Expand How to grow it in [your state] for zone fit, planting timing, day-to-day care, and first-year tips tailored to Florida, Tennessee, or Connecticut. When a plant is selected on canvas, use Plant nearby — tap + to place a companion on its ring, or Why? for a short pairing note.",
+  },
+  {
+    title: "Side profile",
+    body: "Open Side profile from ⋯ to see plants drawn to scale by height and canopy width, in left-to-right garden order. Drag to pan across a long layout; scroll or use − / + / Fit to zoom. Hover or click a plant for its name and dimensions — selection syncs with the top-down view.",
   },
   {
     title: "Pan and zoom",
-    body: "Drag empty space to pan. Mouse wheel or pinch zooms; two-finger trackpad scroll pans. Use − / + or Fit in the toolbar. Edge rulers show feet when the grid is on.",
+    body: "On the top-down canvas, drag empty space to pan. Mouse wheel or pinch zooms; two-finger trackpad scroll pans. Use − / + or Fit in the toolbar. Edge rulers show feet when the grid is on.",
   },
   {
     title: "Canvas layers",
@@ -140,9 +141,10 @@ export function DesignerHelpOverlay({ onClose }: { onClose: () => void }) {
         <header className="designer-help-card-head">
           <h2 id="designer-help-title">How to use the designer</h2>
           <p className="designer-help-intro">
-            Plan a regional food forest on a real-size grid: define beds, use
-            Build For Me or hand-pick plants, then refine layout, companions,
-            and layers.
+            Plan a regional food forest on a real-size grid: pick Florida,
+            Tennessee, or Connecticut, define beds, use Build For Me or
+            hand-pick plants, read state-tailored growing guides, and refine
+            layout, companions, layers, and side profile.
           </p>
         </header>
 

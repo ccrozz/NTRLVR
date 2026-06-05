@@ -123,6 +123,8 @@ type DesignerState = {
   pendingGardenPlan: ZoneGardenPlan | null;
   /** True after a plan is generated this session; cleared on fresh designer load. */
   buildResultsReady: boolean;
+  /** True after Place on canvas succeeds — prevents duplicate beds on repeat clicks. */
+  gardenPlanPlacedOnCanvas: boolean;
 
   history: CanvasPlant[][];
   redoHistory: CanvasPlant[][];
@@ -324,6 +326,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   zoneGardenPlans: {},
   pendingGardenPlan: null,
   buildResultsReady: false,
+  gardenPlanPlacedOnCanvas: false,
   canvasFitTick: 0,
   placingGardenOnCanvas: false,
 
@@ -600,6 +603,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       categoryFilter: null,
       searchQuery: "",
       buildResultsReady: false,
+      gardenPlanPlacedOnCanvas: false,
       recommendedPlantIds: null,
       recommendationMeta: {},
       gardenProfile: null,
@@ -627,6 +631,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       sidebarMode: "browse",
       mobileSidebarOpen: false,
       buildResultsReady: false,
+      gardenPlanPlacedOnCanvas: false,
     }),
 
   setSpaceListZoneId: (spaceListZoneId) => {
@@ -675,6 +680,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       planCanvasZoneId: canvasZoneId ?? null,
       sidebarMode: "build",
       buildResultsReady: true,
+      gardenPlanPlacedOnCanvas: false,
       ...planToSidebarFields(plan),
     });
   },
@@ -690,6 +696,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       planSheetOpen: false,
       gardenVision: null,
       pendingGardenPlan: null,
+      gardenPlanPlacedOnCanvas: false,
     }),
 
   showPendingGardenPlan: () => {
@@ -710,6 +717,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       gardenVision: null,
       pendingGardenPlan: null,
       buildResultsReady: false,
+      gardenPlanPlacedOnCanvas: false,
       questionnaireDraft: null,
       sidebarMode: "build",
       buildForMeSession: s.buildForMeSession + 1,
@@ -721,6 +729,22 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     if (!result) return;
 
     focusDesignerCanvas();
+
+    if (s.gardenPlanPlacedOnCanvas && s.planCanvasZoneId) {
+      const zoneId = s.planCanvasZoneId;
+      set({
+        activeZoneId: zoneId,
+        spaceListZoneId: zoneId,
+        planSheetOpen: false,
+        sidebarMode: "browse",
+        mobileSidebarOpen: false,
+      });
+      if (isMobileDesignerLayout()) {
+        get().requestCanvasFit();
+      }
+      return;
+    }
+
     set({ placingGardenOnCanvas: true });
 
     const profile = s.gardenProfile;
@@ -735,24 +759,46 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
         : null);
 
     try {
-      const { zone, placements } = await layoutForPlan(result, undefined);
+      const fillZone = s.planCanvasZoneId
+        ? s.zones.find((z) => z.id === s.planCanvasZoneId)
+        : undefined;
+      const { zone, placements } = await layoutForPlan(
+        result,
+        fillZone ?? undefined,
+      );
       const hasLayout = s.zones.length > 0 || s.canvasPlants.length > 0;
       const bedLabel = profile?.name?.trim()
         ? profile.name.trim().slice(0, 48)
         : undefined;
+      const gardenVision = profile
+        ? {
+            name: profile.name,
+            description: profile.description,
+            philosophy: profile.philosophy,
+          }
+        : null;
 
-      get().applyAutoPopulate(placements, {
-        zone,
-        mergeWithExisting: hasLayout,
-        zoneName: bedLabel,
-        gardenVision: profile
-          ? {
-              name: profile.name,
-              description: profile.description,
-              philosophy: profile.philosophy,
-            }
-          : null,
-      });
+      if (fillZone) {
+        get().applyAutoPopulate(placements, {
+          zone: fillZone,
+          fillZoneId: fillZone.id,
+          replacePlantsInZone: zoneHasPlants(
+            s.canvasPlants,
+            fillZone,
+            s.zones,
+          ),
+          mergeWithExisting: false,
+          zoneName: bedLabel,
+          gardenVision,
+        });
+      } else {
+        get().applyAutoPopulate(placements, {
+          zone,
+          mergeWithExisting: hasLayout,
+          zoneName: bedLabel,
+          gardenVision,
+        });
+      }
 
       const newZoneId = get().activeZoneId;
       if (newZoneId && pending) {
@@ -765,11 +811,19 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
           planCanvasZoneId: newZoneId,
           spaceListZoneId: newZoneId,
           activeZoneId: newZoneId,
+          gardenPlanPlacedOnCanvas: true,
+          sidebarMode: "browse",
+          mobileSidebarOpen: false,
           ...planToSidebarFields(pending),
           planSheetOpen: false,
         }));
       } else {
-        set({ planSheetOpen: false });
+        set({
+          planSheetOpen: false,
+          gardenPlanPlacedOnCanvas: true,
+          sidebarMode: "browse",
+          mobileSidebarOpen: false,
+        });
       }
 
       if (isMobileDesignerLayout()) {

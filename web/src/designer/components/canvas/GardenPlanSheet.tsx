@@ -1,3 +1,4 @@
+import { focusDesignerCanvas } from "../../lib/focus-designer-canvas";
 import { useDesignerStore } from "../../store/useDesignerStore";
 
 export function GardenPlanSheet() {
@@ -5,11 +6,21 @@ export function GardenPlanSheet() {
   const profile = useDesignerStore((s) => s.gardenProfile);
   const zones = useDesignerStore((s) => s.zones);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
+  const gardenPlanPlacedOnCanvas = useDesignerStore(
+    (s) => s.gardenPlanPlacedOnCanvas,
+  );
   const setPlanSheetOpen = useDesignerStore((s) => s.setPlanSheetOpen);
-  const placeRecommendedOnCanvas = useDesignerStore((s) => s.placeRecommendedOnCanvas);
+  const placeRecommendedOnCanvas = useDesignerStore(
+    (s) => s.placeRecommendedOnCanvas,
+  );
   const placingGardenOnCanvas = useDesignerStore((s) => s.placingGardenOnCanvas);
 
   const hasOtherBeds = zones.length > 0 || canvasPlants.length > 0;
+
+  function closeToCanvas() {
+    setPlanSheetOpen(false);
+    focusDesignerCanvas();
+  }
 
   if (!open || !profile) return null;
 
@@ -67,20 +78,39 @@ export function GardenPlanSheet() {
         </div>
 
         <div className="garden-plan-sheet-actions">
-          {hasOtherBeds && (
-            <p className="garden-plan-sheet-place-hint">
-              Adds a new bed beside your existing layout — other spaces stay as
-              they are.
-            </p>
+          {gardenPlanPlacedOnCanvas ? (
+            <>
+              <p className="garden-plan-sheet-place-hint">
+                This plan is already on your canvas.
+              </p>
+              <button
+                type="button"
+                className="garden-plan-sheet-place"
+                onClick={closeToCanvas}
+              >
+                Done — view on canvas
+              </button>
+            </>
+          ) : (
+            <>
+              {hasOtherBeds && (
+                <p className="garden-plan-sheet-place-hint">
+                  Adds a new bed beside your existing layout — other spaces stay
+                  as they are.
+                </p>
+              )}
+              <button
+                type="button"
+                className="garden-plan-sheet-place"
+                disabled={placingGardenOnCanvas}
+                onClick={() => void placeRecommendedOnCanvas()}
+              >
+                {placingGardenOnCanvas
+                  ? "Placing on canvas…"
+                  : "Add plants to canvas →"}
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            className="garden-plan-sheet-place"
-            disabled={placingGardenOnCanvas}
-            onClick={() => void placeRecommendedOnCanvas()}
-          >
-            {placingGardenOnCanvas ? "Placing on canvas…" : "Add plants to canvas →"}
-          </button>
         </div>
       </div>
     </>

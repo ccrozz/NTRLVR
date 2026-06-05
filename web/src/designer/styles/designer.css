@@ -6119,6 +6119,17 @@
   color: var(--color-text-muted);
 }
 
+.sidebar-build-results-placed {
+  margin: 0;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-2));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
+  border-radius: 8px;
+}
+
 .sidebar-build-results-place {
   width: 100%;
 }
@@ -6576,12 +6587,27 @@
 }
 
 .recommendation-header-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-accent);
   margin: 0 0 0.2rem;
+}
+
+.recommendation-header-badge {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface-2));
+  border-radius: 4px;
 }
 
 .recommendation-header-title {

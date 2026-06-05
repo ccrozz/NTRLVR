@@ -35,9 +35,9 @@ const LANDING_VIDEO_POSTER = "/images/landing/tn.jpg";
 const LANDING_VIDEO_PLAYBACK_RATE = 0.6;
 
 const STEPS = [
-  { num: "01", title: "Pick your state", body: "Florida, Tennessee, or Connecticut catalogs." },
-  { num: "02", title: "Set your zone", body: "ZIP lookup or regional shortcuts in the designer." },
-  { num: "03", title: "Place & refine", body: "Drag plants, tune layers, export your food forest plan." },
+  { num: "01", title: "Pick your state", body: "Florida, Tennessee, or Connecticut — each opens a curated designer catalog." },
+  { num: "02", title: "Build or browse", body: "Answer Build For Me questions, or search and filter plants by layer and category." },
+  { num: "03", title: "Place & refine", body: "Drag onto the grid, read state growing guides, check side profile, export PNG." },
 ] as const;
 
 export function RootsLanding() {
