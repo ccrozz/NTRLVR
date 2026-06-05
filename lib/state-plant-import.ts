@@ -1,6 +1,7 @@
 import type { DesignerStateCode } from "./designer-states.js";
 import { designerStateConfig } from "./designer-states.js";
 import { plantMatchesStateCatalog } from "./plant-state-filter.js";
+import { stateTag } from "./state-tag.js";
 import { plantZonesOverlapState } from "./us-states.js";
 import type { Plant } from "../schema.js";
 import {
@@ -20,9 +21,7 @@ import { enrichPlantFromWeb } from "./enrich-plant.js";
 import { fetchBestPlantImage } from "./plant-images.js";
 import { mergeLocalWithTrefle, searchTrefleByScientificName } from "./trefle-api.js";
 
-export function stateTag(stateCode: DesignerStateCode): string {
-  return stateCode.toLowerCase();
-}
+export { stateTag } from "./state-tag.js";
 
 export function plantGrowsInState(plant: Plant, stateCode: DesignerStateCode): boolean {
   return plantMatchesStateCatalog(plant, stateCode);

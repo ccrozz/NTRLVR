@@ -90,6 +90,17 @@ Vercel’s Supabase integration may set `POSTGRES_URL` instead of `DATABASE_URL`
 
 ## Troubleshooting
 
+### `FUNCTION_INVOCATION_FAILED` or `Cannot find module plant-repository-sqlite.js`
+
+The API bundle **excludes** SQLite (`vercel.json` → `excludeFiles`). If any server code imports `lib/state-plant-import.js` at startup, Node crashes before `/api/ping` runs.
+
+**Fix:** deploy latest `main` (uses `lib/state-tag.ts` so catalog API does not pull SQLite). Confirm:
+
+```bash
+curl -s https://your-app.vercel.app/api/ping
+# → {"ok":true,"database":"postgres",...}
+```
+
 ### `/api/health` or `/api/plants` pending / timeout
 
 - **`GET /api/plants`** — public catalog (DB + seed overlay)

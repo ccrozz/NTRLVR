@@ -5,7 +5,7 @@ import type { Plant } from "../schema.js";
 import { plantIsNativeToState } from "./plant-native-status.js";
 import { inferIsEdibleFromPlant } from "./infer-is-edible.js";
 import { stateByCode, stateZoneNumbers, plantZonesOverlapState } from "./us-states.js";
-import { stateTag } from "./state-plant-import.js";
+import { stateTag } from "./state-tag.js";
 import type { DesignerStateCode } from "./designer-states.js";
 import { isDesignerStateCode } from "./designer-states.js";
 
