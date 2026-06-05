@@ -4747,6 +4747,31 @@
   background: rgba(126, 200, 80, 0.1);
 }
 
+.garden-panel-item-delete {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  align-self: stretch;
+  padding: 0;
+  color: #f0a0a0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(240, 128, 128, 0.28);
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.garden-panel-item-delete:hover {
+  color: #ffd4d4;
+  border-color: rgba(240, 128, 128, 0.5);
+  background: rgba(240, 128, 128, 0.14);
+}
+
 .garden-panel-delete-space {
   width: 100%;
   margin-top: 0.45rem;
@@ -6074,20 +6099,6 @@
     width: min(520px, calc(100% - 1rem));
   }
 
-  .designer-garden-trigger {
-    max-width: calc(100% - 1rem);
-    min-width: 0;
-    padding: 0.45rem 0.55rem;
-  }
-
-  .designer-garden-trigger-text {
-    display: none;
-  }
-
-  .designer-garden-trigger-count {
-    margin-left: auto;
-  }
-
   .designer-toolbar-mobile-sheet {
     min-width: min(280px, calc(100vw - 1.5rem));
     border: 1px solid rgba(126, 200, 80, 0.28);
@@ -6268,11 +6279,6 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .garden-panel--floating {
-    width: min(360px, calc(100vw - 1rem));
-    max-height: min(62dvh, calc(100% - 7rem));
-  }
-
   .workspace-panel--floating {
     width: min(300px, calc(100vw - 1rem));
     max-height: min(58dvh, calc(100% - 6rem));
@@ -6392,10 +6398,6 @@
 }
 
 @media (max-width: 380px) {
-  .designer-garden-trigger-sub {
-    display: none;
-  }
-
   .designer-toolbar-card {
     max-width: calc(100vw - 2rem);
   }

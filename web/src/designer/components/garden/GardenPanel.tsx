@@ -38,12 +38,14 @@ function GardenPlantRow({
   outsideZone,
   onSelect,
   onOpenProfile,
+  onDelete,
 }: {
   plant: CanvasPlant;
   selected: boolean;
   outsideZone: boolean;
   onSelect: () => void;
   onOpenProfile: () => void;
+  onDelete: () => void;
 }) {
   const layer = canopyColor(plant.canopy_layer);
   const accent =
@@ -112,6 +114,32 @@ function GardenPlantRow({
           />
         </svg>
       </button>
+      <button
+        type="button"
+        className="garden-panel-item-delete"
+        aria-label={`Remove ${plant.common_name} from canvas`}
+        title="Remove plant"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+          <path
+            d="M3 6h18M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6m2 0v13.5A1.5 1.5 0 0 1 16.5 21h-9A1.5 1.5 0 0 1 6 19.5V6"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M10 10v6M14 10v6"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
     </li>
   );
 }
@@ -125,6 +153,7 @@ function GardenCategorySection({
   zones,
   onSelectPlant,
   onOpenPlantProfile,
+  onDeletePlant,
 }: {
   group: GardenCategoryGroup;
   collapsible: boolean;
@@ -134,6 +163,7 @@ function GardenCategorySection({
   zones: ReturnType<typeof useDesignerStore.getState>["zones"];
   onSelectPlant: (cp: CanvasPlant) => void;
   onOpenPlantProfile: (cp: CanvasPlant) => void;
+  onDeletePlant: (cp: CanvasPlant) => void;
 }) {
   const accent =
     GARDEN_CATEGORY_ACCENT[group.category] ?? "var(--color-accent)";
@@ -148,6 +178,7 @@ function GardenCategorySection({
           outsideZone={hasZones && plantOutsideOwnedZone(cp, zones)}
           onSelect={() => onSelectPlant(cp)}
           onOpenProfile={() => onOpenPlantProfile(cp)}
+          onDelete={() => onDeletePlant(cp)}
         />
       ))}
     </ul>
@@ -200,6 +231,7 @@ export function GardenPanel() {
   const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
   const selectCanvasPlant = useDesignerStore((s) => s.selectCanvasPlant);
   const openCanvasPlantProfile = useDesignerStore((s) => s.openCanvasPlantProfile);
+  const removePlant = useDesignerStore((s) => s.removePlant);
   const openGardenPlanSheet = useDesignerStore((s) => s.openGardenPlanSheet);
   const gardenProfile = useDesignerStore((s) => s.gardenProfile);
   const removeZone = useDesignerStore((s) => s.removeZone);
@@ -287,6 +319,10 @@ export function GardenPanel() {
 
   function onOpenPlantProfile(cp: CanvasPlant) {
     openCanvasPlantProfile(cp.canvasId);
+  }
+
+  function onDeletePlant(cp: CanvasPlant) {
+    removePlant(cp.canvasId);
   }
 
   function confirmRemoveSpace() {
@@ -522,8 +558,8 @@ export function GardenPanel() {
             )}
 
             <p className="garden-panel-hint">
-              Tap a plant to select on the canvas; use the list icon for its
-              growing profile.
+              Tap a plant to select on the canvas; list icon opens its profile;
+              trash removes it from the layout.
               {categorySectionsCollapsible
                 ? " Tap a category to expand or collapse."
                 : ""}
@@ -544,6 +580,7 @@ export function GardenPanel() {
                     zones={zones}
                     onSelectPlant={onSelectPlant}
                     onOpenPlantProfile={onOpenPlantProfile}
+                    onDeletePlant={onDeletePlant}
                   />
                 ))
               ) : (
@@ -558,6 +595,7 @@ export function GardenPanel() {
                       }
                       onSelect={() => onSelectPlant(cp)}
                       onOpenProfile={() => onOpenPlantProfile(cp)}
+                      onDelete={() => onDeletePlant(cp)}
                     />
                   ))}
                 </ul>
