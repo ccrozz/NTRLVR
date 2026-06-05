@@ -73,6 +73,8 @@ export function BrowsePage() {
   const [error, setError] = useState<string | null>(null);
   const scrollSentinelRef = useRef<HTMLDivElement>(null);
   const fetchMoreLockRef = useRef(false);
+  const loadGenerationRef = useRef(0);
+  const listAbortRef = useRef<AbortController | null>(null);
 
   const selectedState = useMemo(
     () => states.find((s) => s.code === myState),
@@ -145,6 +147,7 @@ export function BrowsePage() {
   const load = useCallback(
     async (append: boolean, nextOffset: number) => {
       if (!myState) {
+        listAbortRef.current?.abort();
         setPlants([]);
         setTotal(0);
         setHasMore(false);
@@ -154,29 +157,46 @@ export function BrowsePage() {
         return;
       }
 
-      if (append) setLoadingMore(true);
-      else setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        listAbortRef.current?.abort();
+        const controller = new AbortController();
+        listAbortRef.current = controller;
+        loadGenerationRef.current += 1;
+        setLoading(true);
+      }
+      const generation = loadGenerationRef.current;
+      const signal = append ? undefined : listAbortRef.current?.signal;
       setError(null);
 
       try {
-        const res = await fetchPlants({
-          search: debouncedSearch || undefined,
-          food_forest_group: groupFilter ?? undefined,
-          edible_only: edibleOnly,
-          state: myState,
-          native_to_state: nativeToMyState || undefined,
-          for_my_area: !nativeToMyState && !showFullCatalog,
-          limit: PAGE_SIZE,
-          offset: nextOffset,
-        });
+        const res = await fetchPlants(
+          {
+            search: debouncedSearch || undefined,
+            food_forest_group: groupFilter ?? undefined,
+            edible_only: edibleOnly,
+            state: myState,
+            native_to_state: nativeToMyState || undefined,
+            for_my_area: !nativeToMyState && !showFullCatalog,
+            limit: PAGE_SIZE,
+            offset: nextOffset,
+          },
+          { signal },
+        );
+
+        if (generation !== loadGenerationRef.current) return;
 
         setPlants((prev) => (append ? [...prev, ...res.data] : res.data));
         setTotal(res.meta.total);
         setHasMore(res.meta.has_more);
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (generation !== loadGenerationRef.current) return;
         setError(e instanceof Error ? e.message : "Failed to load plants");
         if (!append) setPlants([]);
       } finally {
+        if (generation !== loadGenerationRef.current) return;
         setLoading(false);
         setLoadingMore(false);
       }
@@ -187,6 +207,8 @@ export function BrowsePage() {
   useEffect(() => {
     load(false, 0);
   }, [load]);
+
+  useEffect(() => () => listAbortRef.current?.abort(), []);
 
   useEffect(() => {
     const sentinel = scrollSentinelRef.current;

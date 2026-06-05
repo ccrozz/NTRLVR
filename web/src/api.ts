@@ -30,9 +30,11 @@ function toQuery(filters: PlantFilters): string {
 
 export async function fetchPlants(
   filters: PlantFilters,
+  init?: { signal?: AbortSignal },
 ): Promise<PlantsResponse> {
   const res = await fetch(`${API_BASE}/api/plants?${toQuery(filters)}`, {
     cache: "no-store",
+    signal: init?.signal,
   });
   if (!res.ok) throw new Error(`Failed to load plants (${res.status})`);
   const ct = res.headers.get("content-type") ?? "";
