@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import { fetchPlant } from "../api";
 import {
   ArrowLeftIcon,
-  CheckCircleIcon,
   PlantPlaceholderIcon,
   SproutIcon,
 } from "../components/Icons";
@@ -126,18 +125,15 @@ export function PlantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const growingCtx = useCatalogGrowingContext();
   const [plant, setPlant] = useState<Plant | null>(null);
-  const [sources, setSources] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    setSources([]);
     fetchPlant(id)
-      .then(({ data, meta }) => {
+      .then(({ data }) => {
         setPlant(data);
-        setSources(meta?.sources ?? []);
       })
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Failed to load plant"),
@@ -178,13 +174,6 @@ export function PlantDetailPage() {
         <ArrowLeftIcon />
         Back to catalog
       </Link>
-
-      {sources.length > 0 && (
-        <p className="detail-notice detail-notice-success">
-          <CheckCircleIcon />
-          Enriched from {sources.join(" · ")} and saved locally.
-        </p>
-      )}
 
       <header className="detail-hero">
         <figure className="detail-image">

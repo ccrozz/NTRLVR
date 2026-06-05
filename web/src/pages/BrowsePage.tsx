@@ -67,12 +67,12 @@ export function BrowsePage() {
 
   const [plants, setPlants] = useState<PlantSummary[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollSentinelRef = useRef<HTMLDivElement>(null);
+  const fetchMoreLockRef = useRef(false);
 
   const selectedState = useMemo(
     () => states.find((s) => s.code === myState),
@@ -173,7 +173,6 @@ export function BrowsePage() {
         setPlants((prev) => (append ? [...prev, ...res.data] : res.data));
         setTotal(res.meta.total);
         setHasMore(res.meta.has_more);
-        setOffset(nextOffset);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load plants");
         if (!append) setPlants([]);
@@ -191,20 +190,42 @@ export function BrowsePage() {
 
   useEffect(() => {
     const sentinel = scrollSentinelRef.current;
-    if (!sentinel || !hasMore || error || !myState) return;
+    const scrollRoot =
+      sentinel?.closest<HTMLElement>(".rr-app-main") ??
+      document.querySelector<HTMLElement>(".rr-app-main");
+    if (!sentinel || !scrollRoot || !hasMore || error || !myState) return;
+
+    const requestMore = () => {
+      if (fetchMoreLockRef.current || loading || loadingMore) return;
+      fetchMoreLockRef.current = true;
+      void load(true, plants.length).finally(() => {
+        fetchMoreLockRef.current = false;
+      });
+    };
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0]?.isIntersecting) return;
-        if (loading || loadingMore) return;
-        load(true, offset + PAGE_SIZE);
+        if (entries[0]?.isIntersecting) requestMore();
       },
-      { rootMargin: "240px 0px" },
+      { root: scrollRoot, rootMargin: "320px 0px", threshold: 0 },
     );
 
     observer.observe(sentinel);
+
+    const rootRect = scrollRoot.getBoundingClientRect();
+    const sentinelRect = sentinel.getBoundingClientRect();
+    if (sentinelRect.top <= rootRect.bottom + 320) requestMore();
+
     return () => observer.disconnect();
-  }, [hasMore, loading, loadingMore, offset, load, error, myState]);
+  }, [
+    hasMore,
+    loading,
+    loadingMore,
+    plants.length,
+    load,
+    error,
+    myState,
+  ]);
 
   const resultsLine =
     !myState ? null : loading && plants.length === 0 ? (
