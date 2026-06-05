@@ -100,6 +100,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const setStagePos = useDesignerStore((s) => s.setStagePos);
     const canvasFitTick = useDesignerStore((s) => s.canvasFitTick);
     const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
+    const mobileToolsOpen = useDesignerStore((s) => s.mobileToolsOpen);
     const pushHistory = useDesignerStore((s) => s.pushHistory);
     const zones = useDesignerStore((s) => s.zones);
     const activeZoneId = useDesignerStore((s) => s.activeZoneId);
@@ -304,7 +305,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           zoom={zoom}
           visible={showScaleGrid}
         />
-        {isMobile && canvasPlants.length > 0 && <MobileCanvasZoomControls />}
+        {isMobile && !mobileToolsOpen && <MobileCanvasZoomControls />}
         {showScaleGrid && (
           <div className="designer-canvas-scale-legend" aria-hidden>
             <span className="designer-canvas-scale-bar" />

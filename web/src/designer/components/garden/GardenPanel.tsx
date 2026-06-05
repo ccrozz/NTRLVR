@@ -53,7 +53,7 @@ function GardenPlantRow({
   const showPhoto = Boolean(plant.image_url) && !imgFailed;
 
   return (
-    <li>
+    <li className="garden-panel-row">
       <button
         type="button"
         className={`garden-panel-item${selected ? " active" : ""}${outsideZone ? " garden-panel-item--outside" : ""}`}
@@ -92,6 +92,25 @@ function GardenPlantRow({
             {outsideZone ? " · Outside space" : ""}
           </span>
         </span>
+      </button>
+      <button
+        type="button"
+        className="garden-panel-item-profile"
+        aria-label={`View profile for ${plant.common_name}`}
+        title="Plant profile"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenProfile();
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+          <path
+            d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
       </button>
     </li>
   );
@@ -181,6 +200,8 @@ export function GardenPanel() {
   const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
   const selectCanvasPlant = useDesignerStore((s) => s.selectCanvasPlant);
   const openCanvasPlantProfile = useDesignerStore((s) => s.openCanvasPlantProfile);
+  const openGardenPlanSheet = useDesignerStore((s) => s.openGardenPlanSheet);
+  const gardenProfile = useDesignerStore((s) => s.gardenProfile);
   const removeZone = useDesignerStore((s) => s.removeZone);
 
   const boundsRef = useRef<HTMLDivElement>(null);
@@ -228,6 +249,7 @@ export function GardenPanel() {
   const hasZones = zones.length > 0;
   const listCount = sorted.length;
   const canManageSpace = Boolean(focusedZone);
+  const canViewPlanProfile = Boolean(savedPlan?.profile || gardenProfile);
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -373,6 +395,15 @@ export function GardenPanel() {
               <div className="garden-panel-vision">
                 <h3>{gardenVision.name}</h3>
                 <p>{gardenVision.description}</p>
+                {canViewPlanProfile && (
+                  <button
+                    type="button"
+                    className="garden-panel-view-plan"
+                    onClick={() => openGardenPlanSheet()}
+                  >
+                    View plan profile
+                  </button>
+                )}
               </div>
             )}
 
@@ -409,6 +440,17 @@ export function GardenPanel() {
                       <p className="garden-panel-plan-name">
                         {savedPlan.profile.name}
                       </p>
+                    )}
+                    {savedPlan && (
+                      <button
+                        type="button"
+                        className="garden-panel-view-plan garden-panel-view-plan--inline"
+                        onClick={() =>
+                          openGardenPlanSheet(focusedZone?.id ?? null)
+                        }
+                      >
+                        View plan profile
+                      </button>
                     )}
                   </div>
                 </div>
@@ -480,7 +522,8 @@ export function GardenPanel() {
             )}
 
             <p className="garden-panel-hint">
-              Tap to select on the canvas; double-tap for the plant profile.
+              Tap a plant to select on the canvas; use the list icon for its
+              growing profile.
               {categorySectionsCollapsible
                 ? " Tap a category to expand or collapse."
                 : ""}

@@ -30,15 +30,16 @@ export function saveToolbarExpanded(expanded: boolean, isMobile: boolean) {
   }
 }
 
-/** Default: top-right of the mobile header / canvas band (below state chips). */
+/** Default: bottom-right above the mobile tab bar (fixed dock). */
 export function defaultMobileHeaderToolbarPosition(
   boundsEl: HTMLElement | null,
 ): ToolbarDockPosition {
   const pad = 10;
   if (!boundsEl) return { x: pad, y: pad };
-  const pillWidth = 92;
+  const pillWidth = 76;
+  const pillHeight = 40;
   return {
     x: Math.max(pad, boundsEl.clientWidth - pillWidth - pad),
-    y: pad,
+    y: Math.max(pad, boundsEl.clientHeight - pillHeight - pad),
   };
 }

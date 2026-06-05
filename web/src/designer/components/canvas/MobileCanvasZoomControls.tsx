@@ -1,6 +1,6 @@
 import { useDesignerStore } from "../../store/useDesignerStore";
 
-/** Pinch works on the canvas; +/- for one-handed zoom on phones. */
+/** Pinch works on the canvas; segmented − / Fit / + for one-handed zoom on phones. */
 export function MobileCanvasZoomControls() {
   const zoom = useDesignerStore((s) => s.zoom);
   const setZoom = useDesignerStore((s) => s.setZoom);
@@ -15,15 +15,15 @@ export function MobileCanvasZoomControls() {
     >
       <button
         type="button"
-        className="designer-mobile-zoom-btn"
+        className="designer-mobile-zoom-btn designer-mobile-zoom-btn--step"
         aria-label="Zoom out"
         onClick={() => setZoom(zoom - 0.2)}
       >
-        −
+        <span aria-hidden>−</span>
       </button>
       <button
         type="button"
-        className="designer-mobile-zoom-btn"
+        className="designer-mobile-zoom-btn designer-mobile-zoom-btn--fit"
         aria-label="Fit garden in view"
         onClick={() => requestCanvasFit()}
       >
@@ -31,11 +31,11 @@ export function MobileCanvasZoomControls() {
       </button>
       <button
         type="button"
-        className="designer-mobile-zoom-btn"
+        className="designer-mobile-zoom-btn designer-mobile-zoom-btn--step"
         aria-label="Zoom in"
         onClick={() => setZoom(zoom + 0.2)}
       >
-        +
+        <span aria-hidden>+</span>
       </button>
     </div>
   );

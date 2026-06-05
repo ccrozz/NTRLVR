@@ -8,19 +8,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { DesignerCanvasHandle } from "./DesignerCanvas";
-import {
-  clampPanelPosition,
-  useFloatingPanelPosition,
-} from "../../hooks/useFloatingPanelPosition";
 import { MOBILE_LAYOUT_QUERY, useMatchMedia } from "../../hooks/useMatchMedia";
 import {
-  defaultMobileHeaderToolbarPosition,
   loadToolbarExpanded,
   saveToolbarExpanded,
 } from "../../lib/toolbar-dock-prefs";
 import { useDesignerStore } from "../../store/useDesignerStore";
-
-const MOBILE_TOOLBAR_POS_KEY = "ntr-toolbar-header-pos";
 
 function IconUndo() {
   return (
@@ -161,10 +154,8 @@ function PopoverItem({
 
 export function CanvasToolbar({
   canvasRef,
-  mobileBoundsRef,
 }: {
   canvasRef: RefObject<DesignerCanvasHandle | null>;
-  mobileBoundsRef?: RefObject<HTMLDivElement | null>;
 }) {
   const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -175,44 +166,12 @@ export function CanvasToolbar({
 
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const fallbackBoundsRef = useRef<HTMLDivElement>(null);
-  const boundsRef = mobileBoundsRef ?? fallbackBoundsRef;
-
-  const { panelRef, position, setPosition, dragHandleProps } =
-    useFloatingPanelPosition(
-      MOBILE_TOOLBAR_POS_KEY,
-      { x: 12, y: 10 },
-      boundsRef,
-    );
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDockExpanded(loadToolbarExpanded(isMobile));
     setMoreOpen(false);
   }, [isMobile]);
-
-  useEffect(() => {
-    if (!isMobile) return;
-    try {
-      if (localStorage.getItem(MOBILE_TOOLBAR_POS_KEY)) return;
-    } catch {
-      /* ignore */
-    }
-    const bounds = boundsRef.current;
-    if (!bounds) return;
-    setPosition(defaultMobileHeaderToolbarPosition(bounds));
-  }, [isMobile, boundsRef, setPosition]);
-
-  useEffect(() => {
-    if (!isMobile || !boundsRef.current || !panelRef.current) return;
-    const clamped = clampPanelPosition(
-      position,
-      panelRef.current,
-      boundsRef.current,
-    );
-    if (clamped.x !== position.x || clamped.y !== position.y) {
-      setPosition(clamped);
-    }
-  }, [isMobile, dockExpanded, moreOpen, position, panelRef, boundsRef, setPosition]);
 
   useLayoutEffect(() => {
     if (!moreOpen || isMobile || !moreBtnRef.current) return;
@@ -241,7 +200,7 @@ export function CanvasToolbar({
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [moreOpen, panelRef]);
+  }, [moreOpen]);
 
   const zoom = useDesignerStore((s) => s.zoom);
   const setZoom = useDesignerStore((s) => s.setZoom);
@@ -302,10 +261,10 @@ export function CanvasToolbar({
     const next = !workspacePanelOpen;
     setWorkspacePanelOpen(next);
     setMoreOpen(false);
-    if (next && !isMobile) setExpanded(false);
+    if (next) setExpanded(false);
   }
 
-  const morePopover = moreOpen && !isMobile && (
+  const morePopover = moreOpen && (
     <div
       ref={popoverRef}
       id="designer-toolbar-more"
@@ -346,6 +305,8 @@ export function CanvasToolbar({
       <PopoverItem label="Save as PNG" onClick={exportPng} />
     </div>
   );
+
+  if (isMobile) return null;
 
   const desktopBar = (
     <div className="designer-toolbar-strip" role="toolbar" aria-label="Canvas tools">
@@ -410,94 +371,16 @@ export function CanvasToolbar({
     </div>
   );
 
-  const mobileStyle = isMobile
-    ? { left: position.x, top: position.y }
-    : undefined;
-
-  const mobilePanel = (
-    <div className="designer-toolbar-mobile-sheet">
-      <header className="designer-toolbar-mobile-head">
-        <div
-          role="button"
-          tabIndex={0}
-          className="designer-toolbar-drag-grip"
-          aria-label="Drag tools"
-          title="Drag to move"
-          {...dragHandleProps}
-        >
-          ⠿
-        </div>
-        <span className="designer-toolbar-mobile-title">Canvas tools</span>
-        <ToolbarBtn label="Hide tools" onClick={() => setExpanded(false)}>
-          <IconClose />
-        </ToolbarBtn>
-      </header>
-      <div className="designer-toolbar-mobile-actions">
-        <ToolbarBtn label="Undo" disabled={!canUndo} onClick={undo}>
-          <IconUndo />
-        </ToolbarBtn>
-        <ToolbarBtn label="Redo" disabled={!canRedo} onClick={redo}>
-          <IconRedo />
-        </ToolbarBtn>
-        <ToolbarBtn
-          label="Grid"
-          active={showRuler}
-          onClick={() => setShowRuler(!showRuler)}
-        >
-          <IconGrid />
-        </ToolbarBtn>
-        <ToolbarBtn
-          label="More"
-          active={moreOpen}
-          onClick={() => setMoreOpen((v) => !v)}
-        >
-          <IconDots />
-        </ToolbarBtn>
-      </div>
-      {moreOpen && (
-        <div className="designer-toolbar-mobile-more" role="menu">
-          <PopoverItem
-            label="Beds & space"
-            active={workspacePanelOpen}
-            onClick={toggleSpace}
-          />
-          <PopoverItem label="Build for me" onClick={openBuild} />
-          <PopoverItem
-            label={compactCanvasVisuals ? "Full rings" : "Simple dots"}
-            active={compactCanvasVisuals}
-            onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
-          />
-          <PopoverItem
-            label={
-              canvasView === "cross-section" ? "Top-down" : "Side profile"
-            }
-            active={canvasView === "cross-section"}
-            onClick={() =>
-              setCanvasView(
-                canvasView === "cross-section" ? "top-down" : "cross-section",
-              )
-            }
-          />
-          <PopoverItem label="Yard photo" onClick={uploadPhoto} />
-          <PopoverItem label="Save PNG" onClick={exportPng} />
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <>
       <div
-        ref={panelRef as React.Ref<HTMLDivElement>}
+        ref={panelRef}
         className={[
           "designer-canvas-dock",
           "designer-toolbar",
-          isMobile
-            ? "designer-toolbar--mobile designer-toolbar--mobile-header"
-            : "designer-toolbar--desktop",
+          "designer-toolbar--desktop",
           dockExpanded ? "is-expanded" : "is-collapsed",
         ].join(" ")}
-        style={mobileStyle}
       >
         {!dockExpanded ? (
           <button
@@ -509,8 +392,6 @@ export function CanvasToolbar({
             <span>Tools</span>
             <IconChevron open={false} />
           </button>
-        ) : isMobile ? (
-          mobilePanel
         ) : (
           desktopBar
         )}

@@ -20,7 +20,7 @@ export function Layout() {
 
   return (
     <div className="rr-app-shell">
-      <header className="designer-top-bar">
+      <header className="designer-top-bar rr-site-top">
         <Link to="/" className="designer-top-brand" title="NTR LVR home">
           NTR LVR
         </Link>

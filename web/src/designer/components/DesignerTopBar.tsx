@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { AppNav } from "../../components/AppNav";
 import { EvergreenHeaderLink } from "../../components/EvergreenHeaderLink";
+import { useMatchMedia } from "../hooks/useMatchMedia";
+import { MOBILE_LAYOUT_QUERY } from "../lib/mobile-layout";
+import { DesignerMobileTopNav } from "./DesignerMobileTopNav";
 
 export function DesignerTopBar({
   helpOpen,
@@ -11,14 +14,16 @@ export function DesignerTopBar({
   onHelpClick: () => void;
   onAutoPopulateClick: () => void;
 }) {
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
+
   return (
     <header className="designer-top-bar">
       <Link to="/" className="designer-top-brand" title="NTR LVR home">
         NTR LVR
       </Link>
-      <AppNav variant="dark" />
+      {isMobile ? <DesignerMobileTopNav /> : <AppNav variant="dark" />}
       <div className="designer-top-bar-end">
-        <EvergreenHeaderLink />
+        <EvergreenHeaderLink compact={isMobile} />
         <button
           type="button"
           className="designer-top-autofill"

@@ -5,6 +5,7 @@ import { AppNav } from "../../../components/AppNav";
 import { EvergreenHeaderLink } from "../../../components/EvergreenHeaderLink";
 import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { EVERGREEN_SOLUTIONS_URL } from "../../../lib/evergreen-partner";
+import { MOBILE_LAYOUT_QUERY, useMatchMedia } from "../../hooks/useMatchMedia";
 
 /** Bundled in web/public/images/landing/ */
 const STATE_VISUALS: Record<
@@ -48,6 +49,7 @@ export function RootsLanding() {
   const upload = params.get("mode") === "upload";
   const uploadQuery = upload ? "?mode=upload" : "";
   const bgVideoRef = useRef<HTMLVideoElement>(null);
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
 
   const applyVideoPlaybackRate = useCallback(() => {
     const video = bgVideoRef.current;
@@ -84,18 +86,18 @@ export function RootsLanding() {
         <div className="rr-landing-bg-scrim" />
       </div>
 
-      <header className="designer-top-bar rr-landing-top">
+      <header className="designer-top-bar rr-landing-top rr-site-top">
         <Link to="/" className="designer-top-brand">
           NTR LVR
         </Link>
         <AppNav variant="dark" />
         <div className="designer-top-bar-end">
-          <EvergreenHeaderLink />
+          <EvergreenHeaderLink compact={isMobile} />
         </div>
       </header>
 
       <main className="rr-landing-main">
-        <header className="rr-landing-intro">
+        <header className="rr-landing-intro rr-landing-hero">
           <h1>Design your dream space</h1>
           <p className="rr-landing-tagline">One plant at a time.</p>
         </header>
@@ -106,9 +108,12 @@ export function RootsLanding() {
             <p className="rr-landing-states-lead">
               Choose a state to open the designer with a curated regional catalog.
             </p>
+            <p className="rr-landing-states-swipe-hint" aria-hidden>
+              Swipe to explore states
+            </p>
           </div>
           <div className="rr-state-grid">
-            {DESIGNER_STATES.map((st) => {
+            {DESIGNER_STATES.map((st, index) => {
               const visual = STATE_VISUALS[st.code];
               return (
                 <Link
@@ -122,8 +127,9 @@ export function RootsLanding() {
                       <img
                         src={visual.image}
                         alt=""
-                        loading="eager"
+                        loading={index === 0 ? "eager" : "lazy"}
                         decoding="async"
+                        fetchPriority={index === 0 ? "high" : "auto"}
                         style={{ objectPosition: visual.objectPosition }}
                       />
                       <div

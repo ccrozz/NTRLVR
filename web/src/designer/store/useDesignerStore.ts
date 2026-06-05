@@ -165,9 +165,14 @@ type DesignerState = {
   /** Mobile bottom sheet: plants / build panel over canvas */
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
+  /** Mobile bottom sheet: canvas tools above tab bar */
+  mobileToolsOpen: boolean;
+  setMobileToolsOpen: (open: boolean) => void;
   setQuestionnaireDraft: (draft: QuestionnaireDraft | null) => void;
   setShowingRecommendations: (show: boolean) => void;
   setPlanSheetOpen: (open: boolean) => void;
+  /** Open the full garden plan sheet (from Your garden or Build results). */
+  openGardenPlanSheet: (zoneId?: string | null) => void;
   setSpaceListZoneId: (id: "all" | string) => void;
   renameZone: (id: string, name: string) => void;
   /** Reset UI that should not carry over when opening the designer page. */
@@ -313,6 +318,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   designerState: loadDesignerState(),
   sidebarMode: "browse",
   mobileSidebarOpen: false,
+  mobileToolsOpen: false,
   showingRecommendations: false,
   recommendedPlantIds: null,
   recommendationMeta: {},
@@ -616,7 +622,19 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   setSidebarMode: (sidebarMode) => set({ sidebarMode }),
 
-  setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
+  setMobileSidebarOpen: (mobileSidebarOpen) =>
+    set(
+      mobileSidebarOpen
+        ? { mobileSidebarOpen: true, mobileToolsOpen: false }
+        : { mobileSidebarOpen: false },
+    ),
+
+  setMobileToolsOpen: (mobileToolsOpen) =>
+    set(
+      mobileToolsOpen
+        ? { mobileToolsOpen: true, mobileSidebarOpen: false }
+        : { mobileToolsOpen: false },
+    ),
 
   setQuestionnaireDraft: (questionnaireDraft) => set({ questionnaireDraft }),
 
@@ -625,11 +643,42 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   setPlanSheetOpen: (planSheetOpen) => set({ planSheetOpen }),
 
+  openGardenPlanSheet: (zoneId) => {
+    const s = get();
+    const resolvedZoneId =
+      zoneId && zoneId !== "all"
+        ? zoneId
+        : s.spaceListZoneId !== "all"
+          ? s.spaceListZoneId
+          : null;
+
+    if (resolvedZoneId) {
+      const plan = s.zoneGardenPlans[resolvedZoneId];
+      if (plan) {
+        set({
+          ...planToSidebarFields(plan),
+          planSheetOpen: true,
+          planCanvasZoneId: resolvedZoneId,
+          gardenPlanPlacedOnCanvas: true,
+          activeZoneId: resolvedZoneId,
+          spaceListZoneId: resolvedZoneId,
+          gardenPanelOpen: false,
+        });
+        return;
+      }
+    }
+
+    if (s.gardenProfile) {
+      set({ planSheetOpen: true, gardenPanelOpen: false });
+    }
+  },
+
   prepareDesignerOnLoad: () =>
     set({
       workspacePanelOpen: false,
       sidebarMode: "browse",
       mobileSidebarOpen: false,
+      mobileToolsOpen: false,
       buildResultsReady: false,
       gardenPlanPlacedOnCanvas: false,
     }),
@@ -738,6 +787,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
         planSheetOpen: false,
         sidebarMode: "browse",
         mobileSidebarOpen: false,
+        mobileToolsOpen: false,
       });
       if (isMobileDesignerLayout()) {
         get().requestCanvasFit();
@@ -814,6 +864,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
           gardenPlanPlacedOnCanvas: true,
           sidebarMode: "browse",
           mobileSidebarOpen: false,
+          mobileToolsOpen: false,
           ...planToSidebarFields(pending),
           planSheetOpen: false,
         }));
@@ -823,6 +874,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
           gardenPlanPlacedOnCanvas: true,
           sidebarMode: "browse",
           mobileSidebarOpen: false,
+          mobileToolsOpen: false,
         });
       }
 

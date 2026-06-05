@@ -23,11 +23,13 @@ import {
   EDGE_RULER_TOP,
 } from "../lib/canvas-ruler-insets";
 import { CanvasBottomStack } from "../components/canvas/CanvasBottomStack";
+import { DesignerMobileWelcome } from "../components/canvas/DesignerMobileWelcome";
 import { DrawZoneDock } from "../components/workspace/DrawZoneDock";
 import { GardenPanel } from "../components/garden/GardenPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
 import { PlantDetailPanel } from "../components/detail/PlantDetailPanel";
 import { MobileDesignerBar } from "../components/MobileDesignerBar";
+import { MobileToolsDock } from "../components/MobileToolsDock";
 import { DesignerStateSwitcher } from "../components/DesignerStateSwitcher";
 import { openBuildForMeSidebar } from "../lib/open-build-sidebar";
 import { useDesignerStore } from "../store/useDesignerStore";
@@ -59,8 +61,6 @@ export function DesignerPage() {
   const [params] = useSearchParams();
   const canvasRef = useRef<DesignerCanvasHandle>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const mobileToolbarBoundsRef = useRef<HTMLDivElement>(null);
-
   const addPlant = useDesignerStore((s) => s.addPlant);
   const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
   const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
@@ -68,13 +68,16 @@ export function DesignerPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const mobileSidebarOpen = useDesignerStore((s) => s.mobileSidebarOpen);
   const setMobileSidebarOpen = useDesignerStore((s) => s.setMobileSidebarOpen);
+  const setMobileToolsOpen = useDesignerStore((s) => s.setMobileToolsOpen);
   const setDesignerState = useDesignerStore((s) => s.setDesignerState);
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
 
   useEffect(() => {
     setDesignerState(parseDesignerStateParam(params.get("state")));
   }, [params, setDesignerState]);
 
   useEffect(() => {
+    if (isMobile) return;
     try {
       if (localStorage.getItem(HELP_DISMISSED_KEY) !== "1") {
         setHelpOpen(true);
@@ -82,7 +85,7 @@ export function DesignerPage() {
     } catch {
       setHelpOpen(true);
     }
-  }, []);
+  }, [isMobile]);
 
   function dismissHelp() {
     setHelpOpen(false);
@@ -107,7 +110,6 @@ export function DesignerPage() {
   const workspaceTool = useDesignerStore((s) => s.workspaceTool);
   const edgeRulersVisible = showRuler || workspaceTool === "draw-zone";
 
-  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const sensors = useDesignerDndSensors();
   const [dragPlant, setDragPlant] = useState<PlantListItem | null>(null);
   const [plantDragActive, setPlantDragActive] = useState(false);
@@ -212,7 +214,7 @@ export function DesignerPage() {
   );
 
   return (
-    <div className="designer-root">
+    <div className={`designer-root${isMobile ? " designer-root--mobile" : ""}`}>
       <DesignerTopBar
         helpOpen={helpOpen}
         onHelpClick={toggleHelp}
@@ -221,13 +223,6 @@ export function DesignerPage() {
       <div className="designer-state-switcher-wrap">
         <DesignerStateSwitcher compact />
       </div>
-      {isMobile && (
-        <div
-          ref={mobileToolbarBoundsRef}
-          className="designer-mobile-toolbar-bounds"
-          aria-hidden
-        />
-      )}
       <DndContext
         sensors={sensors}
         collisionDetection={designerCollisionDetection}
@@ -237,7 +232,10 @@ export function DesignerPage() {
           setDragPlant(plant);
           if (!String(e.active.id).startsWith("plant-")) return;
           setPlantDragActive(true);
-          if (isMobile) setMobileSidebarOpen(false);
+          if (isMobile) {
+            setMobileSidebarOpen(false);
+            setMobileToolsOpen(false);
+          }
         }}
         onDragCancel={() => {
           setDragPlant(null);
@@ -245,12 +243,6 @@ export function DesignerPage() {
         }}
         onDragEnd={onDragEnd}
       >
-        {isMobile && (
-          <CanvasToolbar
-            canvasRef={canvasRef}
-            mobileBoundsRef={mobileToolbarBoundsRef}
-          />
-        )}
         <div
           className={`designer-layout${mobileSidebarOpen ? " designer-layout--sidebar-open" : ""}${plantDragActive ? " designer-layout--plant-drag" : ""}`}
           ref={wrapRef}
@@ -277,8 +269,9 @@ export function DesignerPage() {
             <GardenPanel />
             <WorkspacePanel />
             <DrawZoneDock />
-            {!isMobile && <CanvasToolbar canvasRef={canvasRef} />}
+            <CanvasToolbar canvasRef={canvasRef} />
             <DesignerCanvas ref={canvasRef} />
+            {isMobile && <DesignerMobileWelcome />}
             <CanvasBottomStack plantDragActive={plantDragActive} />
             {detailOpen && (
               <button
@@ -292,6 +285,7 @@ export function DesignerPage() {
             {helpOpen && <DesignerHelpOverlay onClose={dismissHelp} />}
             <GardenPlanSheet />
           </div>
+          {isMobile && <MobileToolsDock canvasRef={canvasRef} />}
           <MobileDesignerBar />
         </div>
         <DragOverlay dropAnimation={null}>
