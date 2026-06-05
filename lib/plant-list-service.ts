@@ -374,6 +374,10 @@ export async function listCatalogPlants(
     return { data, total: data.length };
   }
 
+  if (search) {
+    return listCatalogPlantsSearch(filters, search);
+  }
+
   const stateCode = filters.native_state;
   const seeds = dedupeCatalogPlants(
     await listSeedSummaries(filters),
@@ -430,6 +434,40 @@ export async function listCatalogPlants(
 
   const dedupedTotal = Math.max(seedTotal, seedTotal + dbTotal - (seen.size - items.length));
   return { data: items, total: dedupedTotal };
+}
+
+/** Search uses SQL pagination so cultivar-level results are not collapsed by species dedup. */
+async function listCatalogPlantsSearch(
+  filters: PlantFilters,
+  search: string,
+): Promise<{ data: PlantListItem[]; total: number }> {
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 100;
+
+  const { data: rows, total } = await listLocalSummaries(filters);
+  const items = rows.map((p) =>
+    summaryFromLocal({
+      ...p,
+      is_invasive_in_florida: p.is_invasive_in_florida ?? false,
+    }),
+  );
+
+  if (offset === 0 && items.length < 3) {
+    const trefleHits = await searchTrefle(search);
+    const seen = new Set(
+      items.map((p) => speciesDedupKey(p.common_name, p.scientific_name)),
+    );
+    for (const hit of trefleHits) {
+      const row = summaryFromTrefle(hit);
+      const key = speciesDedupKey(row.common_name, row.scientific_name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(row);
+      if (items.length >= limit) break;
+    }
+  }
+
+  return { data: items, total };
 }
 
 /** @deprecated Use listCatalogPlants or listDesignerPlants */

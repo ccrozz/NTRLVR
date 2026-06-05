@@ -70,7 +70,9 @@ export function BrowsePage() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [listOffset, setListOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const scrollSentinelRef = useRef<HTMLDivElement>(null);
   const fetchMoreLockRef = useRef(false);
   const loadGenerationRef = useRef(0);
@@ -159,16 +161,19 @@ export function BrowsePage() {
 
       if (append) {
         setLoadingMore(true);
+        setLoadMoreError(null);
       } else {
         listAbortRef.current?.abort();
         const controller = new AbortController();
         listAbortRef.current = controller;
         loadGenerationRef.current += 1;
+        setListOffset(0);
         setLoading(true);
+        setLoadMoreError(null);
       }
       const generation = loadGenerationRef.current;
       const signal = append ? undefined : listAbortRef.current?.signal;
-      setError(null);
+      if (!append) setError(null);
 
       try {
         const res = await fetchPlants(
@@ -190,15 +195,25 @@ export function BrowsePage() {
         setPlants((prev) => (append ? [...prev, ...res.data] : res.data));
         setTotal(res.meta.total);
         setHasMore(res.meta.has_more);
+        setListOffset(res.meta.offset + res.data.length);
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         if (generation !== loadGenerationRef.current) return;
-        setError(e instanceof Error ? e.message : "Failed to load plants");
-        if (!append) setPlants([]);
+        const message =
+          e instanceof Error ? e.message : "Failed to load plants";
+        if (append) {
+          setLoadMoreError(message);
+        } else {
+          setError(message);
+          setPlants([]);
+        }
       } finally {
-        if (generation !== loadGenerationRef.current) return;
-        setLoading(false);
-        setLoadingMore(false);
+        if (append) {
+          if (generation === loadGenerationRef.current) setLoadingMore(false);
+        } else if (generation === loadGenerationRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     [debouncedSearch, groupFilter, edibleOnly, myState, nativeToMyState, showFullCatalog],
@@ -215,12 +230,13 @@ export function BrowsePage() {
     const scrollRoot =
       sentinel?.closest<HTMLElement>(".rr-app-main") ??
       document.querySelector<HTMLElement>(".rr-app-main");
-    if (!sentinel || !scrollRoot || !hasMore || error || !myState) return;
+    if (!sentinel || !scrollRoot || !hasMore || !myState) return;
+    if (error && plants.length === 0) return;
 
     const requestMore = () => {
       if (fetchMoreLockRef.current || loading || loadingMore) return;
       fetchMoreLockRef.current = true;
-      void load(true, plants.length).finally(() => {
+      void load(true, listOffset).finally(() => {
         fetchMoreLockRef.current = false;
       });
     };
@@ -243,9 +259,10 @@ export function BrowsePage() {
     hasMore,
     loading,
     loadingMore,
-    plants.length,
+    listOffset,
     load,
     error,
+    plants.length,
     myState,
   ]);
 
@@ -423,6 +440,18 @@ export function BrowsePage() {
                   <span className="spinner" />
                   Loading more plants…
                 </p>
+              )}
+              {loadMoreError && !loadingMore && (
+                <div className="catalog-load-more-error">
+                  <p>{loadMoreError}</p>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => load(true, listOffset)}
+                  >
+                    Try again
+                  </button>
+                </div>
               )}
             </div>
           </section>
