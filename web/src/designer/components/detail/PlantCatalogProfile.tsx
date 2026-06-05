@@ -3,11 +3,7 @@ import type { CanopyLayer, Plant } from "../../../types";
 import { designerStateConfig } from "@lib/designer-states";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { canopyColor } from "../../lib/canopy-colors";
-import {
-  plantGrowingFacts,
-  plantRoleTags,
-  resolveCompanionPlant,
-} from "../../lib/plant-detail-helpers";
+import { plantRoleTags, resolveCompanionPlant } from "../../lib/plant-detail-helpers";
 import { GuildFunctionCards } from "./GuildFunctionCards";
 
 export function PlantCatalogProfile({
@@ -34,10 +30,8 @@ export function PlantCatalogProfile({
   const stateName =
     designerStateConfig(designerState)?.name ?? "your region";
   const roles = plantRoleTags(plant);
-  const facts = plantGrowingFacts(plant);
   const uses = plant.uses ?? [];
   const benefits = plant.benefits ?? [];
-  const avoid = plant.avoid_planting_near ?? [];
   const guildFns = plant.guild_functions ?? [];
 
   return (
@@ -48,17 +42,6 @@ export function PlantCatalogProfile({
             <li key={tag}>{tag}</li>
           ))}
         </ul>
-      )}
-
-      {facts.length > 0 && (
-        <dl className="designer-detail-facts">
-          {facts.map(({ label, value }) => (
-            <div key={label} className="designer-detail-fact">
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
       )}
 
       {guildFns.length > 0 && (
@@ -114,15 +97,6 @@ export function PlantCatalogProfile({
               );
             })}
           </ul>
-        </section>
-      )}
-
-      {avoid.length > 0 && (
-        <section className="designer-detail-block">
-          <h3 className="designer-detail-block-title">Keep away from</h3>
-          <p className="designer-detail-tags designer-detail-tags--warn">
-            {avoid.join(" · ")}
-          </p>
         </section>
       )}
 

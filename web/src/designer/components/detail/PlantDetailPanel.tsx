@@ -6,12 +6,12 @@ import { canopyColor } from "../../lib/canopy-colors";
 import {
   hasExtraDetail,
   isPlantDetailSparse,
-  plantLeadSummary,
   resolveCompanionPlant,
 } from "../../lib/plant-detail-helpers";
 import { useCompanionReasonsBatch } from "../../hooks/useCompanionReasonsBatch";
 import { isCompanionPlacedNearHost } from "../../lib/companion-placement";
 import { CompanionSuggestionRow } from "./CompanionSuggestionRow";
+import { DesignerPlantGuide } from "./DesignerPlantGuide";
 import { PlantCatalogProfile } from "./PlantCatalogProfile";
 
 const MAX_COMPANIONS = 6;
@@ -20,6 +20,7 @@ export function PlantDetailPanel() {
   const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
   const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
+  const designerState = useDesignerStore((s) => s.designerState);
   const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
   const setSearchQuery = useDesignerStore((s) => s.setSearchQuery);
   const deleteSelectedCanvasPlant = useDesignerStore(
@@ -94,7 +95,6 @@ export function PlantDetailPanel() {
   if (!open) return null;
 
   const layerColors = plant ? canopyColor(plant.canopy_layer) : null;
-  const lead = plant ? plantLeadSummary(plant) : "";
   const sparse = plant ? isPlantDetailSparse(plant) : false;
   const showMore = plant && hasExtraDetail(plant);
 
@@ -163,7 +163,7 @@ export function PlantDetailPanel() {
               </button>
             </header>
 
-            <p className="designer-detail-lead">{lead}</p>
+            <DesignerPlantGuide plant={plant} stateCode={designerState} />
 
             {sparse && (
               <p className="designer-detail-sparse">
@@ -265,12 +265,6 @@ export function PlantDetailPanel() {
                         <li key={b}>{b}</li>
                       ))}
                     </ul>
-                  </div>
-                )}
-                {plant.avoid_planting_near?.length > 0 && (
-                  <div>
-                    <h4>Keep away from</h4>
-                    <p>{plant.avoid_planting_near.join(" · ")}</p>
                   </div>
                 )}
               </section>
