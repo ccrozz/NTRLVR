@@ -5,11 +5,12 @@ import { BrowsePage } from "./pages/BrowsePage";
 import { PlantDetailPage } from "./pages/PlantDetailPage";
 import { RootsLanding } from "./designer/components/landing/RootsLanding";
 import { DesignerPage } from "./designer/pages/DesignerPage";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react";
 
 export function App() {
   return (
     <>
+      <Analytics />
       <ScrollToTop />
       <Routes>
       <Route path="/" element={<RootsLanding />} />
