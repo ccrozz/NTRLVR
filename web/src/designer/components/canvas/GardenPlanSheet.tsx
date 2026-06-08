@@ -5,6 +5,8 @@ import { useDesignerStore } from "../../store/useDesignerStore";
 export function GardenPlanSheet() {
   const open = useDesignerStore((s) => s.planSheetOpen);
   const profile = useDesignerStore((s) => s.gardenProfile);
+  const spaceListZoneId = useDesignerStore((s) => s.spaceListZoneId);
+  const zoneGardenPlans = useDesignerStore((s) => s.zoneGardenPlans);
   const zones = useDesignerStore((s) => s.zones);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
   const gardenPlanPlacedOnCanvas = useDesignerStore(
@@ -18,12 +20,18 @@ export function GardenPlanSheet() {
 
   const hasOtherBeds = zones.length > 0 || canvasPlants.length > 0;
 
+  const resolvedProfile =
+    profile ??
+    (spaceListZoneId !== "all"
+      ? zoneGardenPlans[spaceListZoneId]?.profile
+      : null);
+
   function closeToCanvas() {
     setPlanSheetOpen(false);
     focusDesignerCanvas();
   }
 
-  if (!open || !profile) return null;
+  if (!open || !resolvedProfile) return null;
 
   return (
     <>
@@ -47,17 +55,17 @@ export function GardenPlanSheet() {
         <div className="garden-plan-sheet-scroll">
           <p className="garden-plan-sheet-kicker">Your garden plan</p>
           <h2 id="garden-plan-sheet-title" className="garden-plan-sheet-title">
-            {profile.name}
+            {resolvedProfile.name}
           </h2>
-          <p className="garden-plan-sheet-desc">{profile.description}</p>
+          <p className="garden-plan-sheet-desc">{resolvedProfile.description}</p>
           <blockquote className="garden-plan-sheet-quote">
-            {profile.philosophy}
+            {resolvedProfile.philosophy}
           </blockquote>
 
           <section className="garden-plan-sheet-section">
             <h3>Planting sequence</h3>
             <ol className="garden-plan-sheet-list">
-              {profile.planting_sequence.map((step) => (
+              {resolvedProfile.planting_sequence.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ol>
@@ -65,13 +73,13 @@ export function GardenPlanSheet() {
 
           <section className="garden-plan-sheet-section">
             <h3>First year focus</h3>
-            <p>{profile.first_year_focus}</p>
+            <p>{resolvedProfile.first_year_focus}</p>
           </section>
 
           <section className="garden-plan-sheet-section">
             <h3>Avoid these mistakes</h3>
             <ul className="garden-plan-sheet-list">
-              {profile.avoid_mistakes.map((m) => (
+              {resolvedProfile.avoid_mistakes.map((m) => (
                 <li key={m}>{m}</li>
               ))}
             </ul>

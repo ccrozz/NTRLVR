@@ -57,6 +57,19 @@ import type { DesignerStateCode } from "@lib/designer-states";
 import { saveDesignerState } from "../lib/designer-state-prefs";
 import { loadDesignerState } from "../lib/designer-state-prefs";
 
+function planSheetVisibilityPatch(open: boolean): Partial<DesignerState> {
+  if (!open) return { planSheetOpen: false };
+  if (typeof window !== "undefined") {
+    focusDesignerCanvas();
+  }
+  return {
+    planSheetOpen: true,
+    gardenPanelOpen: false,
+    mobileSidebarOpen: false,
+    mobileToolsOpen: false,
+  };
+}
+
 type DesignerState = {
   canvasPlants: CanvasPlant[];
   selectedCanvasPlantId: string | null;
@@ -641,7 +654,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   setShowingRecommendations: (showingRecommendations) =>
     set({ showingRecommendations }),
 
-  setPlanSheetOpen: (planSheetOpen) => set({ planSheetOpen }),
+  setPlanSheetOpen: (planSheetOpen) => set(planSheetVisibilityPatch(planSheetOpen)),
 
   openGardenPlanSheet: (zoneId) => {
     const s = get();
@@ -657,19 +670,18 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       if (plan) {
         set({
           ...planToSidebarFields(plan),
-          planSheetOpen: true,
+          ...planSheetVisibilityPatch(true),
           planCanvasZoneId: resolvedZoneId,
           gardenPlanPlacedOnCanvas: true,
           activeZoneId: resolvedZoneId,
           spaceListZoneId: resolvedZoneId,
-          gardenPanelOpen: false,
         });
         return;
       }
     }
 
     if (s.gardenProfile) {
-      set({ planSheetOpen: true, gardenPanelOpen: false });
+      set(planSheetVisibilityPatch(true));
     }
   },
 

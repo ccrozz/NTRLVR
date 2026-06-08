@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { canopyColor } from "../../lib/canopy-colors";
 import {
   GARDEN_CATEGORY_ACCENT,
@@ -8,6 +8,8 @@ import {
   topCenterPanelPosition,
   useFloatingPanelPosition,
 } from "../../hooks/useFloatingPanelPosition";
+import { useMatchMedia } from "../../hooks/useMatchMedia";
+import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import {
   canvasPlantsInZone,
   zoneHasPlants,
@@ -22,7 +24,9 @@ import type { CanvasPlant } from "../../types";
 import type { GardenCategoryGroup } from "../../lib/garden-plant-groups";
 
 const PANEL_POS_KEY = "ntr-garden-panel-pos";
+const TRIGGER_POS_KEY = "ntr-garden-trigger-pos-mobile";
 const DEFAULT_PANEL_POS = { x: 0, y: 0 };
+const DEFAULT_TRIGGER_POS = { x: 0, y: 0 };
 
 function sortGardenPlants(plants: CanvasPlant[]): CanvasPlant[] {
   return [...plants].sort((a, b) =>
@@ -236,12 +240,25 @@ export function GardenPanel() {
   const gardenProfile = useDesignerStore((s) => s.gardenProfile);
   const removeZone = useDesignerStore((s) => s.removeZone);
 
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const boundsRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
+  const triggerPositionedRef = useRef(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [spaceDetailsOpen, setSpaceDetailsOpen] = useState(false);
   const { panelRef, position, setPosition, dragHandleProps } =
     useFloatingPanelPosition(PANEL_POS_KEY, DEFAULT_PANEL_POS, boundsRef);
+  const {
+    panelRef: triggerWrapRef,
+    position: triggerPosition,
+    setPosition: setTriggerPosition,
+    dragHandleProps: triggerDragProps,
+  } = useFloatingPanelPosition(
+    TRIGGER_POS_KEY,
+    DEFAULT_TRIGGER_POS,
+    boundsRef,
+  );
 
   const count = canvasPlants.length;
   const gardenVision = useDesignerStore((s) => s.gardenVision);
@@ -271,7 +288,7 @@ export function GardenPanel() {
     return sortGardenPlants(canvasPlantsInZone(base, focusedZone, zones));
   }, [canvasPlants, zones, focusedZone]);
 
-  const showCategoryGroups = Boolean(focusedZone && sorted.length > 0);
+  const showCategoryGroups = sorted.length > 0;
   const categoryGroups = useMemo(
     () => (showCategoryGroups ? groupGardenPlantsByCategory(sorted) : []),
     [showCategoryGroups, sorted],
@@ -285,7 +302,44 @@ export function GardenPanel() {
 
   useEffect(() => {
     setConfirmDelete(false);
+    setSpaceDetailsOpen(false);
   }, [focusedZoneId]);
+
+  useEffect(() => {
+    if (confirmDelete) setSpaceDetailsOpen(true);
+  }, [confirmDelete]);
+
+  useEffect(() => {
+    if (!isMobile || open || triggerPositionedRef.current) return;
+
+    let stored = false;
+    try {
+      stored = Boolean(localStorage.getItem(TRIGGER_POS_KEY));
+    } catch {
+      stored = false;
+    }
+    if (stored) {
+      triggerPositionedRef.current = true;
+      return;
+    }
+
+    const applyTopCenter = () => {
+      const anchored = topCenterPanelPosition(
+        boundsRef.current,
+        triggerWrapRef.current,
+        { top: 8 },
+      );
+      if (anchored) {
+        setTriggerPosition(anchored);
+        triggerPositionedRef.current = true;
+      }
+      return anchored != null;
+    };
+
+    if (!applyTopCenter()) {
+      requestAnimationFrame(applyTopCenter);
+    }
+  }, [isMobile, open, triggerWrapRef, setTriggerPosition]);
 
   useEffect(() => {
     const justOpened = open && !wasOpenRef.current;
@@ -293,10 +347,18 @@ export function GardenPanel() {
     if (!justOpened) return;
 
     const applyTopCenter = () => {
-      const trigger = triggerRef.current;
-      const panelTop = trigger
-        ? trigger.offsetTop + trigger.offsetHeight + 14
-        : 92;
+      let panelTop = 92;
+      if (isMobile) {
+        const wrap = triggerWrapRef.current;
+        panelTop = wrap
+          ? triggerPosition.y + wrap.offsetHeight + 10
+          : triggerPosition.y + 48;
+      } else {
+        const trigger = triggerRef.current;
+        panelTop = trigger
+          ? trigger.offsetTop + trigger.offsetHeight + 14
+          : 92;
+      }
       const anchored = topCenterPanelPosition(
         boundsRef.current,
         panelRef.current,
@@ -311,7 +373,7 @@ export function GardenPanel() {
         applyTopCenter();
       });
     }
-  }, [open, panelRef, setPosition]);
+  }, [open, panelRef, setPosition, isMobile, triggerPosition.y, triggerWrapRef]);
 
   function onSelectPlant(cp: CanvasPlant) {
     selectCanvasPlant(cp.canvasId);
@@ -333,47 +395,82 @@ export function GardenPanel() {
 
   if (count === 0) return null;
 
+  const gardenTrigger = (
+    <button
+      ref={triggerRef}
+      type="button"
+      className={`designer-canvas-dock-pill designer-garden-trigger${open ? " is-open" : ""}`}
+      aria-expanded={open}
+      aria-controls="designer-garden-panel"
+      onClick={() => setOpen(isMobile ? true : !open)}
+      title={open ? "Hide your garden list" : "Browse plants on your canvas"}
+    >
+      <span className="designer-canvas-dock-icon designer-garden-trigger-icon" aria-hidden>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <path
+            d="M12 3c-4 0-7 2.5-7 6.5C5 14 12 21 12 21s7-7 7-11.5C19 5.5 16 3 12 3z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <circle cx="12" cy="9.5" r="2" fill="currentColor" opacity="0.85" />
+        </svg>
+      </span>
+      <span className="designer-canvas-dock-text designer-garden-trigger-text">
+        <span className="designer-canvas-dock-label designer-garden-trigger-label">
+          Your garden
+        </span>
+        <span className="designer-canvas-dock-sub designer-garden-trigger-sub">
+          {count} {count === 1 ? "plant" : "plants"} on canvas
+        </span>
+      </span>
+      <span className="designer-garden-trigger-count" aria-hidden>
+        {count}
+      </span>
+      <span className="designer-canvas-dock-chevron designer-garden-trigger-chevron" aria-hidden>
+        {open ? "▴" : "▾"}
+      </span>
+    </button>
+  );
+
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`designer-canvas-dock-pill designer-garden-trigger${open ? " is-open" : ""}`}
-        aria-expanded={open}
-        aria-controls="designer-garden-panel"
-        onClick={() => setOpen(!open)}
-        title={open ? "Hide your garden list" : "Browse plants on your canvas"}
-      >
-        <span className="designer-canvas-dock-icon designer-garden-trigger-icon" aria-hidden>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-            <path
-              d="M12 3c-4 0-7 2.5-7 6.5C5 14 12 21 12 21s7-7 7-11.5C19 5.5 16 3 12 3z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            <circle cx="12" cy="9.5" r="2" fill="currentColor" opacity="0.85" />
-          </svg>
-        </span>
-        <span className="designer-canvas-dock-text designer-garden-trigger-text">
-          <span className="designer-canvas-dock-label designer-garden-trigger-label">Your garden</span>
-          <span className="designer-canvas-dock-sub designer-garden-trigger-sub">
-            {count} {count === 1 ? "plant" : "plants"} on canvas
-          </span>
-        </span>
-        <span className="designer-garden-trigger-count" aria-hidden>
-          {count}
-        </span>
-        <span className="designer-canvas-dock-chevron designer-garden-trigger-chevron" aria-hidden>
-          {open ? "▴" : "▾"}
-        </span>
-      </button>
-
       <div
         ref={boundsRef}
         className="garden-panel-bounds"
-        aria-hidden={!open}
+        aria-hidden={!open && !isMobile}
       >
+        {(!open || !isMobile) && (
+          <div
+            ref={triggerWrapRef as RefObject<HTMLDivElement>}
+            className={`designer-garden-trigger-wrap${isMobile ? " is-mobile" : ""}`}
+            style={
+              isMobile && !open
+                ? { left: triggerPosition.x, top: triggerPosition.y }
+                : undefined
+            }
+          >
+            {isMobile && !open && (
+              <button
+                type="button"
+                className="designer-garden-trigger-grip"
+                aria-label="Move your garden"
+                title="Drag to move"
+                {...triggerDragProps}
+              >
+                <svg viewBox="0 0 8 14" width="8" height="14" aria-hidden>
+                  <circle cx="2" cy="2" r="1.25" fill="currentColor" />
+                  <circle cx="6" cy="2" r="1.25" fill="currentColor" />
+                  <circle cx="2" cy="7" r="1.25" fill="currentColor" />
+                  <circle cx="6" cy="7" r="1.25" fill="currentColor" />
+                  <circle cx="2" cy="12" r="1.25" fill="currentColor" />
+                  <circle cx="6" cy="12" r="1.25" fill="currentColor" />
+                </svg>
+              </button>
+            )}
+            {gardenTrigger}
+          </div>
+        )}
         {open && (
           <button
             type="button"
@@ -386,7 +483,7 @@ export function GardenPanel() {
           <aside
             id="designer-garden-panel"
             ref={panelRef}
-            className="garden-panel garden-panel--floating"
+            className={`garden-panel garden-panel--floating${isMobile ? " garden-panel--mobile" : ""}`}
             style={{ left: position.x, top: position.y }}
             aria-label="Your garden"
           >
@@ -448,53 +545,82 @@ export function GardenPanel() {
               hideRename
             />
 
-            {canManageSpace && focusedZone && (
-              <div
-                className="garden-panel-space-card"
-                style={
-                  focusedZoneIndex >= 0
-                    ? {
-                        borderColor: `${zoneColor(focusedZoneIndex)}55`,
-                      }
-                    : undefined
-                }
-              >
-                <div className="garden-panel-space-card-top">
-                  {focusedZoneIndex >= 0 && (
-                    <span
-                      className="garden-panel-space-swatch"
-                      style={{ background: zoneColor(focusedZoneIndex) }}
-                      aria-hidden
-                    />
-                  )}
-                  <div className="garden-panel-space-card-main">
-                    <ZoneRenameField
-                      zoneId={focusedZone.id}
-                      className="garden-panel-rename"
-                    />
-                    {savedPlan?.profile.name && (
-                      <p className="garden-panel-plan-name">
-                        {savedPlan.profile.name}
-                      </p>
+            {canManageSpace && focusedZone && (() => {
+              const spaceCardStyle =
+                focusedZoneIndex >= 0
+                  ? { borderColor: `${zoneColor(focusedZoneIndex)}55` }
+                  : undefined;
+
+              const spaceCardBody = (
+                <>
+                  <div className="garden-panel-space-card-top">
+                    {focusedZoneIndex >= 0 && (
+                      <span
+                        className="garden-panel-space-swatch"
+                        style={{ background: zoneColor(focusedZoneIndex) }}
+                        aria-hidden
+                      />
                     )}
-                    {savedPlan && (
+                    <div className="garden-panel-space-card-main">
+                      <ZoneRenameField
+                        zoneId={focusedZone.id}
+                        className="garden-panel-rename"
+                      />
+                      {savedPlan?.profile.name && (
+                        <p className="garden-panel-plan-name">
+                          {savedPlan.profile.name}
+                        </p>
+                      )}
+                      {savedPlan && (
+                        <button
+                          type="button"
+                          className="garden-panel-view-plan garden-panel-view-plan--inline"
+                          onClick={() =>
+                            openGardenPlanSheet(focusedZone?.id ?? null)
+                          }
+                        >
+                          View plan profile
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {listCount === 0 ? (
+                    confirmDelete ? (
+                      <div className="garden-panel-delete-confirm" role="alert">
+                        <p>
+                          Delete empty bed <strong>{focusedZone.name}</strong>?
+                        </p>
+                        <div className="garden-panel-delete-actions">
+                          <button
+                            type="button"
+                            className="garden-panel-delete-cancel"
+                            onClick={() => setConfirmDelete(false)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="garden-panel-delete-confirm-btn"
+                            onClick={confirmRemoveSpace}
+                          >
+                            Delete bed
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        className="garden-panel-view-plan garden-panel-view-plan--inline"
-                        onClick={() =>
-                          openGardenPlanSheet(focusedZone?.id ?? null)
-                        }
+                        className="garden-panel-delete-space"
+                        onClick={() => setConfirmDelete(true)}
                       >
-                        View plan profile
+                        Delete empty bed
                       </button>
-                    )}
-                  </div>
-                </div>
-                {listCount === 0 ? (
-                  confirmDelete ? (
+                    )
+                  ) : confirmDelete ? (
                     <div className="garden-panel-delete-confirm" role="alert">
                       <p>
-                        Delete empty bed <strong>{focusedZone.name}</strong>?
+                        Remove <strong>{focusedZone.name}</strong> and all plants
+                        inside it? This cannot be undone.
                       </p>
                       <div className="garden-panel-delete-actions">
                         <button
@@ -509,53 +635,71 @@ export function GardenPanel() {
                           className="garden-panel-delete-confirm-btn"
                           onClick={confirmRemoveSpace}
                         >
-                          Delete bed
+                          Delete space
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : zoneHasPlants(canvasPlants, focusedZone, zones) ? (
                     <button
                       type="button"
                       className="garden-panel-delete-space"
                       onClick={() => setConfirmDelete(true)}
                     >
-                      Delete empty bed
+                      Delete this garden space
                     </button>
-                  )
-                ) : confirmDelete ? (
-                  <div className="garden-panel-delete-confirm" role="alert">
-                    <p>
-                      Remove <strong>{focusedZone.name}</strong> and all plants
-                      inside it? This cannot be undone.
-                    </p>
-                    <div className="garden-panel-delete-actions">
-                      <button
-                        type="button"
-                        className="garden-panel-delete-cancel"
-                        onClick={() => setConfirmDelete(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="garden-panel-delete-confirm-btn"
-                        onClick={confirmRemoveSpace}
-                      >
-                        Delete space
-                      </button>
-                    </div>
-                  </div>
-                ) : zoneHasPlants(canvasPlants, focusedZone, zones) ? (
-                  <button
-                    type="button"
-                    className="garden-panel-delete-space"
-                    onClick={() => setConfirmDelete(true)}
+                  ) : null}
+                </>
+              );
+
+              if (savedPlan) {
+                return (
+                  <details
+                    className="garden-panel-space-card garden-panel-space-card--collapsible"
+                    style={spaceCardStyle}
+                    open={spaceDetailsOpen}
+                    onToggle={(e) => setSpaceDetailsOpen(e.currentTarget.open)}
                   >
-                    Delete this garden space
-                  </button>
-                ) : null}
-              </div>
-            )}
+                    <summary className="garden-panel-space-card-summary">
+                      {focusedZoneIndex >= 0 && (
+                        <span
+                          className="garden-panel-space-swatch"
+                          style={{ background: zoneColor(focusedZoneIndex) }}
+                          aria-hidden
+                        />
+                      )}
+                      <span className="garden-panel-space-summary-text">
+                        <span className="garden-panel-space-summary-name">
+                          {focusedZone.name}
+                        </span>
+                        {savedPlan.profile.name && (
+                          <span className="garden-panel-space-summary-plan">
+                            {savedPlan.profile.name}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="garden-panel-space-summary-chevron"
+                        aria-hidden
+                      >
+                        ▾
+                      </span>
+                    </summary>
+                    <div className="garden-panel-space-card-body">
+                      {spaceCardBody}
+                    </div>
+                  </details>
+                );
+              }
+
+              return (
+                <div
+                  className="garden-panel-space-card"
+                  style={spaceCardStyle}
+                >
+                  {spaceCardBody}
+                </div>
+              );
+            })()}
 
             <p className="garden-panel-hint">
               Tap a plant to select on the canvas; list icon opens its profile;

@@ -5,7 +5,7 @@ export function RecommendationHeader() {
   const gardenPlanPlacedOnCanvas = useDesignerStore(
     (s) => s.gardenPlanPlacedOnCanvas,
   );
-  const setPlanSheetOpen = useDesignerStore((s) => s.setPlanSheetOpen);
+  const openGardenPlanSheet = useDesignerStore((s) => s.openGardenPlanSheet);
   const resetBuildForMe = useDesignerStore((s) => s.resetBuildForMe);
 
   if (!profile) return null;
@@ -23,7 +23,7 @@ export function RecommendationHeader() {
         <button
           type="button"
           className="recommendation-header-btn recommendation-header-btn--primary"
-          onClick={() => setPlanSheetOpen(true)}
+          onClick={() => openGardenPlanSheet()}
         >
           View full plan
         </button>

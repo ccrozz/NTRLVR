@@ -25,7 +25,7 @@ export function BuildForMeResults() {
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
   const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
   const selectSidebarPlant = useDesignerStore((s) => s.selectSidebarPlant);
-  const setPlanSheetOpen = useDesignerStore((s) => s.setPlanSheetOpen);
+  const openGardenPlanSheet = useDesignerStore((s) => s.openGardenPlanSheet);
   const placeRecommendedOnCanvas = useDesignerStore(
     (s) => s.placeRecommendedOnCanvas,
   );
@@ -165,7 +165,7 @@ export function BuildForMeResults() {
             <button
               type="button"
               className="rr-btn rr-btn-secondary sidebar-build-results-secondary"
-              onClick={() => setPlanSheetOpen(true)}
+              onClick={() => openGardenPlanSheet()}
             >
               View full plan
             </button>
@@ -209,7 +209,7 @@ export function BuildForMeResults() {
             <button
               type="button"
               className="rr-btn rr-btn-secondary sidebar-build-results-secondary"
-              onClick={() => setPlanSheetOpen(true)}
+              onClick={() => openGardenPlanSheet()}
             >
               View full plan
             </button>
