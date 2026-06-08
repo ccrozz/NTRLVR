@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DESIGNER_STATES } from "@lib/designer-states";
 import { AppNav } from "../../../components/AppNav";
@@ -50,6 +50,7 @@ export function RootsLanding() {
   const uploadQuery = upload ? "?mode=upload" : "";
   const bgVideoRef = useRef<HTMLVideoElement>(null);
   const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
+  const [videoFallback, setVideoFallback] = useState(false);
 
   const applyVideoPlaybackRate = useCallback(() => {
     const video = bgVideoRef.current;
@@ -60,29 +61,80 @@ export function RootsLanding() {
     video.playbackRate = reducedMotion ? 1 : LANDING_VIDEO_PLAYBACK_RATE;
   }, []);
 
+  const ensureVideoPlaying = useCallback(async () => {
+    const video = bgVideoRef.current;
+    if (!video || videoFallback) return;
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reducedMotion) {
+      setVideoFallback(true);
+      return;
+    }
+
+    applyVideoPlaybackRate();
+    try {
+      await video.play();
+      video.removeAttribute("poster");
+    } catch {
+      setVideoFallback(true);
+    }
+  }, [applyVideoPlaybackRate, videoFallback]);
+
   useEffect(() => {
     applyVideoPlaybackRate();
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    mq.addEventListener("change", applyVideoPlaybackRate);
-    return () => mq.removeEventListener("change", applyVideoPlaybackRate);
-  }, [applyVideoPlaybackRate]);
+    const onMotionChange = () => {
+      applyVideoPlaybackRate();
+      if (mq.matches) setVideoFallback(true);
+      else void ensureVideoPlaying();
+    };
+    mq.addEventListener("change", onMotionChange);
+    return () => mq.removeEventListener("change", onMotionChange);
+  }, [applyVideoPlaybackRate, ensureVideoPlaying]);
+
+  useEffect(() => {
+    void ensureVideoPlaying();
+    const video = bgVideoRef.current;
+    if (!video) return;
+
+    const onReady = () => void ensureVideoPlaying();
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("canplay", onReady);
+    return () => {
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("canplay", onReady);
+    };
+  }, [ensureVideoPlaying]);
 
   return (
     <div className="designer-root rr-landing">
-      <div className="rr-landing-bg" aria-hidden>
-        <video
-          ref={bgVideoRef}
-          className="rr-landing-bg-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster={LANDING_VIDEO_POSTER}
-          onLoadedMetadata={applyVideoPlaybackRate}
-        >
-          <source src={LANDING_VIDEO_SRC} type="video/mp4" />
-        </video>
+      <div
+        className={`rr-landing-bg${videoFallback ? " rr-landing-bg--static" : ""}`}
+        aria-hidden
+      >
+        {!videoFallback && (
+          <video
+            ref={bgVideoRef}
+            className="rr-landing-bg-video"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster={isMobile ? undefined : LANDING_VIDEO_POSTER}
+            controls={false}
+            disablePictureInPicture
+            disableRemotePlayback
+            tabIndex={-1}
+            aria-hidden
+            onLoadedMetadata={applyVideoPlaybackRate}
+            onPlaying={() => bgVideoRef.current?.removeAttribute("poster")}
+          >
+            <source src={LANDING_VIDEO_SRC} type="video/mp4" />
+          </video>
+        )}
         <div className="rr-landing-bg-scrim" />
       </div>
 

@@ -94,6 +94,26 @@
   object-fit: cover;
   object-position: center center;
   transform: scale(1.04);
+  pointer-events: none;
+}
+
+.rr-landing-bg-video::-webkit-media-controls {
+  display: none !important;
+}
+
+.rr-landing-bg-video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+.rr-landing-bg--static {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 14, 11, 0.55),
+      rgba(8, 14, 11, 0.9)
+    ),
+    url("/images/landing/tn.jpg") center / cover no-repeat;
 }
 
 .rr-landing-bg-scrim {
