@@ -5,6 +5,7 @@ import { BrowsePage } from "./pages/BrowsePage";
 import { PlantDetailPage } from "./pages/PlantDetailPage";
 import { RootsLanding } from "./designer/components/landing/RootsLanding";
 import { DesignerPage } from "./designer/pages/DesignerPage";
+import { Analytics } from "@vercel/analytics/next"
 
 export function App() {
   return (
