@@ -146,7 +146,18 @@ export function stateZoneNumbers(stateCode: string): number[] {
   ];
 }
 
-export function plantZonesOverlapState(
+export function plantZoneNumberRange(
+  zones: string[],
+): { min: number; max: number } | null {
+  const nums = zones
+    .map((z) => zoneNumber(z))
+    .filter((n): n is number => n != null);
+  if (!nums.length) return null;
+  return { min: Math.min(...nums), max: Math.max(...nums) };
+}
+
+/** True when the plant's hardiness range overlaps the state's USDA range. */
+export function plantHardinessFitsState(
   plantZones: string[],
   stateCode: string,
 ): boolean {
@@ -154,11 +165,28 @@ export function plantZonesOverlapState(
   const state = stateByCode(stateCode);
   if (!state) return false;
   if (plantZones.some((z) => state.hardiness_zones.includes(z))) return true;
-  const stateNums = new Set(stateZoneNumbers(stateCode));
-  return plantZones.some((z) => {
-    const n = zoneNumber(z);
-    return n != null && stateNums.has(n);
-  });
+
+  const plantWarmths = plantZones
+    .map(usdaZoneWarmth)
+    .filter((w) => w >= 0);
+  const stateWarmths = state.hardiness_zones
+    .map(usdaZoneWarmth)
+    .filter((w) => w >= 0);
+  if (!plantWarmths.length || !stateWarmths.length) return false;
+
+  const plantMin = Math.min(...plantWarmths);
+  const plantMax = Math.max(...plantWarmths);
+  const stateMin = Math.min(...stateWarmths);
+  const stateMax = Math.max(...stateWarmths);
+  return plantMin <= stateMax && plantMax >= stateMin;
+}
+
+/** @deprecated Prefer plantHardinessFitsState — zone-number-only overlap is too loose. */
+export function plantZonesOverlapState(
+  plantZones: string[],
+  stateCode: string,
+): boolean {
+  return plantHardinessFitsState(plantZones, stateCode);
 }
 
 /** Typical representative zone for a state (middle of range). */

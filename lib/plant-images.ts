@@ -3,6 +3,7 @@
  * Default order: iNaturalist (research-grade) → Wikimedia Commons → Wikipedia.
  * Unsplash is opt-in only (ALLOW_UNSPLASH=true) — often generic vs botanical IDs.
  */
+import { isRejectedPlantImageUrl } from "./plant-image-quality.js";
 import { fetchWikipediaForPlant } from "./wikipedia.js";
 
 const UA =
@@ -46,11 +47,18 @@ const AVOID_TERMS =
 const WIKIMEDIA_NON_PLANT_TITLE =
   /\b(parks?|monument|memorial|museum|artillery|cannon|statue|plaque|cemetery|military|naval|war memorial|historic site|seed catalog|nursery catalog)\b|\.pdf$/i;
 
+/** Musical instruments and other homonyms for plant genera (Viola → Bratsche/violin). */
+const WIKIMEDIA_INSTRUMENT_TITLE =
+  /\b(bratsche|violin|viola scroll|cello|contrabass|double bass|fiddle|mandolin|guitar|piano|harp|trumpet|saxophone|clarinet|flute|oboe|bassoon|trombone|drum kit|synthesizer)\b/i;
+
 export function isRejectedWikimediaFileTitle(title: string): boolean {
   const t = title.replace(/^File:/i, "");
   if (/icon|logo|map|diagram|range|distribution/i.test(t)) return true;
+  if (WIKIMEDIA_INSTRUMENT_TITLE.test(t)) return true;
   return WIKIMEDIA_NON_PLANT_TITLE.test(t);
 }
+
+export { isRejectedPlantImageUrl } from "./plant-image-quality.js";
 
 function scoreWikimediaFileTitle(
   title: string,
@@ -58,16 +66,29 @@ function scoreWikimediaFileTitle(
   commonName: string,
 ): number {
   const t = title.replace(/^File:/i, "");
+  if (isRejectedWikimediaFileTitle(title)) return -99;
   let score = 0;
   if (PREFER_TERMS.test(t)) score += 8;
   if (AVOID_TERMS.test(t)) score -= 12;
   if (/\bfruit\b/i.test(t)) score += 14;
   if (/\b(pepper|chili|chile|capsicum|tomato|squash|plant)\b/i.test(t)) score += 6;
   const sn = scientificName.trim().toLowerCase();
-  if (sn && t.toLowerCase().includes(sn.replace(/\s+/g, "_"))) score += 10;
+  const snUnderscore = sn.replace(/\s+/g, "_");
+  const tLower = t.toLowerCase();
+  if (sn && tLower.includes(snUnderscore)) score += 10;
   const common = commonName.replace(/\(.*?\)/g, "").trim().toLowerCase();
-  if (common.length >= 4 && t.toLowerCase().includes(common.replace(/\s+/g, "_"))) {
+  if (common.length >= 4 && tLower.includes(common.replace(/\s+/g, "_"))) {
     score += 8;
+  }
+  // Genus-only overlap (e.g. "Viola" in instrument filenames) is not enough.
+  const genus = sn.split(/\s+/)[0] ?? "";
+  if (
+    genus.length >= 4 &&
+    tLower.includes(genus) &&
+    !tLower.includes(snUnderscore) &&
+    !PREFER_TERMS.test(t)
+  ) {
+    score -= 10;
   }
   return score;
 }
@@ -232,11 +253,11 @@ export async function fetchINaturalistPlantImage(
   const best = pickBestCandidate(candidates);
   if (!best) return null;
 
-  return {
+  return acceptPlantImageResult({
     image_url: best.url,
     source: "inaturalist",
     attribution: best.attribution,
-  };
+  });
 }
 
 /** Unsplash Search API — opt-in only via ALLOW_UNSPLASH. */
@@ -346,11 +367,11 @@ export async function fetchWikimediaCommonsPlantImage(
       }
     }
     if (best) {
-      return {
+      return acceptPlantImageResult({
         image_url: best.url,
         source: "wikimedia",
         attribution: best.title.replace(/^File:/, "") || "Wikimedia Commons",
-      };
+      });
     }
   }
   return null;
@@ -361,7 +382,7 @@ export async function fetchWikipediaPlantImage(
   commonName: string,
 ): Promise<PlantImageResult | null> {
   const wiki = await fetchWikipediaForPlant(scientificName, commonName);
-  if (!wiki.image_url) return null;
+  if (!wiki.image_url || isRejectedPlantImageUrl(wiki.image_url)) return null;
   return {
     image_url: upgradeWikiThumb(wiki.image_url),
     source: "wikipedia",
@@ -369,18 +390,26 @@ export async function fetchWikipediaPlantImage(
   };
 }
 
+function acceptPlantImageResult(
+  result: PlantImageResult | null,
+): PlantImageResult | null {
+  if (!result || isRejectedPlantImageUrl(result.image_url)) return null;
+  return result;
+}
+
 /** iNaturalist first; Wikimedia/Wikipedia only as fallback. */
 export async function fetchBestPlantImage(
   commonName: string,
   scientificName: string,
 ): Promise<PlantImageResult | null> {
-  const inat = await fetchINaturalistPlantImage(scientificName, commonName);
+  const inat = acceptPlantImageResult(
+    await fetchINaturalistPlantImage(scientificName, commonName),
+  );
   if (inat) return inat;
 
   await sleep(250);
-  const commons = await fetchWikimediaCommonsPlantImage(
-    scientificName,
-    commonName,
+  const commons = acceptPlantImageResult(
+    await fetchWikimediaCommonsPlantImage(scientificName, commonName),
   );
   if (commons) return commons;
 

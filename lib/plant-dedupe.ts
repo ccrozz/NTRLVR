@@ -64,6 +64,7 @@ type PlantLike = {
   id: string;
   common_name: string;
   scientific_name?: string | null;
+  image_url?: string | null;
 };
 
 function mergeBySpecies<T extends PlantLike>(a: T, b: T): T {
@@ -113,6 +114,23 @@ export function dedupePlantsById<T extends { id: string }>(plants: T[]): T[] {
   return [...byId.values()];
 }
 
+function preferCatalogPresentation<T extends PlantLike>(a: T, b: T): T {
+  const hasImage = (p: T) => Boolean(p.image_url?.trim());
+  if (hasImage(b) && !hasImage(a)) return b;
+  if (hasImage(a) && !hasImage(b)) return a;
+  const specificName = (p: T) => {
+    const common = normalizePlantName(p.common_name);
+    const sci = p.scientific_name?.trim().toLowerCase() ?? "";
+    const genus = sci.split(/\s+/)[0] ?? "";
+    return genus && common !== genus && common !== normalizePlantName(genus)
+      ? 1
+      : 0;
+  };
+  if (specificName(b) > specificName(a)) return b;
+  if (specificName(a) > specificName(b)) return a;
+  return preferPlantRecord(a, b);
+}
+
 /** Prefer state curated ids when collapsing catalog duplicates for that state. */
 export function preferCatalogPlant<T extends PlantLike>(
   a: T,
@@ -122,29 +140,67 @@ export function preferCatalogPlant<T extends PlantLike>(
   if (stateCode && isDesignerStateCode(stateCode)) {
     return preferDesignerPlantForState(a, b, stateCode);
   }
-  return preferPlantRecord(a, b);
+  return preferCatalogPresentation(a, b);
 }
 
-/** One row per species for public catalog browse (CT/TN/FL seeds + DB). */
+/** Collapse catalog cards that share the same visible title (e.g. genus-only Trefle names). */
+export function catalogDisplayDedupKey(common_name: string): string {
+  return normalizePlantName(common_name);
+}
+
+/** Display title or species binomial — collapses genus-only dupes and cultivar dupes. */
+export function catalogDedupKeys(
+  common_name: string,
+  scientific_name?: string | null,
+): string[] {
+  const keys = new Set<string>();
+  keys.add(`d:${catalogDisplayDedupKey(common_name)}`);
+  keys.add(`s:${speciesDedupKey(common_name, scientific_name)}`);
+  return [...keys];
+}
+
+export function findCatalogDuplicate<T extends PlantLike>(
+  byKey: Map<string, T>,
+  plant: T,
+): T | undefined {
+  for (const key of catalogDedupKeys(plant.common_name, plant.scientific_name)) {
+    const hit = byKey.get(key);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+export function registerCatalogKeys<T extends PlantLike>(
+  byKey: Map<string, T>,
+  plant: T,
+): void {
+  for (const key of catalogDedupKeys(plant.common_name, plant.scientific_name)) {
+    byKey.set(key, plant);
+  }
+}
+
+/** One row per display name or species for public catalog browse. */
 export function dedupeCatalogPlants<T extends PlantLike>(
   plants: T[],
   stateCode?: string,
 ): T[] {
-  const bySpecies = new Map<string, T>();
-  const order: string[] = [];
+  const byKey = new Map<string, T>();
+  const order: T[] = [];
 
   for (const p of plants) {
-    const key = speciesDedupKey(p.common_name, p.scientific_name);
-    const prev = bySpecies.get(key);
+    const prev = findCatalogDuplicate(byKey, p);
     if (!prev) {
-      bySpecies.set(key, p);
-      order.push(key);
-    } else {
-      bySpecies.set(key, preferCatalogPlant(prev, p, stateCode));
+      registerCatalogKeys(byKey, p);
+      order.push(p);
+      continue;
     }
+    const pick = preferCatalogPlant(prev, p, stateCode);
+    const idx = order.findIndex((row) => row.id === prev.id);
+    if (idx >= 0) order[idx] = pick;
+    registerCatalogKeys(byKey, pick);
   }
 
-  return order.map((key) => bySpecies.get(key)!);
+  return order;
 }
 
 export function dedupePlantsByName<T extends PlantLike>(plants: T[]): T[] {

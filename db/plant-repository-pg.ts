@@ -1,6 +1,6 @@
 import type { Plant, PlantFilters } from "../schema.js";
 import { pgCatalogEdibleClause } from "../lib/infer-is-edible.js";
-import { stateByCode, stateZoneNumbers } from "../lib/us-states.js";
+import { stateByCode } from "../lib/us-states.js";
 import { isDesignerStateCode } from "../lib/designer-states.js";
 import { getSql } from "./postgres.js";
 import {
@@ -227,6 +227,17 @@ function pgJsonbAsArray(column: string): string {
   END`;
 }
 
+/** postgres.js does not bind @> $n::jsonb correctly — use element text match. */
+function pgJsonbArrayHasText(column: string, paramIdx: number): string {
+  const arr = pgJsonbAsArray(column);
+  return `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${arr}) e WHERE e.value = $${paramIdx})`;
+}
+
+function pgJsonbArrayHasState(column: string, paramIdx: number): string {
+  const arr = pgJsonbAsArray(column);
+  return `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${arr}) e WHERE UPPER(e.value) = UPPER($${paramIdx}))`;
+}
+
 function buildListWhere(filters: PlantFilters): {
   clause: string;
   params: PgQueryParam[];
@@ -248,19 +259,14 @@ function buildListWhere(filters: PlantFilters): {
       const zonesJson = pgJsonbAsArray("florida_hardiness_zones");
       for (const z of state.hardiness_zones) {
         n += 1;
-        zoneParts.push(`${zonesJson} @> $${n}::jsonb`);
-        params.push(JSON.stringify([z]));
-      }
-      for (const zn of stateZoneNumbers(st)) {
-        n += 1;
         zoneParts.push(
-          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${zonesJson}) z WHERE z ~ $${n})`,
+          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${zonesJson}) z WHERE z.value = $${n})`,
         );
-        params.push(`^${zn}[ab]?$`);
+        params.push(z);
       }
       n += 1;
       const stateParam = n;
-      params.push(JSON.stringify([st]));
+      params.push(st);
       const tag = st.toLowerCase();
       n += 1;
       const tagParam = n;
@@ -268,21 +274,12 @@ function buildListWhere(filters: PlantFilters): {
       const tagMatch = `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${pgJsonbAsArray("tags")}) t WHERE LOWER(t.value) = LOWER($${tagParam}))`;
       const idPrefix =
         isDesignerStateCode(st) ? `OR id LIKE '${tag}-%'` : "";
-      const warmUnzoned =
-        stateZoneNumbers(st).length &&
-        Math.min(...stateZoneNumbers(st)) >= 6
-          ? `OR (
-              jsonb_array_length(${zonesJson}) = 0
-              AND (grows_in_us = true OR data_source = 'trefle')
-              AND is_edible = true
-            )`
-          : "";
       conditions.push(
         `(
           (${zoneParts.join(" OR ")})
-          OR ${pgJsonbAsArray("native_states")} @> $${stateParam}::jsonb
+          OR ${pgJsonbArrayHasState("native_states", stateParam)}
           OR (
-            $${stateParam}::jsonb @> '["FL"]'::jsonb
+            $${stateParam} = 'FL'
             AND is_florida_native = true
             AND (
               native_states IS NULL
@@ -292,7 +289,6 @@ function buildListWhere(filters: PlantFilters): {
           )
           OR ${tagMatch}
           ${idPrefix}
-          ${warmUnzoned}
         )`,
       );
     }
@@ -342,9 +338,9 @@ function buildListWhere(filters: PlantFilters): {
     n += 1;
     conditions.push(
       `(
-        ${pgJsonbAsArray("native_states")} @> $${n}::jsonb
+        ${pgJsonbArrayHasState("native_states", n)}
         OR (
-          $${n}::jsonb @> '["FL"]'::jsonb
+          $${n} = 'FL'
           AND is_florida_native = true
           AND (
             native_states IS NULL
@@ -354,7 +350,7 @@ function buildListWhere(filters: PlantFilters): {
         )
       )`,
     );
-    params.push(JSON.stringify([st]));
+    params.push(st);
   }
 
   if (filters.kitchen_essentials_only) {
@@ -373,10 +369,8 @@ function buildListWhere(filters: PlantFilters): {
     const z = filters.hardiness_zone.trim();
     if (/^\d+[ab]$/i.test(z)) {
       n += 1;
-      conditions.push(
-        `${pgJsonbAsArray("florida_hardiness_zones")} @> $${n}::jsonb`,
-      );
-      params.push(JSON.stringify([z]));
+      conditions.push(pgJsonbArrayHasText("florida_hardiness_zones", n));
+      params.push(z);
     } else if (/^\d+$/.test(z)) {
       n += 1;
       conditions.push(
@@ -385,19 +379,15 @@ function buildListWhere(filters: PlantFilters): {
       params.push(`^${z}[ab]$`);
     } else {
       n += 1;
-      conditions.push(
-        `${pgJsonbAsArray("florida_hardiness_zones")} @> $${n}::jsonb`,
-      );
-      params.push(JSON.stringify([z]));
+      conditions.push(pgJsonbArrayHasText("florida_hardiness_zones", n));
+      params.push(z);
     }
   }
 
   if (filters.guild_function) {
     n += 1;
-    conditions.push(
-      `${pgJsonbAsArray("guild_functions")} @> $${n}::jsonb`,
-    );
-    params.push(JSON.stringify([filters.guild_function]));
+    conditions.push(pgJsonbArrayHasText("guild_functions", n));
+    params.push(filters.guild_function);
   }
 
   const clause =

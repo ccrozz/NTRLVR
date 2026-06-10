@@ -9,6 +9,7 @@ import {
   effectiveIsFloridaNative,
   effectiveNativeStates,
 } from "../lib/plant-native-status.js";
+import { isRejectedPlantImageUrl } from "../lib/plant-image-quality.js";
 
 export type PlantRow = {
   id: string;
@@ -132,7 +133,9 @@ export function plantToSummary(plant: Plant): PlantSummary & {
     native_origin: plant.native_origin?.trim() || null,
     growing_zones: plant.florida_hardiness_zones,
     canvas_radius_feet: plant.canvas_radius_feet,
-    image_url: plant.image_url,
+    image_url: isRejectedPlantImageUrl(plant.image_url)
+      ? null
+      : plant.image_url,
     tags: plant.tags,
     is_invasive_in_florida: plant.is_invasive_in_florida,
     data_source: plant.data_source,

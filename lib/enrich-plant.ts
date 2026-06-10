@@ -25,6 +25,7 @@ import {
 import { curatedPatchForPlant } from "./curated-plant-knowledge.js";
 import { enrichPlantNativeOrigin } from "./native-origin.js";
 import { parseWikipediaExtract } from "./wiki-parse.js";
+import { isRejectedPlantImageUrl } from "./plant-image-quality.js";
 import { fetchBestPlantImage } from "./plant-images.js";
 import { fetchWikipediaForPlant } from "./wikipedia.js";
 import { TrefleClient } from "../trefle/client.js";
@@ -102,7 +103,12 @@ export async function enrichPlantFromWeb(plant: Plant): Promise<EnrichmentResult
     current = mergeEnrichedPlant(current, { grows_in_us: true }, "trefle");
   }
 
-  if (!current.image_url) {
+  const needsPlantImage =
+    !current.image_url || isRejectedPlantImageUrl(current.image_url);
+  if (needsPlantImage) {
+    if (isRejectedPlantImageUrl(current.image_url)) {
+      current = mergeEnrichedPlant(current, { image_url: null }, "image-fix");
+    }
     try {
       const img = await fetchBestPlantImage(
         current.common_name,
@@ -138,7 +144,11 @@ export async function enrichPlantFromWeb(plant: Plant): Promise<EnrichmentResult
 
     if (plantNeedsEnrichment(current) && wiki.care_summary) {
       patch.care_summary = wiki.care_summary;
-      if (!current.image_url && wiki.image_url) {
+      if (
+        !current.image_url &&
+        wiki.image_url &&
+        !isRejectedPlantImageUrl(wiki.image_url)
+      ) {
         patch.image_url = wiki.image_url;
       }
     }

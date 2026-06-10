@@ -41,6 +41,7 @@
     "images:fetch:inat": "tsx scripts/fetch-plant-images.ts --source=ifas --replace-non-inat --inat-only",
     "images:fetch:all": "tsx scripts/fetch-plant-images.ts",
     "images:fetch:vh021-fruit": "tsx scripts/fetch-cultivar-fruit-images.ts",
+    "images:fix:bad": "tsx scripts/fix-bad-plant-images.ts",
     "build": "npm run build --prefix web",
     "build:vercel": "npm run build --prefix web",
     "db:migrate:supabase": "tsx scripts/migrate-sqlite-to-supabase.ts",

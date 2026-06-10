@@ -1,3 +1,4 @@
+import { isRejectedPlantImageUrl } from "./plant-image-quality.js";
 import { sanitizeWikiCareSummary } from "./wiki-text.js";
 
 const WIKI_USER_AGENT =
@@ -79,6 +80,28 @@ async function fetchWikiFullExtract(title: string): Promise<string | null> {
   return page?.extract ?? null;
 }
 
+const NON_PLANT_WIKI_DESCRIPTION =
+  /\b(string instrument|musical instrument|bowed|violin family|album by|record label|band |company|aircraft|ship |motorcycle|automobile|video game|film |television series|software|programming language)\b/i;
+
+const PLANT_WIKI_DESCRIPTION =
+  /\b(plant|species|genus|shrub|tree|herb|flower|perennial|annual|vine|fern|moss|fungus|grass|legume|berry|fruit|vegetable|crop|flowering)\b/i;
+
+/** Reject Wikipedia pages like "Viola" (the instrument) when enriching plants. */
+export function isPlantRelatedWikiSummary(summary: WikipediaSummary): boolean {
+  const desc = summary.description?.trim().toLowerCase() ?? "";
+  const lead = summary.extract?.trim().toLowerCase().slice(0, 280) ?? "";
+  if (NON_PLANT_WIKI_DESCRIPTION.test(desc)) return false;
+  if (NON_PLANT_WIKI_DESCRIPTION.test(lead)) return false;
+  if (PLANT_WIKI_DESCRIPTION.test(desc)) return true;
+  if (
+    PLANT_WIKI_DESCRIPTION.test(lead) ||
+    /\b(genus|family|species)\b/i.test(lead)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function wikiSearchQueries(
   scientificName: string,
   commonName: string,
@@ -88,11 +111,18 @@ function wikiSearchQueries(
   const tokens = sci.replace(/×/g, " ").split(/\s+/).filter(Boolean);
   const speciesLevel = tokens.length >= 2 || /×/i.test(sci);
   if (!speciesLevel && tokens[0]?.length > 2) {
+    queries.push(`${tokens[0]} (plant)`);
     queries.push(tokens[0]);
   }
   const cn = commonName.replace(/\(.*?\)/g, "").trim();
-  if (cn.length > 2) queries.push(cn);
+  if (cn.length > 2 && normalizeWikiQuery(cn) !== normalizeWikiQuery(sci)) {
+    queries.push(cn);
+  }
   return [...new Set(queries)].filter((q) => q.length > 2);
+}
+
+function normalizeWikiQuery(q: string): string {
+  return q.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 async function resolveWikiTitle(
@@ -111,7 +141,9 @@ async function resolveWikiTitle(
         summary = await fetchWikiSummary(found);
       }
     }
-    if (summary?.extract) return { title: summary.title, summary };
+    if (summary?.extract && isPlantRelatedWikiSummary(summary)) {
+      return { title: summary.title, summary };
+    }
   }
   return null;
 }
@@ -146,9 +178,11 @@ export async function fetchWikipediaForPlant(
   const text = sanitizeWikiCareSummary(raw) || null;
   const full_extract = await fetchWikiFullExtract(summary.title);
 
+  const image_url = thumbnailUrl(summary.thumbnail);
+
   return {
     care_summary: text,
-    image_url: thumbnailUrl(summary.thumbnail),
+    image_url: isRejectedPlantImageUrl(image_url) ? null : image_url,
     source_url: summary.content_urls?.desktop?.page ?? null,
     title: summary.title,
     full_extract,

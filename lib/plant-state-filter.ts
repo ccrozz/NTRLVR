@@ -3,24 +3,10 @@
  */
 import type { Plant } from "../schema.js";
 import { plantIsNativeToState } from "./plant-native-status.js";
-import { inferIsEdibleFromPlant } from "./infer-is-edible.js";
-import { stateByCode, stateZoneNumbers, plantZonesOverlapState } from "./us-states.js";
+import { plantHardinessFitsState } from "./us-states.js";
 import { stateTag } from "./state-tag.js";
 import type { DesignerStateCode } from "./designer-states.js";
 import { isDesignerStateCode } from "./designer-states.js";
-
-/** Warm-state catalog: show US edibles missing zone rows (most Trefle imports). */
-export function plantUnzonedEdibleForCatalogState(
-  plant: Plant,
-  stateCode: string,
-): boolean {
-  const zones = plant.florida_hardiness_zones ?? [];
-  if (zones.length) return false;
-  const stateNums = stateZoneNumbers(stateCode);
-  if (!stateNums.length || Math.min(...stateNums) < 6) return false;
-  if (!(plant.grows_in_us || plant.data_source === "trefle")) return false;
-  return plant.is_edible || inferIsEdibleFromPlant(plant);
-}
 
 export function plantMatchesStateCatalog(
   plant: Plant,
@@ -28,7 +14,7 @@ export function plantMatchesStateCatalog(
 ): boolean {
   const st = stateCode.toUpperCase();
   const zones = plant.florida_hardiness_zones ?? [];
-  if (zones.length && plantZonesOverlapState(zones, st)) return true;
+  if (zones.length && plantHardinessFitsState(zones, st)) return true;
 
   if (plantIsNativeToState(plant, st)) return true;
 
@@ -50,15 +36,12 @@ export function plantMatchesStateCatalog(
   return false;
 }
 
-/** Catalog browse with for_my_area — includes documented matches + warm-state unzoned edibles. */
+/** Catalog browse with for_my_area — zones, natives, or state harvest tags only. */
 export function plantMatchesCatalogForState(
   plant: Plant,
   stateCode: string,
 ): boolean {
-  return (
-    plantMatchesStateCatalog(plant, stateCode) ||
-    plantUnzonedEdibleForCatalogState(plant, stateCode)
-  );
+  return plantMatchesStateCatalog(plant, stateCode);
 }
 
 /** Extra SQL fragment (sqlite @params) appended inside for_my_area parentheses. */
@@ -79,9 +62,4 @@ export function sqliteStateTagClause(stateCode: string): {
   }
 
   return { sql: parts.join(" OR "), params };
-}
-
-/** Extra OR branches for Postgres $n params; returns { sqlParts, params }. */
-export function stateHasHardinessZones(stateCode: string): boolean {
-  return (stateByCode(stateCode)?.hardiness_zones.length ?? 0) > 0;
 }

@@ -1,5 +1,5 @@
 import type { Plant, PlantFilters } from "../schema.js";
-import { stateByCode, stateZoneNumbers } from "../lib/us-states.js";
+import { stateByCode } from "../lib/us-states.js";
 import { sqliteCatalogEdibleClause } from "../lib/infer-is-edible.js";
 import { sqliteStateTagClause } from "../lib/plant-state-filter.js";
 import { getDb } from "./client.js";
@@ -274,28 +274,8 @@ export function listPlants(filters: PlantFilters = {}): {
           `EXISTS (SELECT 1 FROM json_each(florida_hardiness_zones) WHERE LOWER(value) = LOWER(@stz_${i}))`,
         );
       });
-      const wholeNums = [
-        ...new Set(
-          state.hardiness_zones.map((z) => z.replace(/[ab]$/i, "")),
-        ),
-      ];
-      wholeNums.forEach((n, i) => {
-        params[`stzg_${i}`] = `${n}[ab]`;
-        zoneParts.push(
-          `EXISTS (SELECT 1 FROM json_each(florida_hardiness_zones) WHERE value GLOB @stzg_${i})`,
-        );
-      });
       const zoneClause = zoneParts.join(" OR ");
       const tagExtra = sqliteStateTagClause(st);
-      const warmUnzoned =
-        stateZoneNumbers(st).length &&
-        Math.min(...stateZoneNumbers(st)) >= 6
-          ? `OR (
-              (florida_hardiness_zones IS NULL OR florida_hardiness_zones = '[]')
-              AND (grows_in_us = 1 OR data_source = 'trefle')
-              AND is_edible = 1
-            )`
-          : "";
       conditions.push(
         `(
           (${zoneClause})
@@ -306,7 +286,6 @@ export function listPlants(filters: PlantFilters = {}): {
             AND (native_states IS NULL OR native_states = '[]')
           )
           OR (${tagExtra.sql})
-          ${warmUnzoned}
         )`,
       );
       params.for_my_area_state = st;

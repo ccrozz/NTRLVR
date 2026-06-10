@@ -37,8 +37,9 @@ import { plantMatchesCatalogForState } from "./plant-state-filter.js";
 import {
   dedupeCatalogPlants,
   dedupePlantsByName,
+  findCatalogDuplicate,
   preferCatalogPlant,
-  speciesDedupKey,
+  registerCatalogKeys,
 } from "./plant-dedupe.js";
 import { listPlantsByCommonNames as resolvePlantsByCommonNames } from "./companion-catalog-lookup.js";
 export async function listLocalSummaries(filters: PlantFilters): Promise<{
@@ -143,36 +144,136 @@ function catalogSeedPool(stateCode?: string): Plant[] {
   if (st && isDesignerStateCode(st)) {
     return designerSeedsForState(st);
   }
-  return SEED_PLANTS;
+  // FL curated seeds only apply to Florida catalog browse.
+  if (st === "FL") return SEED_PLANTS;
+  return [];
+}
+
+function plantListItemForStateFilter(item: PlantListItem): Plant {
+  const zones =
+    item.growing_zones ??
+    (item as PlantListItem & { florida_hardiness_zones?: string[] })
+      .florida_hardiness_zones ??
+    [];
+  return {
+    ...item,
+    florida_hardiness_zones: zones,
+    native_states: item.native_states ?? [],
+    tags: item.tags ?? [],
+    guild_functions: item.guild_functions ?? [],
+    soil_preferences: [],
+    best_planting_seasons: [],
+    uses: [],
+    benefits: [],
+    companion_plants: [],
+    avoid_planting_near: [],
+    synonyms: [],
+    last_updated: "",
+  } as Plant;
+}
+
+type CatalogAccumulator = {
+  items: PlantListItem[];
+  seenIds: Set<string>;
+  byKey: Map<string, PlantListItem>;
+};
+
+function createCatalogAccumulator(): CatalogAccumulator {
+  return { items: [], seenIds: new Set(), byKey: new Map() };
 }
 
 function tryAddCatalogItem(
-  items: PlantListItem[],
-  seenIds: Set<string>,
-  seenSpecies: Map<string, PlantListItem>,
+  acc: CatalogAccumulator,
   candidate: PlantListItem,
   stateCode?: string,
+  requireStateMatch = false,
 ): boolean {
-  const key = speciesDedupKey(candidate.common_name, candidate.scientific_name);
-  const prev = seenSpecies.get(key);
+  if (
+    requireStateMatch &&
+    stateCode &&
+    !plantMatchesCatalogForState(plantListItemForStateFilter(candidate), stateCode)
+  ) {
+    return false;
+  }
+  if (acc.seenIds.has(candidate.id)) return false;
+
+  const prev = findCatalogDuplicate(acc.byKey, candidate);
   if (prev) {
     const pick = preferCatalogPlant(prev, candidate, stateCode);
     if (pick.id !== prev.id) {
-      const idx = items.findIndex(
-        (i) => speciesDedupKey(i.common_name, i.scientific_name) === key,
-      );
-      if (idx >= 0) items[idx] = pick;
-      seenIds.delete(prev.id);
-      seenIds.add(pick.id);
+      const idx = acc.items.findIndex((i) => i.id === prev.id);
+      if (idx >= 0) acc.items[idx] = pick;
+      acc.seenIds.delete(prev.id);
+      acc.seenIds.add(pick.id);
     }
-    seenSpecies.set(key, pick);
+    registerCatalogKeys(acc.byKey, pick);
     return false;
   }
-  if (seenIds.has(candidate.id)) return false;
-  seenIds.add(candidate.id);
-  seenSpecies.set(key, candidate);
-  items.push(candidate);
+
+  acc.seenIds.add(candidate.id);
+  registerCatalogKeys(acc.byKey, candidate);
+  acc.items.push(candidate);
   return true;
+}
+
+async function collectCatalogItems(
+  filters: PlantFilters,
+  opts: {
+    stateCode?: string;
+    requireState: boolean;
+    stopWhen: number;
+    seeds?: PlantListItem[];
+    dbFilters?: PlantFilters;
+  },
+): Promise<{ items: PlantListItem[]; exhausted: boolean }> {
+  const acc = createCatalogAccumulator();
+  const seeds =
+    opts.seeds ??
+    dedupeCatalogPlants(
+      await listSeedSummaries(filters),
+      opts.stateCode,
+    );
+  const dbFilters = opts.dbFilters ?? filters;
+
+  for (const seed of seeds) {
+    tryAddCatalogItem(acc, seed, opts.stateCode, opts.requireState);
+    if (acc.items.length >= opts.stopWhen) {
+      return { items: acc.items, exhausted: false };
+    }
+  }
+
+  const BATCH = 96;
+  let scanOffset = 0;
+  while (acc.items.length < opts.stopWhen) {
+    const { data: local } = await listLocalSummaries({
+      ...dbFilters,
+      limit: BATCH,
+      offset: scanOffset,
+    });
+    if (!local.length) {
+      return { items: acc.items, exhausted: true };
+    }
+    for (const p of local) {
+      tryAddCatalogItem(
+        acc,
+        summaryFromLocal({
+          ...p,
+          is_invasive_in_florida: p.is_invasive_in_florida ?? false,
+        }),
+        opts.stateCode,
+        opts.requireState,
+      );
+      if (acc.items.length >= opts.stopWhen) {
+        return { items: acc.items, exhausted: false };
+      }
+    }
+    scanOffset += BATCH;
+    if (local.length < BATCH) {
+      return { items: acc.items, exhausted: true };
+    }
+  }
+
+  return { items: acc.items, exhausted: false };
 }
 
 async function listSeedSummaries(filters: PlantFilters): Promise<PlantListItem[]> {
@@ -298,17 +399,16 @@ async function listCatalogPlantsByGroup(
   }
 
   const stateCode = filters.native_state ?? "FL";
+  const requireState = Boolean(filters.for_my_area && stateCode);
   const base: PlantFilters = { ...filters, food_forest_group: undefined };
 
+  const acc = createCatalogAccumulator();
   const seeds = dedupeCatalogPlants(
     await listSeedSummaries(filters),
     stateCode,
   );
-  const seen = new Set<string>();
-  const seenSpecies = new Map<string, PlantListItem>();
-  const items: PlantListItem[] = [];
   for (const seed of seeds) {
-    tryAddCatalogItem(items, seen, seenSpecies, seed, stateCode);
+    tryAddCatalogItem(acc, seed, stateCode, requireState);
   }
 
   const { data: rows } = await listPlants({
@@ -319,16 +419,12 @@ async function listCatalogPlantsByGroup(
   for (const plant of rows) {
     if (!plantMatchesFoodForestGroup(plant, group, stateCode)) continue;
     if (!seedMatchesFilters(plant, filters)) continue;
-    tryAddCatalogItem(
-      items,
-      seen,
-      seenSpecies,
-      plantToListItem(plant),
-      stateCode,
-    );
+    tryAddCatalogItem(acc, plantToListItem(plant), stateCode, requireState);
   }
 
-  items.sort((a, b) => a.common_name.localeCompare(b.common_name));
+  const items = acc.items.sort((a, b) =>
+    a.common_name.localeCompare(b.common_name),
+  );
   return {
     data: items.slice(offset, offset + limit),
     total: items.length,
@@ -379,61 +475,18 @@ export async function listCatalogPlants(
   }
 
   const stateCode = filters.native_state;
-  const seeds = dedupeCatalogPlants(
-    await listSeedSummaries(filters),
+  const requireState = Boolean(filters.for_my_area && stateCode);
+  const stopWhen = offset + limit + 1;
+  const { items, exhausted } = await collectCatalogItems(filters, {
     stateCode,
-  );
-  const seedTotal = seeds.length;
-  const seen = new Set<string>();
-  const seenSpecies = new Map<string, PlantListItem>();
-  const items: PlantListItem[] = [];
-  const windowEnd = offset + limit;
-
-  for (let i = offset; i < Math.min(windowEnd, seedTotal); i++) {
-    tryAddCatalogItem(items, seen, seenSpecies, seeds[i], stateCode);
-  }
-
-  const { total: dbTotal } = await listLocalSummaries({
-    ...filters,
-    limit: 1,
-    offset: 0,
+    requireState,
+    stopWhen,
   });
 
-  if (items.length < limit) {
-    const dbOffset = Math.max(0, offset - seedTotal);
-    let scanOffset = dbOffset;
-    const BATCH = 48;
-    while (items.length < limit) {
-      const { data: local } = await listLocalSummaries({
-        ...filters,
-        limit: BATCH,
-        offset: scanOffset,
-      });
-      if (!local.length) break;
-      for (const p of local) {
-        if (items.length >= limit) break;
-        const row = summaryFromLocal({
-          ...p,
-          is_invasive_in_florida: p.is_invasive_in_florida ?? false,
-        });
-        tryAddCatalogItem(items, seen, seenSpecies, row, stateCode);
-      }
-      scanOffset += BATCH;
-      if (local.length < BATCH) break;
-    }
-  }
-
-  if (search && items.length < 3) {
-    const trefleHits = await searchTrefle(search);
-    for (const hit of trefleHits) {
-      const row = summaryFromTrefle(hit);
-      tryAddCatalogItem(items, seen, seenSpecies, row, stateCode);
-      if (items.length >= limit) break;
-    }
-  }
-
-  const dedupedTotal = Math.max(seedTotal, seedTotal + dbTotal - (seen.size - items.length));
-  return { data: items, total: dedupedTotal };
+  return {
+    data: items.slice(offset, offset + limit),
+    total: exhausted ? items.length : Math.max(items.length, offset + limit + 1),
+  };
 }
 
 /** Search uses SQL pagination so cultivar-level results are not collapsed by species dedup. */
@@ -444,30 +497,48 @@ async function listCatalogPlantsSearch(
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 100;
 
-  const { data: rows, total } = await listLocalSummaries(filters);
-  const items = rows.map((p) =>
-    summaryFromLocal({
-      ...p,
-      is_invasive_in_florida: p.is_invasive_in_florida ?? false,
-    }),
-  );
+  const requireState = Boolean(filters.for_my_area && filters.native_state);
+  const stateCode = filters.native_state;
+  const stopWhen = offset + limit + 1;
+  const searchFilters: PlantFilters = {
+    ...filters,
+    limit: undefined,
+    offset: undefined,
+  };
+  const { items, exhausted } = await collectCatalogItems(searchFilters, {
+    stateCode,
+    requireState,
+    stopWhen,
+    seeds: [],
+    dbFilters: searchFilters,
+  });
 
   if (offset === 0 && items.length < 3) {
-    const trefleHits = await searchTrefle(search);
-    const seen = new Set(
-      items.map((p) => speciesDedupKey(p.common_name, p.scientific_name)),
-    );
-    for (const hit of trefleHits) {
-      const row = summaryFromTrefle(hit);
-      const key = speciesDedupKey(row.common_name, row.scientific_name);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      items.push(row);
-      if (items.length >= limit) break;
+    const acc = createCatalogAccumulator();
+    for (const item of items) {
+      tryAddCatalogItem(acc, item, stateCode, requireState);
     }
+    const trefleHits = await searchTrefle(search);
+    for (const hit of trefleHits) {
+      tryAddCatalogItem(
+        acc,
+        summaryFromTrefle(hit),
+        stateCode,
+        requireState,
+      );
+      if (acc.items.length >= stopWhen) break;
+    }
+    const merged = acc.items;
+    return {
+      data: merged.slice(offset, offset + limit),
+      total: exhausted ? merged.length : Math.max(merged.length, offset + limit + 1),
+    };
   }
 
-  return { data: items, total };
+  return {
+    data: items.slice(offset, offset + limit),
+    total: exhausted ? items.length : Math.max(items.length, offset + limit + 1),
+  };
 }
 
 /** @deprecated Use listCatalogPlants or listDesignerPlants */
