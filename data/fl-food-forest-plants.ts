@@ -39,6 +39,23 @@ export const FL_FOOD_FOREST_PLANTS: Plant[] = [
     florida_hardiness_zones: ["8a", "8b", "9a", "9b", "10a"],
   }),
   makeSeed({
+    id: "fig-little-miss-figgy",
+    common_name: "Little Miss Figgy",
+    scientific_name: "Ficus carica",
+    category: "Fruit Tree",
+    canopy_layer: "Shrub",
+    is_edible: true,
+    is_kitchen_essential: true,
+    mature_height_feet: [4, 8],
+    mature_spread_feet: [3, 6],
+    canvas_radius_feet: 3,
+    guild_functions: ["Food Producer"],
+    care_summary:
+      "Dwarf fig for patios and small food forests. Full sun; two crops in warm FL sites.",
+    florida_hardiness_zones: ["8a", "8b", "9a", "9b", "10a", "10b"],
+    tags: ["food-forest", "florida", "dwarf"],
+  }),
+  makeSeed({
     id: "guava-pink",
     common_name: "Pink Guava",
     scientific_name: "Psidium guajava",
