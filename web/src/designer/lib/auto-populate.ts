@@ -88,7 +88,7 @@ function minCenterSpacingFeet(
   relax = 1,
 ): number {
   const densityMult =
-    density === "dense" ? 0.68 : density === "spacious" ? 1.15 : 1;
+    density === "dense" ? 0.68 : density === "spacious" ? 1.15 : 0.88;
   return (
     (layoutRadiusFeet(plant) * 2.2 + gapFeet(plant.canopy_layer, density)) *
     densityMult *
@@ -254,7 +254,7 @@ function layoutStepMultiplier(density: PlantingDensity | undefined): number {
     case "dense":
       return 0.58;
     default:
-      return 0.9;
+      return 0.76;
   }
 }
 
@@ -263,7 +263,7 @@ function sortPlantsForLayout(
   density?: PlantingDensity,
 ): PlantSummary[] {
   return [...plants].sort((a, b) => {
-    if (density === "dense") {
+    if (density === "dense" || density === "balanced") {
       const layerDiff =
         LAYER_ORDER.indexOf(b.canopy_layer) -
         LAYER_ORDER.indexOf(a.canopy_layer);
@@ -282,7 +282,7 @@ function collisionRadiusPx(
   density?: PlantingDensity,
 ): number {
   const r = layoutRadiusFeet(plant) * PX_PER_FOOT;
-  return density === "dense" ? r * 0.5 : r * 0.85;
+  return density === "dense" ? r * 0.5 : density === "balanced" ? r * 0.72 : r * 0.85;
 }
 
 function tryPlacePlants(
@@ -371,7 +371,12 @@ export function layoutPlantsInZone(
           { stepMult: 0.88, relax: 0.78, order: "shuffle" },
           { stepMult: 0.75, relax: 0.62, order: "scan" },
         ]
-      : [{ stepMult: 1, relax: 1, order: "center-out" }];
+      : density === "balanced"
+        ? [
+            { stepMult: 1, relax: 1, order: "shuffle" },
+            { stepMult: 0.9, relax: 0.82, order: "scan" },
+          ]
+        : [{ stepMult: 1, relax: 1, order: "center-out" }];
 
   for (const pass of passes) {
     const candidates = gridCandidatePoints(
@@ -392,6 +397,7 @@ export function layoutPlantsInZone(
       placedNames,
     );
     if (density === "dense" && out.length >= sorted.length * 0.92) break;
+    if (density === "balanced" && out.length >= sorted.length * 0.85) break;
   }
 
   return out;
@@ -417,7 +423,7 @@ export async function runAutoPopulate(
   const minPicked =
     density === "dense"
       ? Math.min(fitCap, Math.max(12, Math.floor(plan.target_count * 0.7)))
-      : 8;
+      : Math.min(fitCap, Math.max(8, Math.floor(plan.target_count * 0.75)));
 
   if (picked.length < minPicked) {
     const target = plan.target_count;
@@ -454,7 +460,10 @@ export async function runAutoPopulate(
     answers.preferences.density,
   );
 
-  const minPlaced = density === "dense" ? 10 : 4;
+  const minPlaced =
+    density === "dense"
+      ? 10
+      : Math.min(fitCap, Math.max(6, Math.floor(areaSqFt / 14)));
   if (placements.length < minPlaced) {
     throw new Error(
       `Only ${placements.length} plants fit — try a larger bed, roomy density, or fewer large trees.`,

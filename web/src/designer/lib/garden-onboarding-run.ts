@@ -104,6 +104,7 @@ export async function layoutForPlan(
         },
         style,
         stateCode,
+        result.preferences.density,
       ),
     );
   }

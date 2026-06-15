@@ -31,6 +31,7 @@ import { pointerHitsCanvasPlant } from "../../lib/canvas-plant-hit";
 import { bindCanvasTouchViewport } from "../../lib/canvas-touch-viewport";
 import { handleCanvasWheel } from "../../lib/canvas-wheel";
 import { mobileGardenFitZoom } from "../../lib/canvas-mobile-fit";
+import { layoutCanvasPlantLabels } from "../../lib/canvas-plant-labels";
 import { MobileCanvasZoomControls } from "./MobileCanvasZoomControls";
 import { DesignerMobileWelcome } from "./DesignerMobileWelcome";
 import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
@@ -125,6 +126,44 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
         ),
       [canvasPlants, hoveredCanvasPlantId, selectedCanvasPlantId],
     );
+
+    const plantLabelLayouts = useMemo(() => {
+      const visible = plantsToRender.filter(
+        (p) => !hiddenLayers.includes(p.canopy_layer),
+      );
+      return layoutCanvasPlantLabels(
+        visible.map((p) => ({
+          canvasId: p.canvasId,
+          x: p.x,
+          y: p.y,
+          radiusPx: radiusPx(p.canvas_radius_feet, 1),
+          name: p.common_name,
+          priority:
+            p.canvasId === selectedCanvasPlantId
+              ? 100
+              : p.canvasId === hoveredCanvasPlantId
+                ? 50
+                : placementFlashCanvasId === p.canvasId
+                  ? 60
+                  : 0,
+        })),
+        {
+          isMobile,
+          zoom,
+          showAll: !compactCanvasVisuals,
+          onlyActive: compactCanvasVisuals,
+        },
+      );
+    }, [
+      plantsToRender,
+      hiddenLayers,
+      isMobile,
+      zoom,
+      compactCanvasVisuals,
+      selectedCanvasPlantId,
+      hoveredCanvasPlantId,
+      placementFlashCanvasId,
+    ]);
 
     const selectedPlant = useMemo(
       () =>
@@ -408,6 +447,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
                 layerDimmed={hiddenLayers.includes(cp.canopy_layer)}
                 placementFlash={placementFlashCanvasId === cp.canvasId}
                 compactVisuals={compactCanvasVisuals}
+                labelLayout={plantLabelLayouts.get(cp.canvasId)}
                 onHover={(hovering) =>
                   setHoveredCanvasPlantId(hovering ? cp.canvasId : null)
                 }

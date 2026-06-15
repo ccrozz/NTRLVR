@@ -1,7 +1,11 @@
 import type { PlantCategory } from "../schema.js";
 import type { DesignerStateCode } from "./designer-states.js";
 import { catalogRowIsFoodForestTree } from "./food-forest-groups.js";
-import type { GardenStyle, PlantingDensity } from "./food-forest-questionnaire.js";
+import {
+  foodForestCanvasTreesOnly,
+  type GardenStyle,
+  type PlantingDensity,
+} from "./food-forest-questionnaire.js";
 
 /** Row fields used to gate Build For Me / layout catalog picks by garden style. */
 export type GardenStyleCatalogRow = {
@@ -38,14 +42,51 @@ export function catalogRowIsFruitTree(row: GardenStyleCatalogRow): boolean {
   return FRUIT_TREE_CATEGORIES.includes(row.category as PlantCategory);
 }
 
+function catalogRowMatchesFoodForestGuild(
+  row: GardenStyleCatalogRow,
+  stateCode: DesignerStateCode | string,
+): boolean {
+  if (
+    catalogRowIsFoodForestTree(
+      {
+        category: row.category,
+        edible: row.edible ?? false,
+        native: row.native ?? false,
+      },
+      stateCode,
+    )
+  ) {
+    return true;
+  }
+  const cat = row.category as PlantCategory;
+  if (
+    cat === "Herb" ||
+    cat === "Vine" ||
+    cat === "Berry" ||
+    cat === "Vegetable" ||
+    cat === "Ground Cover" ||
+    cat === "Support Species" ||
+    cat === "Edible Flower"
+  ) {
+    return true;
+  }
+  if (row.canopy_layer === "Shrub" && row.edible) return true;
+  if (hasTag(row, "support") || hasTag(row, "pollinator")) return true;
+  return false;
+}
+
 export function catalogRowMatchesGardenStyle(
   row: GardenStyleCatalogRow,
   style: GardenStyle | undefined,
   stateCode: DesignerStateCode | string = "FL",
+  density?: PlantingDensity,
 ): boolean {
   if (!style || style === "easy_care") return true;
 
   if (style === "food_forest") {
+    if (density && !foodForestCanvasTreesOnly(density)) {
+      return catalogRowMatchesFoodForestGuild(row, stateCode);
+    }
     return catalogRowIsFoodForestTree(
       {
         category: row.category,
@@ -121,10 +162,11 @@ export function filterCatalogForGardenStyle<T extends GardenStyleCatalogRow>(
   style: GardenStyle | undefined,
   stateCode: DesignerStateCode | string = "FL",
   minPool = 10,
+  density?: PlantingDensity,
 ): T[] {
   if (!style) return catalog;
   const filtered = catalog.filter((row) =>
-    catalogRowMatchesGardenStyle(row, style, stateCode),
+    catalogRowMatchesGardenStyle(row, style, stateCode, density),
   );
   return filtered.length >= minPool ? filtered : catalog;
 }
@@ -134,6 +176,7 @@ export function filterIdsForGardenStyle(
   catalog: GardenStyleCatalogRow[],
   style: GardenStyle | undefined,
   stateCode: DesignerStateCode | string = "FL",
+  density?: PlantingDensity,
 ): string[] {
   if (!style || style === "easy_care") return ids;
   const byId = new Map(
@@ -141,7 +184,7 @@ export function filterIdsForGardenStyle(
   );
   return ids.filter((id) => {
     const row = byId.get(id);
-    return row && catalogRowMatchesGardenStyle(row, style, stateCode);
+    return row && catalogRowMatchesGardenStyle(row, style, stateCode, density);
   });
 }
 
@@ -151,20 +194,24 @@ export function topUpIdsForGardenStyle(
   target: number,
   style: GardenStyle | undefined,
   stateCode: DesignerStateCode | string = "FL",
+  density?: PlantingDensity,
 ): string[] {
   if (!style || style === "easy_care") return ids;
   const used = new Set(ids);
+  const treesOnly =
+    style === "food_forest" &&
+    (!density || foodForestCanvasTreesOnly(density));
   const pool = catalog
     .filter(
       (row) =>
         row.id &&
-        catalogRowMatchesGardenStyle(row, style, stateCode) &&
+        catalogRowMatchesGardenStyle(row, style, stateCode, density) &&
         !used.has(row.id),
     )
     .sort((a, b) => {
       const ar = (a as { radius_ft?: number }).radius_ft ?? 3;
       const br = (b as { radius_ft?: number }).radius_ft ?? 3;
-      if (style === "food_forest") return br - ar;
+      if (treesOnly) return br - ar;
       return ar - br;
     });
   const out = [...ids];
@@ -186,9 +233,14 @@ export function aiPickingRulesForGardenStyle(
 ): string {
   switch (style) {
     case "food_forest":
-      return `- FOOD FOREST — CANVAS TREES ONLY: pick exactly ${target} fruit-tree ids (Fruit Tree, Citrus, Tropical Fruit, edible Palm).
+      if (density === "spacious") {
+        return `- FOOD FOREST — CANVAS TREES ONLY: pick exactly ${target} fruit-tree ids (Fruit Tree, Citrus, Tropical Fruit, edible Palm).
 - No shrubs, herbs, vines, groundcovers, or support plants — companions are added later from Browse Plants.
 - Mix Overstory and Understory trees with realistic canopy spacing.`;
+      }
+      return `- FOOD FOREST GUILD: pick exactly ${target} ids for a layered food forest on this bed.
+- Include 1–2 fruit trees (Overstory/Understory) plus shrubs, herbs, vines, groundcovers, and support species.
+- Favor smaller-footprint plants to fill the bed; every id must be placeable on the 2D map.`;
 
     case "kitchen_garden":
       return `- KITCHEN GARDEN: pick exactly ${target} cooking-garden ids — herbs, vegetables, tomatoes, peppers, beans, greens, berries, and vines.
@@ -235,10 +287,13 @@ export function layoutUserPromptForStyle(style: GardenStyle | undefined): string
 export function heuristicMessageForStyle(
   style: GardenStyle | undefined,
   plantCount: number,
+  density: PlantingDensity = "balanced",
 ): string | undefined {
   switch (style) {
     case "food_forest":
-      return "Fruit trees selected for your food forest — add shrubs and herbs from Browse Plants.";
+      return foodForestCanvasTreesOnly(density)
+        ? "Fruit trees selected for your food forest — add shrubs and herbs from Browse Plants."
+        : "Layered food forest guild selected — trees, shrubs, and herbs ready on the canvas.";
     case "kitchen_garden":
       return "Kitchen crops selected — herbs, veggies, and pick-for-dinner plants ready to place.";
     case "pollinator":

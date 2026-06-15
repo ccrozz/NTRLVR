@@ -23,11 +23,10 @@ import {
 import {
   buildGardenerProfileText,
   deriveGoalsFromPreferences,
-  maxPlantsForCanvas,
+  foodForestCanvasTreesOnly,
   normalizePreferences,
+  resolveGardenPlantTarget,
   scoreCatalogRow,
-  targetFoodForestTreeCount,
-  targetPlantCountFromPreferences,
   type FoodForestLayoutGoal,
   type GardenPreferences,
   type PlantingDensity,
@@ -385,13 +384,17 @@ function heuristicPickIds(
   target: number,
 ): string[] {
   const prefs = normalizePreferences(req.preferences);
-  const stateCode = isDesignerStateCode(req.native_state ?? "")
-    ? (req.native_state!.toUpperCase() as DesignerStateCode)
-    : DEFAULT_DESIGNER_STATE;
-  if (prefs.gardenStyle === "food_forest") {
+  const density = prefs.density ?? "balanced";
+  const foodForestTreesOnly =
+    prefs.gardenStyle === "food_forest" &&
+    foodForestCanvasTreesOnly(density);
+  if (foodForestTreesOnly) {
     return heuristicPickTreeIds(catalog, req, target);
   }
 
+  const stateCode = isDesignerStateCode(req.native_state ?? "")
+    ? (req.native_state!.toUpperCase() as DesignerStateCode)
+    : DEFAULT_DESIGNER_STATE;
   const goals = resolveGoals(req);
   const nativesOnly =
     goals.includes("natives") &&
@@ -400,12 +403,21 @@ function heuristicPickIds(
 
   let pool = catalog.filter(
     (p) =>
-      catalogRowMatchesGardenStyle(p, prefs.gardenStyle, stateCode) &&
-      (!nativesOnly || p.native),
+      catalogRowMatchesGardenStyle(
+        p,
+        prefs.gardenStyle,
+        stateCode,
+        density,
+      ) && (!nativesOnly || p.native),
   );
   if (pool.length < 10) {
     pool = catalog.filter((p) =>
-      catalogRowMatchesGardenStyle(p, prefs.gardenStyle, stateCode),
+      catalogRowMatchesGardenStyle(
+        p,
+        prefs.gardenStyle,
+        stateCode,
+        density,
+      ),
     );
   }
   if (pool.length < 10) pool = catalog;
@@ -460,17 +472,16 @@ export async function generateFoodForestLayout(
   const prefs = normalizePreferences(req.preferences);
   const area = req.width_feet * req.height_feet;
   const density = prefs.density ?? "balanced";
-  const foodForestTreesOnly = prefs.gardenStyle === "food_forest";
-  const cap = foodForestTreesOnly
-    ? targetFoodForestTreeCount(area, density)
-    : maxPlantsForCanvas(area, density);
-  const target = Math.min(
-    cap,
-    req.target_count ??
-      (foodForestTreesOnly
-        ? targetFoodForestTreeCount(area, density)
-        : targetPlantCountFromPreferences(area, prefs)),
-  );
+  const foodForestTreesOnly =
+    prefs.gardenStyle === "food_forest" &&
+    foodForestCanvasTreesOnly(density);
+  const target =
+    req.target_count != null
+      ? Math.min(
+          resolveGardenPlantTarget(area, prefs, prefs.gardenStyle),
+          req.target_count,
+        )
+      : resolveGardenPlantTarget(area, prefs, prefs.gardenStyle);
   const stateCode = isDesignerStateCode(req.native_state ?? "")
     ? (req.native_state!.toUpperCase() as DesignerStateCode)
     : DEFAULT_DESIGNER_STATE;
@@ -479,7 +490,8 @@ export async function generateFoodForestLayout(
     catalog,
     prefs.gardenStyle,
     stateCode,
-    prefs.gardenStyle === "food_forest" ? 3 : 10,
+    foodForestTreesOnly ? 3 : 10,
+    density,
   );
 
   if (!catalog.length) {
@@ -515,7 +527,11 @@ export async function generateFoodForestLayout(
   if (plant_ids.length < heuristicMin) {
     plant_ids = heuristicPickIds(catalog, req, target);
     source = "heuristic";
-    message = heuristicMessageForStyle(prefs.gardenStyle, plant_ids.length);
+    message = heuristicMessageForStyle(
+      prefs.gardenStyle,
+      plant_ids.length,
+      density,
+    );
   }
 
   if (prefs.gardenStyle && prefs.gardenStyle !== "easy_care") {
@@ -524,6 +540,7 @@ export async function generateFoodForestLayout(
       catalog,
       prefs.gardenStyle,
       stateCode,
+      density,
     );
     plant_ids = topUpIdsForGardenStyle(
       plant_ids,
@@ -531,6 +548,7 @@ export async function generateFoodForestLayout(
       target,
       prefs.gardenStyle,
       stateCode,
+      density,
     );
   } else if (plant_ids.length < target) {
     const used = new Set(plant_ids);

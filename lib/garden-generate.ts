@@ -11,9 +11,8 @@ import {
   topUpIdsForGardenStyle,
 } from "./garden-style-catalog.js";
 import {
-  maxPlantsForCanvas,
-  targetFoodForestTreeCount,
-  targetPlantCountFromPreferences,
+  foodForestCanvasTreesOnly,
+  resolveGardenPlantTarget,
 } from "./food-forest-questionnaire.js";
 import {
   onboardingProfileText,
@@ -311,16 +310,17 @@ export async function generateGardenFromOnboarding(
   const stateCode = (answers.designer_state ?? DEFAULT_DESIGNER_STATE) as DesignerStateCode;
   const hardiness_zone = resolveOnboardingHardinessZone(stateCode, answers);
   const preferences = onboardingToGardenPreferences(answers);
+  const density = preferences.density ?? "balanced";
   const { widthFeet, heightFeet, areaSqFt } =
     resolveOnboardingBedDimensions(answers);
-  const foodForestTreesOnly = answers.garden_style === "food_forest";
-  const density = preferences.density ?? "balanced";
-  const target = foodForestTreesOnly
-    ? targetFoodForestTreeCount(areaSqFt, density)
-    : Math.min(
-        maxPlantsForCanvas(areaSqFt, density),
-        targetPlantCountFromPreferences(areaSqFt, preferences),
-      );
+  const foodForestTreesOnly =
+    answers.garden_style === "food_forest" &&
+    foodForestCanvasTreesOnly(density);
+  const target = resolveGardenPlantTarget(
+    areaSqFt,
+    preferences,
+    answers.garden_style,
+  );
 
   let catalog = await loadCatalogForOnboarding(
     hardiness_zone,
@@ -338,7 +338,8 @@ export async function generateGardenFromOnboarding(
     catalog,
     answers.garden_style,
     stateCode,
-    answers.garden_style === "food_forest" ? 2 : 10,
+    foodForestTreesOnly ? 3 : 10,
+    density,
   );
 
   const copy = defaultGardenCopy(answers);
@@ -392,13 +393,14 @@ export async function generateGardenFromOnboarding(
   const nameById = new Map(catalog.map((c) => [c.id, c]));
   const style = answers.garden_style;
   if (style && style !== "easy_care") {
-    plant_ids = filterIdsForGardenStyle(plant_ids, catalog, style, stateCode);
+    plant_ids = filterIdsForGardenStyle(plant_ids, catalog, style, stateCode, density);
     plant_ids = topUpIdsForGardenStyle(
       plant_ids,
       catalog,
       target,
       style,
       stateCode,
+      density,
     );
     if (plant_ids.length < 1) {
       const err: Record<GardenStyle, string> = {
@@ -417,7 +419,9 @@ export async function generateGardenFromOnboarding(
     if (style === "food_forest") {
       message =
         message ??
-        "Fruit trees placed on the canvas — browse Plants to add shrubs, herbs, and companions.";
+        (foodForestTreesOnly
+          ? "Fruit trees placed on the canvas — browse Plants to add shrubs, herbs, and companions."
+          : "Layered food forest placed on the canvas — drag plants to adjust spacing.");
     }
   }
 

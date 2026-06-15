@@ -303,17 +303,43 @@ export function deriveGoalsFromPreferences(
   return [...goals];
 }
 
+/** Food forests at roomy density place fruit trees only; balanced/dense fill the full guild. */
+export function foodForestCanvasTreesOnly(
+  density: PlantingDensity = "balanced",
+): boolean {
+  return density === "spacious";
+}
+
+/** Target plant count for Build For Me / auto-fill (respects style + density). */
+export function resolveGardenPlantTarget(
+  areaSqFt: number,
+  prefs: GardenPreferences,
+  gardenStyle?: GardenStyle,
+): number {
+  const density = prefs.density ?? "balanced";
+  if (
+    gardenStyle === "food_forest" &&
+    foodForestCanvasTreesOnly(density)
+  ) {
+    return targetFoodForestTreeCount(areaSqFt, density);
+  }
+  return Math.min(
+    maxPlantsForCanvas(areaSqFt, density),
+    targetPlantCountFromPreferences(areaSqFt, prefs),
+  );
+}
+
 /** Plants that fit on the 2D canvas; dense allows more (smaller layout footprints). */
 export function maxPlantsForCanvas(
   areaSqFt: number,
   density: PlantingDensity = "balanced",
 ): number {
   let base: number;
-  if (areaSqFt < 100) base = 7;
-  else if (areaSqFt < 225) base = 12;
-  else if (areaSqFt < 400) base = 16;
-  else if (areaSqFt < 650) base = 20;
-  else base = Math.min(28, Math.floor(areaSqFt / 28));
+  if (areaSqFt <= 100) base = 12;
+  else if (areaSqFt < 225) base = 15;
+  else if (areaSqFt < 400) base = 18;
+  else if (areaSqFt < 650) base = 22;
+  else base = Math.min(32, Math.floor(areaSqFt / 24));
 
   switch (density) {
     case "dense":
@@ -353,8 +379,8 @@ export function targetPlantCountFromPreferences(
       : density === "dense"
         ? Math.max(14, Math.floor(cap * 0.85))
         : low
-          ? 6
-          : 10;
+          ? 8
+          : Math.min(cap, Math.max(10, Math.floor(cap * 0.85)));
   return Math.max(minCount, Math.min(cap, base));
 }
 

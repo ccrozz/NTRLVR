@@ -4,6 +4,7 @@ import {
   Circle,
   Ellipse,
   Text,
+  Rect,
   Image as KonvaImage,
   Path,
 } from "react-konva";
@@ -24,6 +25,7 @@ import {
   getCategoryIllustration,
   loadCategoryIllustrationImage,
 } from "../../lib/plant-illustrations";
+import type { PlantLabelLayout } from "../../lib/canvas-plant-labels";
 
 export type PlantCircleProps = {
   canvasId: string;
@@ -42,6 +44,7 @@ export type PlantCircleProps = {
   layerDimmed: boolean;
   placementFlash?: boolean;
   compactVisuals?: boolean;
+  labelLayout?: PlantLabelLayout;
   draggable?: boolean;
   dragDistance?: number;
   onSelect: () => void;
@@ -57,7 +60,7 @@ export function PlantCircle({
   y,
   canvas_radius_feet,
   image_url,
-  common_name,
+  common_name: _commonName,
   category,
   canopy_layer,
   is_invasive_in_florida,
@@ -67,6 +70,7 @@ export function PlantCircle({
   layerDimmed,
   placementFlash = false,
   compactVisuals = false,
+  labelLayout,
   draggable = true,
   dragDistance = 3,
   onSelect,
@@ -79,7 +83,8 @@ export function PlantCircle({
   const active = selected || hovered;
   const showCanopyRing =
     !compactVisuals || selected || hovered || placementFlash;
-  const showNameLabel = !compactVisuals || active;
+  const showNameLabel =
+    labelLayout?.show ?? (!compactVisuals || active);
   const isVine = canopy_layer === "Vine";
   const dotRatio = CENTER_DOT_RATIO[canopy_layer];
   const dotR = Math.min(
@@ -366,18 +371,46 @@ export function PlantCircle({
         </Group>
       )}
 
-      {showNameLabel && (
-        <Text
-          y={r + 10}
-          text={common_name}
-          fontSize={hovered ? 12 : 10}
-          fontStyle={active ? "bold" : "normal"}
-          fill={active ? "#f4fff0" : "#d8e6d6"}
-          align="center"
-          width={Math.max(72, r * 2.2)}
-          offsetX={Math.max(36, r * 1.1)}
-          listening={false}
-        />
+      {showNameLabel && labelLayout && (
+        <Group listening={false}>
+          <Rect
+            x={
+              labelLayout.align === "center"
+                ? labelLayout.offsetX - labelLayout.width / 2
+                : labelLayout.align === "left"
+                  ? labelLayout.offsetX
+                  : labelLayout.offsetX - labelLayout.width
+            }
+            y={labelLayout.offsetY}
+            width={labelLayout.width}
+            height={labelLayout.height}
+            fill="rgba(8, 20, 14, 0.88)"
+            stroke={active ? "rgba(126, 200, 80, 0.55)" : "rgba(197, 212, 192, 0.28)"}
+            strokeWidth={active ? 1.25 : 1}
+            cornerRadius={5}
+            shadowColor="rgba(0, 0, 0, 0.45)"
+            shadowBlur={4}
+            shadowOffsetY={1}
+            shadowOpacity={0.7}
+          />
+          <Text
+            x={
+              labelLayout.align === "center"
+                ? labelLayout.offsetX - labelLayout.width / 2 + 6
+                : labelLayout.align === "left"
+                  ? labelLayout.offsetX + 6
+                  : labelLayout.offsetX - labelLayout.width + 6
+            }
+            y={labelLayout.offsetY + 4}
+            text={labelLayout.text}
+            fontSize={labelLayout.fontSize}
+            fontStyle={active ? "bold" : "normal"}
+            fill={active ? "#f4fff0" : "#dce8dc"}
+            width={labelLayout.width - 12}
+            ellipsis
+            listening={false}
+          />
+        </Group>
       )}
 
       {outsideZone && (
