@@ -157,6 +157,8 @@ type DesignerState = {
   selectSidebarPlant: (plantId: string | null) => void;
   openCanvasPlantProfile: (canvasId: string) => void;
   closeDetailPanel: () => void;
+  /** Clear plant selection and active bed focus (e.g. empty canvas click or pan). */
+  dismissCanvasFocus: () => void;
   undo: () => void;
   redo: () => void;
   setZoom: (zoom: number) => void;
@@ -561,6 +563,12 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     }),
   closeDetailPanel: () =>
     set({ selectedPlantId: null, selectedCanvasPlantId: null }),
+  dismissCanvasFocus: () =>
+    set({
+      selectedPlantId: null,
+      selectedCanvasPlantId: null,
+      activeZoneId: null,
+    }),
 
   undo: () => {
     const { history, canvasPlants, redoHistory } = get();

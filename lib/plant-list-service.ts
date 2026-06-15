@@ -41,7 +41,13 @@ import {
   preferCatalogPlant,
   registerCatalogKeys,
 } from "./plant-dedupe.js";
+import {
+  catalogListCacheKey,
+  readCachedCatalogList,
+  writeCachedCatalogList,
+} from "./catalog-list-cache.js";
 import { listPlantsByCommonNames as resolvePlantsByCommonNames } from "./companion-catalog-lookup.js";
+
 export async function listLocalSummaries(filters: PlantFilters): Promise<{
   data: PlantSummary[];
   total: number;
@@ -242,7 +248,7 @@ async function collectCatalogItems(
     }
   }
 
-  const BATCH = 96;
+  const BATCH = 200;
   let scanOffset = 0;
   while (acc.items.length < opts.stopWhen) {
     const { data: local } = await listLocalSummaries({
@@ -274,6 +280,57 @@ async function collectCatalogItems(
   }
 
   return { items: acc.items, exhausted: false };
+}
+
+async function buildFullCatalogList(
+  filters: PlantFilters,
+  opts: {
+    stateCode?: string;
+    requireState: boolean;
+    search?: string;
+    skipSeeds?: boolean;
+  },
+): Promise<PlantListItem[]> {
+  const cacheKey = catalogListCacheKey(filters, opts.search);
+  const cached = readCachedCatalogList(cacheKey);
+  if (cached) return cached;
+
+  const searchFilters: PlantFilters = {
+    ...filters,
+    limit: undefined,
+    offset: undefined,
+    search: opts.search ?? filters.search,
+  };
+
+  const { items } = await collectCatalogItems(searchFilters, {
+    stateCode: opts.stateCode,
+    requireState: opts.requireState,
+    stopWhen: Number.POSITIVE_INFINITY,
+    seeds: opts.skipSeeds ? [] : undefined,
+    dbFilters: searchFilters,
+  });
+
+  let merged = items;
+  const search = opts.search?.trim();
+  if (search && merged.length < 3) {
+    const acc = createCatalogAccumulator();
+    for (const item of merged) {
+      tryAddCatalogItem(acc, item, opts.stateCode, opts.requireState);
+    }
+    const trefleHits = await searchTrefle(search);
+    for (const hit of trefleHits) {
+      tryAddCatalogItem(
+        acc,
+        summaryFromTrefle(hit),
+        opts.stateCode,
+        opts.requireState,
+      );
+    }
+    merged = acc.items;
+  }
+
+  writeCachedCatalogList(cacheKey, merged);
+  return merged;
 }
 
 async function listSeedSummaries(filters: PlantFilters): Promise<PlantListItem[]> {
@@ -476,16 +533,10 @@ export async function listCatalogPlants(
 
   const stateCode = filters.native_state;
   const requireState = Boolean(filters.for_my_area && stateCode);
-  const stopWhen = offset + limit + 1;
-  const { items, exhausted } = await collectCatalogItems(filters, {
-    stateCode,
-    requireState,
-    stopWhen,
-  });
-
+  const all = await buildFullCatalogList(filters, { stateCode, requireState });
   return {
-    data: items.slice(offset, offset + limit),
-    total: exhausted ? items.length : Math.max(items.length, offset + limit + 1),
+    data: all.slice(offset, offset + limit),
+    total: all.length,
   };
 }
 
@@ -499,45 +550,16 @@ async function listCatalogPlantsSearch(
 
   const requireState = Boolean(filters.for_my_area && filters.native_state);
   const stateCode = filters.native_state;
-  const stopWhen = offset + limit + 1;
-  const searchFilters: PlantFilters = {
-    ...filters,
-    limit: undefined,
-    offset: undefined,
-  };
-  const { items, exhausted } = await collectCatalogItems(searchFilters, {
+  const all = await buildFullCatalogList(filters, {
     stateCode,
     requireState,
-    stopWhen,
-    seeds: [],
-    dbFilters: searchFilters,
+    search,
+    skipSeeds: true,
   });
 
-  if (offset === 0 && items.length < 3) {
-    const acc = createCatalogAccumulator();
-    for (const item of items) {
-      tryAddCatalogItem(acc, item, stateCode, requireState);
-    }
-    const trefleHits = await searchTrefle(search);
-    for (const hit of trefleHits) {
-      tryAddCatalogItem(
-        acc,
-        summaryFromTrefle(hit),
-        stateCode,
-        requireState,
-      );
-      if (acc.items.length >= stopWhen) break;
-    }
-    const merged = acc.items;
-    return {
-      data: merged.slice(offset, offset + limit),
-      total: exhausted ? merged.length : Math.max(merged.length, offset + limit + 1),
-    };
-  }
-
   return {
-    data: items.slice(offset, offset + limit),
-    total: exhausted ? items.length : Math.max(items.length, offset + limit + 1),
+    data: all.slice(offset, offset + limit),
+    total: all.length,
   };
 }
 

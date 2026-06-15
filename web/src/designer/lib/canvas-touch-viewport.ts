@@ -22,6 +22,8 @@ function pointerMidpoint(a: PointerPoint, b: PointerPoint): PointerPoint {
 export type CanvasTouchViewportOptions = {
   /** Let Konva handle this pointer (e.g. plant tap / drag). */
   shouldIgnorePointer?: (e: PointerEvent) => boolean;
+  /** Fired once when the user pans or pinches the viewport (not on tap). */
+  onViewportGesture?: () => void;
 };
 
 export function bindCanvasTouchViewport(
@@ -30,8 +32,15 @@ export function bindCanvasTouchViewport(
   apply: (next: CanvasViewportState) => void,
   options: CanvasTouchViewportOptions = {},
 ): () => void {
-  const { shouldIgnorePointer } = options;
+  const { shouldIgnorePointer, onViewportGesture } = options;
   const active = new Map<number, PointerPoint>();
+  let gestureNotified = false;
+
+  function notifyViewportGesture() {
+    if (gestureNotified) return;
+    gestureNotified = true;
+    onViewportGesture?.();
+  }
 
   let pinchBase: {
     distance: number;
@@ -87,6 +96,7 @@ export function bindCanvasTouchViewport(
     if (e.pointerType === "mouse") return;
     if (document.querySelector(".designer-plant-row--dragging")) return;
     if (shouldIgnorePointer?.(e)) return;
+    if (active.size === 0) gestureNotified = false;
     active.set(e.pointerId, { x: e.clientX, y: e.clientY });
     syncGestureBases();
   }
@@ -101,6 +111,7 @@ export function bindCanvasTouchViewport(
       if (pts.length < 2) return;
       const dist = pointerDistance(pts[0]!, pts[1]!);
       if (pinchBase.distance < 8) return;
+      notifyViewportGesture();
       const ratio = dist / pinchBase.distance;
       const newZoom = Math.min(
         ZOOM_MAX,
@@ -135,6 +146,7 @@ export function bindCanvasTouchViewport(
         /* ignore */
       }
       e.preventDefault();
+      notifyViewportGesture();
       apply({
         zoom: getState().zoom,
         stagePos: clampStagePos({

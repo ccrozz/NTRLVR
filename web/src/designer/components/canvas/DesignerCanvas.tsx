@@ -90,8 +90,8 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const backgroundImageUrl = useDesignerStore((s) => s.backgroundImageUrl);
     const canvasMode = useDesignerStore((s) => s.canvasMode);
     const showRuler = useDesignerStore((s) => s.showRuler);
+    const dismissCanvasFocus = useDesignerStore((s) => s.dismissCanvasFocus);
     const selectCanvasPlant = useDesignerStore((s) => s.selectCanvasPlant);
-    const closeDetailPanel = useDesignerStore((s) => s.closeDetailPanel);
     const placementFlashCanvasId = useDesignerStore(
       (s) => s.placementFlashCanvasId,
     );
@@ -219,6 +219,9 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
             if (!stage) return false;
             return pointerHitsCanvasPlant(stage, root, e.clientX, e.clientY);
           },
+          onViewportGesture: () => {
+            useDesignerStore.getState().dismissCanvasFocus();
+          },
         },
       );
     }, [canvasView, setZoom, setStagePos]);
@@ -320,6 +323,11 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
             workspaceTool !== "draw-zone" &&
             !zoneDragOrigin
           }
+          onDragStart={(e) => {
+            if (e.target === stageRef.current) {
+              dismissCanvasFocus();
+            }
+          }}
           onDragMove={(e) => {
             if (e.target === stageRef.current) {
               setStagePos({ x: e.target.x(), y: e.target.y() });
@@ -349,8 +357,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
               addDrawPoint(pt.x, pt.y);
               return;
             }
-            selectCanvasPlant(null);
-            closeDetailPanel();
+            dismissCanvasFocus();
           }}
         >
           <Layer>
