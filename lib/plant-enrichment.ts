@@ -1,4 +1,5 @@
 import type { Plant } from "../schema.js";
+import { reconcileCompanionLists } from "./companion-lists.js";
 import {
   finalizePlantBenefits,
   hasMeaningfulBenefits,
@@ -64,13 +65,9 @@ export function mergeEnrichedPlant(
     benefits: sanitizeBenefits(
       mergeStringArrays(base.benefits, patch.benefits ?? []),
     ),
-    companion_plants: mergeStringArrays(
-      base.companion_plants,
-      patch.companion_plants ?? [],
-    ),
-    avoid_planting_near: mergeStringArrays(
-      base.avoid_planting_near,
-      patch.avoid_planting_near ?? [],
+    ...reconcileCompanionLists(
+      mergeStringArrays(base.companion_plants, patch.companion_plants ?? []),
+      mergeStringArrays(base.avoid_planting_near, patch.avoid_planting_near ?? []),
     ),
     guild_functions:
       patch.guild_functions &&

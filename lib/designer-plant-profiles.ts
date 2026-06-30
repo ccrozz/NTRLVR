@@ -19,6 +19,7 @@ import {
   tennesseeCareFallback,
   tennesseeProfilePatches,
 } from "./tennessee-designer-profiles.js";
+import { reconcileCompanionLists } from "./companion-lists.js";
 import { curatedPatchForPlant } from "./curated-plant-knowledge.js";
 import { finalizePlantBenefits } from "./infer-plant-benefits.js";
 import { enrichPlantNativeOrigin } from "./native-origin.js";
@@ -329,6 +330,10 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
   },
   vigna: {
     companion_plants: ["Corn", "Sorghum", "Sweet Potato"],
+    guild_functions: ["Nitrogen Fixer", "Food Producer"],
+  },
+  psophocarpus: {
+    companion_plants: ["Corn", "Sunflower", "Marigold", "Sweet Potato", "Pigeon Pea"],
     guild_functions: ["Nitrogen Fixer", "Food Producer"],
   },
   punica: {
@@ -701,14 +706,20 @@ function collectPatches(plant: Plant): ProfilePatch[] {
   ].filter(Boolean) as ProfilePatch[];
 }
 
+function vineLayerPatch(plant: Plant): ProfilePatch | undefined {
+  return plant.canopy_layer === "Vine" ? CATEGORY_PROFILES.Vine : undefined;
+}
+
 function resolveCompanionPlants(plant: Plant): string[] {
   const sci = normalizeScientific(plant.scientific_name);
   const genus = resolveGenusKey(plant);
   const curated = curatedPatchForPlant(plant.scientific_name);
+  const vine = vineLayerPatch(plant);
   return pickStringList(
     SPECIES_PROFILES[sci]?.companion_plants,
     GENUS_PROFILES[genus]?.companion_plants,
     curated.companion_plants,
+    vine?.companion_plants,
     CATEGORY_PROFILES[plant.category]?.companion_plants,
   );
 }
@@ -717,10 +728,12 @@ function resolveAvoidList(plant: Plant): string[] {
   const sci = normalizeScientific(plant.scientific_name);
   const genus = resolveGenusKey(plant);
   const curated = curatedPatchForPlant(plant.scientific_name);
+  const vine = vineLayerPatch(plant);
   return pickStringList(
     SPECIES_PROFILES[sci]?.avoid_planting_near,
     GENUS_PROFILES[genus]?.avoid_planting_near,
     curated.avoid_planting_near,
+    vine?.avoid_planting_near,
     CATEGORY_PROFILES[plant.category]?.avoid_planting_near,
   );
 }
@@ -739,8 +752,10 @@ export function applyDesignerProfile(plant: Plant): Plant {
     guild_functions = mergeGuild(guild_functions, p.guild_functions);
   }
 
-  const companion_plants = resolveCompanionPlants(plant);
-  const avoid_planting_near = resolveAvoidList(plant);
+  const { companion_plants, avoid_planting_near } = reconcileCompanionLists(
+    resolveCompanionPlants(plant),
+    resolveAvoidList(plant),
+  );
 
   if (!guild_functions.length) {
     guild_functions = mergeGuild(

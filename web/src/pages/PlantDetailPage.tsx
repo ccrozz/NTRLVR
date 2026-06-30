@@ -11,8 +11,10 @@ import { sanitizeNativeOriginLabel } from "@lib/native-origin";
 import { BenefitsGroups } from "../components/BenefitsGroups";
 import { CatalogDesignerPlantCta } from "../components/CatalogDesignerPlantCta";
 import { CatalogPlantGuideSection } from "../components/CatalogPlantGuide";
+import { PlantWithSection } from "../components/PlantWithSection";
 import { buildCatalogPlantGuide } from "../lib/catalog-plant-guide";
-import { useCatalogGrowingContext } from "../lib/catalog-state";
+import { useCatalogGrowingContext, useCatalogStateCode } from "../lib/catalog-state";
+import { designerStateConfig, isDesignerStateCode } from "@lib/designer-states";
 import "../styles/catalog.css";
 import type { Plant } from "../types";
 
@@ -58,19 +60,6 @@ function ListOrEmpty({
         <li key={item}>{item}</li>
       ))}
     </ul>
-  );
-}
-
-function TagList({ items }: { items: string[] }) {
-  if (!items.length) return <p className="detail-empty">—</p>;
-  return (
-    <div className="tag-list">
-      {items.map((t) => (
-        <span key={t} className="tag">
-          {t}
-        </span>
-      ))}
-    </div>
   );
 }
 
@@ -124,6 +113,14 @@ function DetailSkeleton() {
 export function PlantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const growingCtx = useCatalogGrowingContext();
+  const catalogStateCode = useCatalogStateCode();
+  const stateName =
+    designerStateConfig(catalogStateCode)?.name ??
+    growingCtx?.stateName ??
+    "your region";
+  const companionStateCode = isDesignerStateCode(catalogStateCode)
+    ? catalogStateCode.toUpperCase()
+    : growingCtx?.stateCode ?? "FL";
   const [plant, setPlant] = useState<Plant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -276,19 +273,23 @@ export function PlantDetailPage() {
           <BenefitsGroups benefits={plant.benefits} />
         </DetailSection>
 
-        <DetailSection title="Guild roles">
-          <TagList items={plant.guild_functions} />
-        </DetailSection>
-
-        <DetailSection title="Companion plants">
-          <RelationList items={plant.companion_plants} />
-          {!plant.companion_plants.length && (
+        {plant.companion_plants.length > 0 ? (
+          <PlantWithSection
+            hostId={plant.id}
+            companionNames={plant.companion_plants}
+            stateCode={companionStateCode}
+            stateName={stateName}
+            linkCompanions
+          />
+        ) : (
+          <DetailSection title="Companion plants">
+            <p className="detail-empty">—</p>
             <p className="detail-hint">
               Companion data is sparse for many species. Wikipedia cultivation
               sections are searched when you open a plant.
             </p>
-          )}
-        </DetailSection>
+          </DetailSection>
+        )}
 
         <DetailSection title="Avoid planting near">
           <RelationList items={plant.avoid_planting_near} />

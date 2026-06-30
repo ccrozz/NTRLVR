@@ -43,7 +43,7 @@ export function PlantDetailPanel() {
   const companionNames = plant?.companion_plants ?? [];
   const { data: resolvedCompanions = [] } = useCompanionPlants(
     companionNames,
-    open,
+    open && isOnCanvas,
   );
 
   const companionRows = useMemo(() => {
@@ -75,21 +75,13 @@ export function PlantDetailPanel() {
     [companionRows],
   );
 
-  const catalogCompanionIds = useMemo(() => {
-    if (!plant || !catalogOnly) return [];
-    return companionNames
-      .map((name) => resolveCompanionPlant(name, resolvedCompanions)?.id)
-      .filter((id): id is string => Boolean(id));
-  }, [catalogOnly, companionNames, resolvedCompanions, plant]);
-
   const reasonHostId = plantId;
-  const reasonCompanionIds = isOnCanvas ? companionIds : catalogCompanionIds;
 
   const { data: companionReasons = {}, isLoading: reasonsLoading } =
     useCompanionReasonsBatch(
       reasonHostId,
-      reasonCompanionIds,
-      open && reasonCompanionIds.length > 0,
+      companionIds,
+      open && isOnCanvas && companionIds.length > 0,
     );
 
   if (!open) return null;
@@ -175,9 +167,6 @@ export function PlantDetailPanel() {
               <PlantCatalogProfile
                 plant={plant}
                 companionNames={companionNames}
-                resolvedCompanions={resolvedCompanions}
-                companionReasons={companionReasons}
-                reasonsLoading={reasonsLoading}
                 onFindCompanion={setSearchQuery}
               />
             )}
