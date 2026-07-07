@@ -17,6 +17,9 @@ export type PlantLabelLayout = {
   fontSize: number;
   width: number;
   height: number;
+  /** World-space point on the label box nearest the plant center (for leader lines). */
+  leaderAnchorX: number;
+  leaderAnchorY: number;
 };
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
@@ -34,6 +37,8 @@ export type LayoutCanvasPlantLabelsOptions = {
   showAll: boolean;
   /** When true, only plants with priority > 0 get labels. */
   onlyActive: boolean;
+  /** Smaller labels when the canvas is in compact dot mode. */
+  compact?: boolean;
 };
 
 function truncateLabel(name: string, maxLen: number): string {
@@ -42,9 +47,9 @@ function truncateLabel(name: string, maxLen: number): string {
 }
 
 function estimateLabelWidth(text: string, fontSize: number, isMobile: boolean): number {
-  const cap = isMobile ? 92 : 112;
-  const min = isMobile ? 44 : 52;
-  return Math.min(cap, Math.max(min, text.length * fontSize * 0.52 + 12));
+  const cap = isMobile ? 108 : 148;
+  const min = isMobile ? 48 : 56;
+  return Math.min(cap, Math.max(min, text.length * fontSize * 0.52 + 14));
 }
 
 function estimateLabelHeight(fontSize: number): number {
@@ -74,6 +79,16 @@ function labelRect(
   else if (candidate.align === "left") x0 = anchorX;
   else x0 = anchorX - width;
   return { x0, y0: anchorY, x1: x0 + width, y1: anchorY + height };
+}
+
+function leaderAnchor(
+  plantX: number,
+  plantY: number,
+  rect: Rect,
+): { leaderAnchorX: number; leaderAnchorY: number } {
+  const cx = Math.max(rect.x0, Math.min(plantX, rect.x1));
+  const cy = Math.max(rect.y0, Math.min(plantY, rect.y1));
+  return { leaderAnchorX: cx - plantX, leaderAnchorY: cy - plantY };
 }
 
 function overlapsPlantCircle(
@@ -110,22 +125,29 @@ function labelTypography(
   options: LayoutCanvasPlantLabelsOptions,
 ): { text: string; fontSize: number; width: number; height: number } {
   const active = plant.priority >= 50;
-  const fontSize =
-    active && options.isMobile
-      ? 11
+  const compact = options.compact && !active;
+  const fontSize = compact
+    ? options.isMobile
+      ? 9
+      : 10
+    : active && options.isMobile
+      ? 12
       : active
-        ? 12
+        ? 13
         : options.isMobile
-          ? 9
-          : 10;
-  const maxChars =
-    options.isMobile && !active
+          ? 10
+          : 11;
+  const maxChars = compact
+    ? options.isMobile
+      ? 14
+      : 18
+    : options.isMobile && !active
       ? options.zoom < 1.05
-        ? 11
-        : 14
+        ? 16
+        : 20
       : active
-        ? 24
-        : 18;
+        ? 32
+        : 26;
   const text = truncateLabel(plant.name, maxChars);
   const width = estimateLabelWidth(text, fontSize, options.isMobile);
   const height = estimateLabelHeight(fontSize);
@@ -187,15 +209,18 @@ export function layoutCanvasPlantLabels(
     }
 
     if (!chosen) {
+      const fallback = candidates(plant.radiusPx, height)[0]!;
+      const rect = labelRect(plant.x, plant.y, fallback, width, height);
       result.set(plant.canvasId, {
         show: false,
-        offsetX: 0,
-        offsetY: plant.radiusPx + 5,
-        align: "center",
+        offsetX: fallback.offsetX,
+        offsetY: fallback.offsetY,
+        align: fallback.align,
         text,
         fontSize,
         width,
         height,
+        ...leaderAnchor(plant.x, plant.y, rect),
       });
       continue;
     }
@@ -210,21 +235,25 @@ export function layoutCanvasPlantLabels(
       fontSize,
       width,
       height,
+      ...leaderAnchor(plant.x, plant.y, chosen.rect),
     });
   }
 
   for (const plant of plants) {
     if (!result.has(plant.canvasId)) {
       const { text, fontSize, width, height } = labelTypography(plant, options);
+      const fallback = candidates(plant.radiusPx, height)[0]!;
+      const rect = labelRect(plant.x, plant.y, fallback, width, height);
       result.set(plant.canvasId, {
         show: false,
-        offsetX: 0,
-        offsetY: plant.radiusPx + 5,
-        align: "center",
+        offsetX: fallback.offsetX,
+        offsetY: fallback.offsetY,
+        align: fallback.align,
         text,
         fontSize,
         width,
         height,
+        ...leaderAnchor(plant.x, plant.y, rect),
       });
     }
   }

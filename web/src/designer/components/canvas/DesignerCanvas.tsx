@@ -132,26 +132,30 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
         (p) => !hiddenLayers.includes(p.canopy_layer),
       );
       return layoutCanvasPlantLabels(
-        visible.map((p) => ({
-          canvasId: p.canvasId,
-          x: p.x,
-          y: p.y,
-          radiusPx: radiusPx(p.canvas_radius_feet, 1),
-          name: p.common_name,
-          priority:
-            p.canvasId === selectedCanvasPlantId
-              ? 100
-              : p.canvasId === hoveredCanvasPlantId
-                ? 50
-                : placementFlashCanvasId === p.canvasId
-                  ? 60
-                  : 0,
-        })),
+        visible.map((p) => {
+          const radius = radiusPx(p.canvas_radius_feet, 1);
+          return {
+            canvasId: p.canvasId,
+            x: p.x,
+            y: p.y,
+            radiusPx: radius,
+            name: p.common_name,
+            priority:
+              (p.canvasId === selectedCanvasPlantId
+                ? 100
+                : p.canvasId === hoveredCanvasPlantId
+                  ? 50
+                  : placementFlashCanvasId === p.canvasId
+                    ? 60
+                    : 0) + Math.round(radius / 4),
+          };
+        }),
         {
           isMobile,
           zoom,
-          showAll: !compactCanvasVisuals,
-          onlyActive: compactCanvasVisuals,
+          showAll: true,
+          onlyActive: false,
+          compact: compactCanvasVisuals,
         },
       );
     }, [

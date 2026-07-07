@@ -5,6 +5,7 @@ import {
   Ellipse,
   Text,
   Rect,
+  Line,
   Image as KonvaImage,
   Path,
 } from "react-konva";
@@ -81,10 +82,11 @@ export function PlantCircle({
   const colors = canopyColor(canopy_layer);
   const r = radiusPx(canvas_radius_feet, 1);
   const active = selected || hovered;
-  const showCanopyRing =
-    !compactVisuals || selected || hovered || placementFlash;
-  const showNameLabel =
-    labelLayout?.show ?? (!compactVisuals || active);
+  const ringStrength = compactVisuals && !active ? 0.42 : active ? 1 : 0.68;
+  const showCanopyRing = true;
+  const showNameLabel = Boolean(labelLayout?.show);
+  const spreadFeet = Math.max(2, Math.round(canvas_radius_feet * 2));
+  const showSpreadLabel = active;
   const isVine = canopy_layer === "Vine";
   const dotRatio = CENTER_DOT_RATIO[canopy_layer];
   const dotR = Math.min(
@@ -162,6 +164,20 @@ export function PlantCircle({
 
   const ill = getCategoryIllustration(category);
   const illScale = dotR / (ill.viewSize / 2);
+
+  const labelBoxX =
+    labelLayout && showNameLabel
+      ? labelLayout.align === "center"
+        ? labelLayout.offsetX - labelLayout.width / 2
+        : labelLayout.align === "left"
+          ? labelLayout.offsetX
+          : labelLayout.offsetX - labelLayout.width
+      : 0;
+  const labelBoxY = labelLayout?.offsetY ?? 0;
+  const showLeader =
+    Boolean(labelLayout?.show) &&
+    Math.hypot(labelLayout!.leaderAnchorX, labelLayout!.leaderAnchorY) >
+      Math.max(dotR, 10) + 6;
 
   const pointerHandlers = {
     onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -269,9 +285,10 @@ export function PlantCircle({
           radiusX={r}
           radiusY={r * 0.55}
           stroke={strokeColor}
-          strokeWidth={selected ? 2.5 : 2}
+          strokeWidth={active ? 2.5 : 2}
           dash={[8, 6]}
-          fill={hexToRgba(colors.fill, 0.12)}
+          opacity={ringStrength}
+          fill={hexToRgba(colors.fill, 0.1 * ringStrength + 0.06)}
           listening={false}
         />
       ) : showCanopyRing ? (
@@ -279,27 +296,36 @@ export function PlantCircle({
           <Circle
             radius={r}
             stroke={strokeColor}
-            strokeWidth={active ? 2.5 : 1.5}
-            dash={[8, 6]}
-            opacity={active ? 1 : 0.28}
+            strokeWidth={active ? 2.75 : 2}
+            dash={[10, 7]}
+            opacity={ringStrength}
             fillRadialGradientStartPoint={{ x: 0, y: 0 }}
             fillRadialGradientStartRadius={0}
             fillRadialGradientEndPoint={{ x: 0, y: 0 }}
             fillRadialGradientEndRadius={r}
             fillRadialGradientColorStops={[
               0,
-              hexToRgba(colors.fill, active ? 0.3 : 0.12),
+              hexToRgba(colors.fill, 0.08 * ringStrength + 0.1),
+              0.55,
+              hexToRgba(colors.fill, 0.18 * ringStrength + 0.08),
               1,
-              hexToRgba(colors.fill, 0),
+              hexToRgba(colors.fill, 0.03),
             ]}
+            listening={false}
+          />
+          <Circle
+            radius={Math.max(dotR + 2, r * 0.14)}
+            stroke={hexToRgba(colors.stroke, 0.35 * ringStrength + 0.2)}
+            strokeWidth={1}
+            dash={[4, 5]}
             listening={false}
           />
           {dotRatio > 0 && (
             <Circle
               radius={dotR}
-              fill={hexToRgba(colors.fill, active ? 0.55 : 0.4)}
-              stroke={hexToRgba(colors.stroke, 0.7)}
-              strokeWidth={1.5}
+              fill={hexToRgba(colors.fill, active ? 0.62 : 0.48)}
+              stroke={hexToRgba(colors.stroke, 0.85)}
+              strokeWidth={2}
               listening={false}
             />
           )}
@@ -371,42 +397,58 @@ export function PlantCircle({
         </Group>
       )}
 
+      {showSpreadLabel && showCanopyRing && (
+        <Text
+          y={isVine ? r * 0.55 + 2 : r + 2}
+          text={`${spreadFeet}′ spread`}
+          fontSize={active ? 10 : 9}
+          fontStyle={active ? "bold" : "normal"}
+          fill={hexToRgba(active ? "#e8f5dc" : colors.stroke, active ? 0.95 : 0.72)}
+          align="center"
+          width={Math.max(r * 2, 48)}
+          offsetX={Math.max(r, 24)}
+          listening={false}
+        />
+      )}
+
+      {showNameLabel && labelLayout && showLeader && (
+        <Line
+          points={[0, 0, labelLayout.leaderAnchorX, labelLayout.leaderAnchorY]}
+          stroke={hexToRgba(active ? "#b8f070" : colors.stroke, active ? 0.75 : 0.45)}
+          strokeWidth={active ? 1.5 : 1}
+          dash={[4, 4]}
+          listening={false}
+        />
+      )}
+
       {showNameLabel && labelLayout && (
         <Group listening={false}>
           <Rect
-            x={
-              labelLayout.align === "center"
-                ? labelLayout.offsetX - labelLayout.width / 2
-                : labelLayout.align === "left"
-                  ? labelLayout.offsetX
-                  : labelLayout.offsetX - labelLayout.width
-            }
-            y={labelLayout.offsetY}
+            x={labelBoxX}
+            y={labelBoxY}
             width={labelLayout.width}
             height={labelLayout.height}
-            fill="rgba(8, 20, 14, 0.88)"
-            stroke={active ? "rgba(126, 200, 80, 0.55)" : "rgba(197, 212, 192, 0.28)"}
-            strokeWidth={active ? 1.25 : 1}
-            cornerRadius={5}
-            shadowColor="rgba(0, 0, 0, 0.45)"
-            shadowBlur={4}
-            shadowOffsetY={1}
-            shadowOpacity={0.7}
+            fill={active ? "rgba(10, 24, 16, 0.94)" : "rgba(8, 20, 14, 0.9)"}
+            stroke={
+              active
+                ? "rgba(126, 200, 80, 0.72)"
+                : hexToRgba(colors.stroke, 0.42)
+            }
+            strokeWidth={active ? 1.5 : 1.1}
+            cornerRadius={6}
+            shadowColor="rgba(0, 0, 0, 0.55)"
+            shadowBlur={6}
+            shadowOffsetY={2}
+            shadowOpacity={0.85}
           />
           <Text
-            x={
-              labelLayout.align === "center"
-                ? labelLayout.offsetX - labelLayout.width / 2 + 6
-                : labelLayout.align === "left"
-                  ? labelLayout.offsetX + 6
-                  : labelLayout.offsetX - labelLayout.width + 6
-            }
-            y={labelLayout.offsetY + 4}
+            x={labelBoxX + 7}
+            y={labelBoxY + 5}
             text={labelLayout.text}
             fontSize={labelLayout.fontSize}
             fontStyle={active ? "bold" : "normal"}
-            fill={active ? "#f4fff0" : "#dce8dc"}
-            width={labelLayout.width - 12}
+            fill={active ? "#f8fff4" : "#eef6ea"}
+            width={labelLayout.width - 14}
             ellipsis
             listening={false}
           />

@@ -14,6 +14,7 @@ export const CURATED_NATIVE_ORIGIN_BY_SCIENTIFIC: Record<string, string> = {
   "annona muricata": "tropical Americas and the Caribbean",
   "annona glabra": "Florida wetlands and the Caribbean",
   "annona cherimola": "the Andes of South America",
+  "annona reticulata": "tropical Americas and the Caribbean",
   "citrus × sinensis": "Southeast Asia (hybrid origin)",
   "citrus x sinensis": "Southeast Asia (hybrid origin)",
   "citrus × aurantium": "Southeast Asia",

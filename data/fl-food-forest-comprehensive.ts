@@ -26,6 +26,8 @@ const FRUIT_TREES = compactSeeds([
   { id: "atemoya", name: "Atemoya", sci: "Annona × atemoya", cat: "Tropical Fruit", layer: "Understory", zones: ["10a", "10b", "11a"], h: [15, 25], s: [12, 18] },
   { id: "pond-apple", name: "Pond Apple", sci: "Annona glabra", cat: "Tropical Fruit", layer: "Understory", zones: ["10a", "10b", "11a"], nat: true, h: [15, 35], s: [15, 25], note: "Native wetland annona; fruit edible but often used for rootstock." },
   { id: "custard-apple", name: "Custard Apple", sci: "Annona reticulata", cat: "Tropical Fruit", layer: "Understory", zones: ["10a", "10b", "11a"], h: [12, 20], s: [10, 15] },
+  { id: "custard-apple-san-pablo", name: "San Pablo Red Custard Apple", sci: "Annona reticulata", cat: "Tropical Fruit", layer: "Understory", zones: ["10a", "10b", "11a"], k: true, h: [12, 20], s: [10, 15], note: "Belize cultivar; red skin, pink-red flesh, prolific and self-pollinating in south FL." },
+  { id: "custard-apple-fernandez", name: "Fernandez Red Custard Apple", sci: "Annona reticulata", cat: "Tropical Fruit", layer: "Understory", zones: ["10a", "10b", "11a"], k: true, h: [12, 20], s: [10, 15], note: "Popular south FL red custard apple; strawberry-custard flavor, red-pink flesh." },
 
   // —— Sapote & tropical staples ——
   { id: "mamey-sapote", name: "Mamey Sapote", sci: "Pouteria sapota", cat: "Tropical Fruit", layer: "Overstory", zones: ["10a", "10b", "11a"], k: true, h: [25, 45], s: [15, 25] },
