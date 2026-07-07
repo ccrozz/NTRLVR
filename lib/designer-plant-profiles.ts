@@ -19,7 +19,8 @@ import {
   tennesseeCareFallback,
   tennesseeProfilePatches,
 } from "./tennessee-designer-profiles.js";
-import { reconcileCompanionLists } from "./companion-lists.js";
+import { reconcileCompanionLists, isGenericCompanionGuild } from "./companion-lists.js";
+import { treeCompanionPlants } from "./tree-companion-profiles.js";
 import { curatedPatchForPlant } from "./curated-plant-knowledge.js";
 import { finalizePlantBenefits } from "./infer-plant-benefits.js";
 import { enrichPlantNativeOrigin } from "./native-origin.js";
@@ -312,7 +313,7 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
     companion_plants: ["Pigeon Pea", "Sweet Potato", "Lemongrass", "Comfrey"],
   },
   annona: {
-    companion_plants: ["Comfrey", "Sweet Potato", "Pigeon Pea", "Lemongrass"],
+    guild_functions: ["Food Producer", "Pollinator Attractor"],
   },
   passiflora: {
     companion_plants: ["Pigeon Pea", "Comfrey", "Lemongrass"],
@@ -432,10 +433,10 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
     companion_plants: ["Comfrey", "French Marigold", "Sweet Potato", "Lemongrass"],
   },
   monstera: {
-    companion_plants: ["Comfrey", "Sweet Potato", "Pigeon Pea", "Lemongrass"],
+    guild_functions: ["Food Producer", "Pollinator Attractor"],
   },
   morus: {
-    companion_plants: ["Comfrey", "Sweet Potato", "Pigeon Pea", "Lemongrass"],
+    guild_functions: ["Food Producer", "Pollinator Attractor", "Wildlife Habitat"],
   },
   amelanchier: {
     companion_plants: ["Comfrey", "Firebush", "Sweet Potato", "Gayfeather"],
@@ -496,7 +497,7 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
     companion_plants: ["Moringa", "Comfrey", "Lemongrass", "Sweet Potato"],
   },
   cocos: {
-    companion_plants: ["Comfrey", "Sweet Potato", "Pigeon Pea", "Lemongrass"],
+    guild_functions: ["Food Producer", "Wildlife Habitat", "Wind Break"],
   },
   coffea: {
     companion_plants: ["Comfrey", "Apple Banana", "Lemongrass", "Garden Sage"],
@@ -634,6 +635,66 @@ const SPECIES_PROFILES: Record<string, ProfilePatch> = {
   "diospyros nigra": {
     companion_plants: ["Mango", "Comfrey", "Lemongrass", "Sweet Potato"],
   },
+  "annona squamosa": {
+    companion_plants: [
+      "Lemongrass",
+      "Sweet Potato",
+      "French Marigold",
+      "Pigeon Pea",
+    ],
+  },
+  "annona muricata": {
+    companion_plants: ["Papaya", "Banana", "Lemongrass", "Comfrey"],
+  },
+  "annona reticulata": {
+    companion_plants: [
+      "French Marigold",
+      "Sweet Potato",
+      "Genovese Basil",
+      "Pigeon Pea",
+    ],
+  },
+  "annona cherimola": {
+    companion_plants: ["Avocado", "Lemongrass", "Comfrey", "Sweet Potato"],
+  },
+  "annona glabra": {
+    companion_plants: [
+      "Firebush",
+      "Coontie",
+      "American Beautyberry",
+      "Sweet Potato",
+    ],
+  },
+  "annona x atemoya": {
+    companion_plants: ["Sugar Apple", "Mango", "Lemongrass", "Comfrey"],
+  },
+  "morus rubra": {
+    companion_plants: [
+      "Comfrey",
+      "Pigeon Pea",
+      "Serviceberry (Juneberry)",
+      "Firebush",
+    ],
+  },
+  "morus nigra": {
+    companion_plants: [
+      "Comfrey",
+      "French Marigold",
+      "Nasturtium",
+      "Sweet Potato",
+    ],
+  },
+  "cocos nucifera": {
+    companion_plants: ["Banana", "Pigeon Pea", "Sweet Potato", "Pineapple"],
+  },
+  "monstera deliciosa": {
+    companion_plants: [
+      "Pigeon Pea",
+      "French Marigold",
+      "Sweet Potato",
+      "Ice Cream Bean",
+    ],
+  },
   "fortunella margarita": {
     companion_plants: ["Comfrey", "Rosemary", "Lemongrass", "French Marigold"],
   },
@@ -715,13 +776,22 @@ function resolveCompanionPlants(plant: Plant): string[] {
   const genus = resolveGenusKey(plant);
   const curated = curatedPatchForPlant(plant.scientific_name);
   const vine = vineLayerPatch(plant);
-  return pickStringList(
+  const sources: (string[] | undefined)[] = [
+    treeCompanionPlants(plant.scientific_name, plant.id),
     SPECIES_PROFILES[sci]?.companion_plants,
     GENUS_PROFILES[genus]?.companion_plants,
     curated.companion_plants,
     vine?.companion_plants,
     CATEGORY_PROFILES[plant.category]?.companion_plants,
-  );
+  ];
+
+  for (let i = 0; i < sources.length; i++) {
+    const list = (sources[i] ?? []).map((s) => s.trim()).filter(Boolean);
+    if (!list.length) continue;
+    if (i === 2 && isGenericCompanionGuild(list)) continue;
+    return list.slice(0, 8);
+  }
+  return [];
 }
 
 function resolveAvoidList(plant: Plant): string[] {
