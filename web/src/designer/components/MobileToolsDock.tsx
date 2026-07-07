@@ -118,6 +118,10 @@ export function MobileToolsDock({
   const setCompactCanvasVisuals = useDesignerStore(
     (s) => s.setCompactCanvasVisuals,
   );
+  const canvasUnderstoryFocus = useDesignerStore((s) => s.canvasUnderstoryFocus);
+  const setCanvasUnderstoryFocus = useDesignerStore(
+    (s) => s.setCanvasUnderstoryFocus,
+  );
 
   useEffect(() => {
     if (!mobileToolsOpen) setMoreOpen(false);
@@ -222,6 +226,13 @@ export function MobileToolsDock({
             label={compactCanvasVisuals ? "Full plant rings" : "Simple dots"}
             active={compactCanvasVisuals}
             onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
+          />
+          <MoreBtn
+            label={
+              canvasUnderstoryFocus ? "All canopy layers" : "Focus shrubs & herbs"
+            }
+            active={canvasUnderstoryFocus}
+            onClick={() => setCanvasUnderstoryFocus(!canvasUnderstoryFocus)}
           />
           <MoreBtn
             label={

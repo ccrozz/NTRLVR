@@ -9,6 +9,7 @@ const BASE_FILTERS: { key: FilterKey; label: string }[] = [
   { key: "fruit_trees", label: "Fruit trees" },
   { key: "fruits_vegetables", label: "Fruits & veggies" },
   { key: "herbs", label: "Herbs" },
+  { key: "medicinal_herbs", label: "Medicinal herbs" },
   { key: "flowers", label: "Flowers" },
   { key: "support", label: "Support" },
   { key: "natives", label: "Natives" },

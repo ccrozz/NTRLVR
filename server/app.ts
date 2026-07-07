@@ -30,6 +30,8 @@ import {
   generateCompanionReasonsBatch,
   type CompanionReasonPlant,
 } from "../lib/companion-reason.js";
+import type { FoodForestEnhanceRequest } from "../lib/food-forest-enhance.js";
+import { generateFoodForestEnhance } from "../lib/food-forest-enhance.js";
 import { generateFoodForestLayout } from "../lib/food-forest-layout.js";
 import { generateGardenFromOnboarding } from "../lib/garden-generate.js";
 import {
@@ -427,6 +429,63 @@ app.post("/api/food-forest-layout", async (c) => {
       {
         error:
           e instanceof Error ? e.message : "Food forest layout failed.",
+      },
+      500,
+    );
+  }
+});
+
+app.post("/api/food-forest-enhance", async (c) => {
+  let body: Partial<FoodForestEnhanceRequest> & {
+    preferences?: Partial<FoodForestEnhanceRequest["preferences"]>;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body." }, 400);
+  }
+
+  const existing = Array.isArray(body.existing_plants)
+    ? body.existing_plants
+    : [];
+  if (!existing.length) {
+    return c.json(
+      { error: "Add at least one plant on the canvas before enhancing." },
+      400,
+    );
+  }
+
+  const hardiness_zone = body.hardiness_zone?.trim() || "10a";
+  const width_feet = Math.min(80, Math.max(6, Number(body.width_feet) || 20));
+  const height_feet = Math.min(80, Math.max(6, Number(body.height_feet) || 20));
+  const preferences = normalizePreferences(body.preferences);
+
+  try {
+    const result = await generateFoodForestEnhance({
+      hardiness_zone,
+      native_state: body.native_state,
+      width_feet,
+      height_feet,
+      preferences,
+      existing_plants: existing.map((p) => ({
+        plant_id: String(p.plant_id ?? ""),
+        common_name: String(p.common_name ?? ""),
+        scientific_name: p.scientific_name,
+        canopy_layer: p.canopy_layer ?? "Shrub",
+        category: String(p.category ?? ""),
+        x: Number(p.x) || 0,
+        y: Number(p.y) || 0,
+        canvas_radius_feet: Number(p.canvas_radius_feet) || 4,
+      })),
+      user_notes: body.user_notes,
+      target_count: body.target_count,
+    });
+    return c.json({ data: result });
+  } catch (e) {
+    return c.json(
+      {
+        error:
+          e instanceof Error ? e.message : "Food forest enhance failed.",
       },
       500,
     );

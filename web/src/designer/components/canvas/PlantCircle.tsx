@@ -18,7 +18,11 @@ import {
 } from "../../lib/canopy-colors";
 import { createCanvasPlantTapHandlers } from "../../lib/canvas-plant-tap";
 import {
-  CANVAS_MAX_CENTER_DOT_PX,
+  LARGE_CANOPY_LAYERS,
+  plantCenterDotPx,
+  plantHitRadiusPx,
+} from "../../lib/canvas-plant-hit";
+import {
   CANVAS_USE_PLANT_PHOTOS,
   radiusPx,
 } from "../../lib/canvas-utils";
@@ -45,6 +49,7 @@ export type PlantCircleProps = {
   layerDimmed: boolean;
   placementFlash?: boolean;
   compactVisuals?: boolean;
+  understoryFocus?: boolean;
   labelLayout?: PlantLabelLayout;
   draggable?: boolean;
   dragDistance?: number;
@@ -71,6 +76,7 @@ export function PlantCircle({
   layerDimmed,
   placementFlash = false,
   compactVisuals = false,
+  understoryFocus = false,
   labelLayout,
   draggable = true,
   dragDistance = 3,
@@ -82,19 +88,33 @@ export function PlantCircle({
   const colors = canopyColor(canopy_layer);
   const r = radiusPx(canvas_radius_feet, 1);
   const active = selected || hovered;
-  const ringStrength = compactVisuals && !active ? 0.42 : active ? 1 : 0.68;
-  const showCanopyRing = true;
+  const isLargeCanopy = LARGE_CANOPY_LAYERS.includes(canopy_layer);
+  const isOverstory = canopy_layer === "Overstory";
+  const ringStrength =
+    compactVisuals && !active
+      ? isLargeCanopy
+        ? 0.28
+        : 0.42
+      : active
+        ? 1
+        : isOverstory
+          ? 0.45
+          : 0.62;
+  const showCanopyRing = !compactVisuals || active || !isLargeCanopy;
   const showNameLabel = Boolean(labelLayout?.show);
   const spreadFeet = Math.max(2, Math.round(canvas_radius_feet * 2));
-  const showSpreadLabel = active;
+  const showSpreadLabel = active && showCanopyRing;
   const isVine = canopy_layer === "Vine";
   const dotRatio = CENTER_DOT_RATIO[canopy_layer];
-  const dotR = Math.min(
-    CANVAS_MAX_CENTER_DOT_PX,
-    Math.max(4, r * dotRatio),
+  const dotR = plantCenterDotPx(canvas_radius_feet, canopy_layer);
+  const largeCanopyMuted =
+    understoryFocus && isLargeCanopy && !active;
+  const groupOpacity = layerDimmed ? 0.1 : largeCanopyMuted ? 0.38 : 1;
+  const hitR = plantHitRadiusPx(
+    { canvas_radius_feet, canopy_layer },
+    { active, compactVisuals, understoryFocus },
   );
-  const groupOpacity = layerDimmed ? 0.1 : 1;
-  const hitR = Math.max(r, dotR + 12);
+  const interactionDisabled = hitR <= 0;
   const draggedRef = useRef(false);
 
   const [photoImg, setPhotoImg] = useState<HTMLImageElement | null>(null);
@@ -342,12 +362,14 @@ export function PlantCircle({
         )
       )}
 
-      <Circle
-        radius={hitR}
-        fill="transparent"
-        hitStrokeWidth={hitPadding}
-        {...pointerHandlers}
-      />
+      {!interactionDisabled && (
+        <Circle
+          radius={hitR}
+          fill="transparent"
+          hitStrokeWidth={hitPadding}
+          {...pointerHandlers}
+        />
+      )}
 
       {CANVAS_USE_PLANT_PHOTOS && photoImg && dotRatio > 0 && (
         <Group

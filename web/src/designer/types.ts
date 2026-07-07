@@ -7,6 +7,7 @@ export type FilterKey =
   | "fruit_trees"
   | "fruits_vegetables"
   | "herbs"
+  | "medicinal_herbs"
   | "flowers"
   | "support"
   | "natives";

@@ -14,6 +14,10 @@ export function SelectionActionBar({
   const selectedCanvasPlantId = useDesignerStore((s) => s.selectedCanvasPlantId);
   const selectedPlantId = useDesignerStore((s) => s.selectedPlantId);
   const canvasPlants = useDesignerStore((s) => s.canvasPlants);
+  const plantPickStack = useDesignerStore((s) => s.plantPickStack);
+  const pickCanvasPlantAtPoint = useDesignerStore(
+    (s) => s.pickCanvasPlantAtPoint,
+  );
   const zones = useDesignerStore((s) => s.zones);
   const activeZoneId = useDesignerStore((s) => s.activeZoneId);
   const workspaceTool = useDesignerStore((s) => s.workspaceTool);
@@ -65,6 +69,13 @@ export function SelectionActionBar({
   const profileOpen =
     Boolean(selectedPlantId) && selectedPlantId === plant.plantId;
 
+  const stackSize = plantPickStack?.ids.length ?? 0;
+  const stackIndex =
+    plantPickStack && selectedCanvasPlantId
+      ? plantPickStack.ids.indexOf(selectedCanvasPlantId) + 1
+      : 0;
+  const showStackCycle = stackSize > 1 && stackIndex > 0;
+
   return (
     <div
       className="designer-selection-bar"
@@ -95,6 +106,19 @@ export function SelectionActionBar({
               : "View profile"}
         </span>
       </button>
+      {showStackCycle && plantPickStack && (
+        <button
+          type="button"
+          className="designer-selection-bar-cycle"
+          onClick={(e) => {
+            e.stopPropagation();
+            pickCanvasPlantAtPoint(plantPickStack.x, plantPickStack.y);
+          }}
+          aria-label={`Cycle overlapping plants, ${stackIndex} of ${stackSize}`}
+        >
+          {stackIndex}/{stackSize}
+        </button>
+      )}
       <button
         type="button"
         className="designer-btn-delete"

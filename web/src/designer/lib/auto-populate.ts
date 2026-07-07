@@ -18,6 +18,7 @@ import {
   type PlantingDensity,
 } from "@lib/food-forest-questionnaire";
 import { dedupePlantsByName, dedupeOrderedIds, normalizePlantName } from "@lib/plant-dedupe";
+import { resolveCompanionPlacement } from "./companion-placement";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -247,6 +248,22 @@ function placementScore(
 
 export type LayoutPlacement = { plant: PlantSummary; x: number; y: number };
 
+export type FixedCanvasObstacle = {
+  x: number;
+  y: number;
+  canvas_radius_feet: number;
+  canopy_layer: CanopyLayer;
+  plant_id?: string;
+};
+
+export type HostPlacementHint = {
+  host_x: number;
+  host_y: number;
+  host_radius_feet: number;
+  slot_index: number;
+  total_slots: number;
+};
+
 function layoutStepMultiplier(density: PlantingDensity | undefined): number {
   switch (density) {
     case "spacious":
@@ -398,6 +415,145 @@ export function layoutPlantsInZone(
     );
     if (density === "dense" && out.length >= sorted.length * 0.92) break;
     if (density === "balanced" && out.length >= sorted.length * 0.85) break;
+  }
+
+  return out;
+}
+
+function seedPlacedFromFixed(
+  fixed: FixedCanvasObstacle[],
+  density?: PlantingDensity,
+): { x: number; y: number; r: number; layer: CanopyLayer }[] {
+  return fixed.map((f) => ({
+    x: f.x,
+    y: f.y,
+    r: collisionRadiusPx(
+      {
+        canvas_radius_feet: f.canvas_radius_feet,
+        canopy_layer: f.canopy_layer,
+      } as PlantSummary,
+      density,
+    ),
+    layer: f.canopy_layer,
+  }));
+}
+
+/** Place new plants around locked canvas positions (existing trees stay put). */
+export function layoutPlantsAroundFixed(
+  zone: WorkspaceZone,
+  plants: PlantSummary[],
+  fixed: FixedCanvasObstacle[],
+  density?: PlantingDensity,
+  hostHints?: Map<string, HostPlacementHint>,
+): LayoutPlacement[] {
+  const uniquePlants = dedupePlantsByName(plants);
+  const marginFt = density === "dense" ? 0.75 : 1.5;
+  const bounds = zoneLayoutBoundsPx(zone, marginFt);
+  const area = zoneAreaSqFt(zone) ?? 400;
+  const limit = Math.min(
+    uniquePlants.length,
+    maxPlantsForCanvas(area, density ?? "balanced"),
+  );
+  const sorted = sortPlantsForLayout(uniquePlants, density).slice(0, limit);
+
+  const placed = seedPlacedFromFixed(fixed, density);
+  const out: LayoutPlacement[] = [];
+  const placedIds = new Set<string>(
+    fixed.map((f) => f.plant_id).filter((id): id is string => Boolean(id)),
+  );
+  const placedNames = new Set<string>();
+
+  const withHints: PlantSummary[] = [];
+  const withoutHints: PlantSummary[] = [];
+  for (const plant of sorted) {
+    if (hostHints?.has(plant.id)) withHints.push(plant);
+    else withoutHints.push(plant);
+  }
+
+  for (const plant of withHints) {
+    const hint = hostHints!.get(plant.id)!;
+    const host = {
+      canvasId: "host",
+      x: hint.host_x,
+      y: hint.host_y,
+      canvas_radius_feet: hint.host_radius_feet,
+    };
+    const pos = resolveCompanionPlacement(
+      host,
+      layoutRadiusFeet(plant),
+      hint.slot_index,
+      hint.total_slots,
+      [
+        ...fixed.map((f, i) => ({
+          canvasId: `fixed-${i}`,
+          plantId: f.plant_id ?? "",
+          x: f.x,
+          y: f.y,
+          canvas_radius_feet: f.canvas_radius_feet,
+        })),
+        ...out.map((p, i) => ({
+          canvasId: `new-${i}`,
+          plantId: p.plant.id,
+          x: p.x,
+          y: p.y,
+          canvas_radius_feet: p.plant.canvas_radius_feet,
+        })),
+      ],
+    );
+    if (!pointInZone(pos.x, pos.y, zone)) continue;
+    placed.push({
+      x: pos.x,
+      y: pos.y,
+      r: collisionRadiusPx(plant, density),
+      layer: plant.canopy_layer,
+    });
+    out.push({ plant, x: pos.x, y: pos.y });
+    placedIds.add(plant.id);
+    placedNames.add(normalizePlantName(plant.common_name));
+  }
+
+  const avgSpacing =
+    withoutHints.reduce((s, p) => s + minCenterSpacingFeet(p, density), 0) /
+    Math.max(withoutHints.length, 1);
+  const stepFt =
+    (density === "dense"
+      ? Math.max(2.2, avgSpacing * 0.42)
+      : Math.max(4, avgSpacing * 0.75)) * layoutStepMultiplier(density);
+
+  const passes: {
+    stepMult: number;
+    relax: number;
+    order: "center-out" | "shuffle" | "scan";
+  }[] =
+    density === "dense"
+      ? [
+          { stepMult: 1, relax: 0.9, order: "shuffle" },
+          { stepMult: 0.88, relax: 0.72, order: "shuffle" },
+          { stepMult: 0.75, relax: 0.58, order: "scan" },
+        ]
+      : [
+          { stepMult: 1, relax: 0.95, order: "shuffle" },
+          { stepMult: 0.9, relax: 0.8, order: "scan" },
+        ];
+
+  for (const pass of passes) {
+    const candidates = gridCandidatePoints(
+      bounds,
+      stepFt * pass.stepMult,
+      pass.order,
+    );
+    tryPlacePlants(
+      zone,
+      withoutHints,
+      bounds,
+      candidates,
+      density,
+      pass.relax,
+      placed,
+      out,
+      placedIds,
+      placedNames,
+    );
   }
 
   return out;

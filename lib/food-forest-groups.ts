@@ -9,6 +9,7 @@ export type FoodForestGroup =
   | "fruits_vegetables"
   | "vines"
   | "herbs"
+  | "medicinal_herbs"
   | "flowers"
   | "support"
   | "natives";
@@ -21,6 +22,7 @@ export const FOOD_FOREST_GROUP_LABELS: Record<
   fruits_vegetables: { label: "Fruits & vegetables", short: "Produce" },
   vines: { label: "Vines", short: "Vines" },
   herbs: { label: "Herbs", short: "Herbs" },
+  medicinal_herbs: { label: "Medicinal herbs", short: "Medicinal" },
   flowers: { label: "Flowers & pollinators", short: "Flowers" },
   support: { label: "Support plants", short: "Support" },
   natives: { label: "Natives", short: "Natives" },
@@ -140,6 +142,11 @@ export function plantMatchesFoodForestGroup(
       return plant.category === "Vine";
     case "herbs":
       return plant.category === "Herb";
+    case "medicinal_herbs":
+      return (
+        plant.category === "Herb" &&
+        (hasTag(plant, "medicinal") || hasGuild(plant, "Medicinal"))
+      );
     case "flowers":
       return (
         plant.category === "Edible Flower" ||

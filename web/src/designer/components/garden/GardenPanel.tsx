@@ -20,6 +20,11 @@ import { ZoneRenameField } from "../shared/ZoneRenameField";
 import { zoneColor } from "../workspace/WorkspacePanel";
 import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { useDesignerStore } from "../../store/useDesignerStore";
+import { openEnhanceGuildSidebar } from "../../lib/open-enhance-sidebar";
+import {
+  countFruitTreesInZone,
+  zoneNeedsGuildEnhance,
+} from "../../lib/enhance-zone";
 import type { CanvasPlant } from "../../types";
 import type { GardenCategoryGroup } from "../../lib/garden-plant-groups";
 
@@ -239,6 +244,7 @@ export function GardenPanel() {
   const openGardenPlanSheet = useDesignerStore((s) => s.openGardenPlanSheet);
   const gardenProfile = useDesignerStore((s) => s.gardenProfile);
   const removeZone = useDesignerStore((s) => s.removeZone);
+  const designerState = useDesignerStore((s) => s.designerState);
 
   const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
   const boundsRef = useRef<HTMLDivElement>(null);
@@ -299,6 +305,12 @@ export function GardenPanel() {
   const listCount = sorted.length;
   const canManageSpace = Boolean(focusedZone);
   const canViewPlanProfile = Boolean(savedPlan?.profile || gardenProfile);
+  const showEnhanceCta =
+    focusedZone &&
+    countFruitTreesInZone(canvasPlants, focusedZone, zones, designerState) > 0;
+  const enhanceRecommended =
+    focusedZone &&
+    zoneNeedsGuildEnhance(canvasPlants, focusedZone, zones, designerState);
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -580,6 +592,19 @@ export function GardenPanel() {
                           }
                         >
                           View plan profile
+                        </button>
+                      )}
+                      {showEnhanceCta && (
+                        <button
+                          type="button"
+                          className="garden-panel-enhance-guild"
+                          onClick={() =>
+                            openEnhanceGuildSidebar(focusedZone?.id ?? null)
+                          }
+                        >
+                          {enhanceRecommended
+                            ? "Complete this guild"
+                            : "Enhance understory"}
                         </button>
                       )}
                     </div>

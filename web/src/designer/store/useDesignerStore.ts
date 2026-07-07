@@ -46,6 +46,8 @@ import type {
   RecommendedPlantMeta,
   ZoneGardenPlan,
 } from "../types/garden-plan";
+import type { EnhanceGuildPlan } from "../lib/garden-enhance-run";
+import { layoutEnhancePlan } from "../lib/garden-enhance-run";
 import { layoutForPlan } from "../lib/garden-onboarding-run";
 import { focusDesignerCanvas } from "../lib/focus-designer-canvas";
 import { isMobileDesignerLayout } from "../lib/mobile-layout";
@@ -56,6 +58,12 @@ import {
 import type { DesignerStateCode } from "@lib/designer-states";
 import { saveDesignerState } from "../lib/designer-state-prefs";
 import { loadDesignerState } from "../lib/designer-state-prefs";
+import {
+  findPlantsAtPoint,
+  nextPlantPickStack,
+  sortPlantsForSelection,
+  type PlantPickStack,
+} from "../lib/canvas-plant-hit";
 
 function planSheetVisibilityPatch(open: boolean): Partial<DesignerState> {
   if (!open) return { planSheetOpen: false };
@@ -106,6 +114,10 @@ type DesignerState = {
   placementFlashCanvasId: string | null;
   /** After auto-fill: simpler rings & labels until user toggles off */
   compactCanvasVisuals: boolean;
+  /** Fade canopy trees and prioritize selecting shrubs & herbs underneath. */
+  canvasUnderstoryFocus: boolean;
+  /** Overlap stack when the user taps the same spot repeatedly. */
+  plantPickStack: PlantPickStack | null;
   gardenVision: {
     name: string;
     description: string;
@@ -116,7 +128,7 @@ type DesignerState = {
   designerState: DesignerStateCode;
   setDesignerState: (code: DesignerStateCode) => void;
 
-  sidebarMode: "browse" | "build";
+  sidebarMode: "browse" | "build" | "enhance";
   showingRecommendations: boolean;
   recommendedPlantIds: string[] | null;
   recommendationMeta: Record<string, RecommendedPlantMeta>;
@@ -139,6 +151,13 @@ type DesignerState = {
   /** True after Place on canvas succeeds — prevents duplicate beds on repeat clicks. */
   gardenPlanPlacedOnCanvas: boolean;
 
+  /** Enhance guild flow — complete understory around existing trees. */
+  enhanceSession: number;
+  pendingEnhancePlan: EnhanceGuildPlan | null;
+  enhanceResultsReady: boolean;
+  enhancePlacedOnCanvas: boolean;
+  placingEnhanceOnCanvas: boolean;
+
   history: CanvasPlant[][];
   redoHistory: CanvasPlant[][];
 
@@ -154,6 +173,7 @@ type DesignerState = {
   deleteSelectedCanvasPlant: () => void;
   movePlant: (canvasId: string, x: number, y: number) => void;
   selectCanvasPlant: (canvasId: string | null) => void;
+  pickCanvasPlantAtPoint: (x: number, y: number) => void;
   selectSidebarPlant: (plantId: string | null) => void;
   openCanvasPlantProfile: (canvasId: string) => void;
   closeDetailPanel: () => void;
@@ -176,7 +196,8 @@ type DesignerState = {
   setCanvasView: (view: CanvasView) => void;
   toggleLayerVisibility: (layer: CanopyLayer) => void;
   setCompactCanvasVisuals: (compact: boolean) => void;
-  setSidebarMode: (mode: "browse" | "build") => void;
+  setCanvasUnderstoryFocus: (focus: boolean) => void;
+  setSidebarMode: (mode: "browse" | "build" | "enhance") => void;
   /** Mobile bottom sheet: plants / build panel over canvas */
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
@@ -203,6 +224,9 @@ type DesignerState = {
   showPendingGardenPlan: () => void;
   /** Clear recommendations and restart the Build For Me questionnaire. */
   resetBuildForMe: () => void;
+  applyEnhancePlan: (plan: EnhanceGuildPlan) => void;
+  resetEnhanceGuild: () => void;
+  placeEnhanceOnCanvas: () => Promise<void>;
   placeRecommendedOnCanvas: () => Promise<void>;
   pushHistory: () => void;
   applyAutoPopulate: (
@@ -213,6 +237,8 @@ type DesignerState = {
       fillZoneId?: string;
       /** Replace plants inside fillZoneId even when that bed already has plants. */
       replacePlantsInZone?: boolean;
+      /** Add new plants into an occupied bed without removing existing plants. */
+      mergeIntoZone?: boolean;
       /** Add a new bed beside existing layout (default when anything is already on canvas). */
       mergeWithExisting?: boolean;
       /** Label for a newly added bed (defaults to "Bed N"). */
@@ -327,7 +353,9 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   searchQuery: "",
   categoryFilter: null,
   placementFlashCanvasId: null,
-  compactCanvasVisuals: false,
+  compactCanvasVisuals: true,
+  canvasUnderstoryFocus: false,
+  plantPickStack: null,
   gardenVision: null,
 
   designerState: loadDesignerState(),
@@ -348,6 +376,11 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   pendingGardenPlan: null,
   buildResultsReady: false,
   gardenPlanPlacedOnCanvas: false,
+  enhanceSession: 0,
+  pendingEnhancePlan: null,
+  enhanceResultsReady: false,
+  enhancePlacedOnCanvas: false,
+  placingEnhanceOnCanvas: false,
   canvasFitTick: 0,
   placingGardenOnCanvas: false,
 
@@ -373,6 +406,31 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     const shouldMerge =
       options.mergeWithExisting !== false && hasLayout;
 
+    if (options.fillZoneId && options.mergeIntoZone) {
+      const target =
+        state.zones.find((z) => z.id === options.fillZoneId) ?? zone;
+      const added = placements.map(({ plant, x, y }) =>
+        toCanvasPlant(plant, x, y, target.id),
+      );
+      set({
+        canvasPlants: [...state.canvasPlants, ...added],
+        zones: state.zones,
+        activeZoneId: target.id,
+        gardenVision: options.gardenVision ?? state.gardenVision,
+        workspaceTool: "select",
+        drawPoints: [],
+        drawCursor: null,
+        canvasView: "top-down",
+        selectedCanvasPlantId: null,
+        selectedPlantId: null,
+        placementFlashCanvasId: null,
+        showRuler: true,
+        compactCanvasVisuals: true,
+      });
+      get().resetCanvasView();
+      return;
+    }
+
     if (options.fillZoneId) {
       const target =
         state.zones.find((z) => z.id === options.fillZoneId) ?? zone;
@@ -397,7 +455,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
           selectedPlantId: null,
           placementFlashCanvasId: null,
           showRuler: true,
-          compactCanvasVisuals: false,
+          compactCanvasVisuals: true,
         });
         get().resetCanvasView();
         return;
@@ -429,7 +487,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
         selectedPlantId: null,
         placementFlashCanvasId: null,
         showRuler: true,
-        compactCanvasVisuals: false,
+        compactCanvasVisuals: true,
       });
       get().resetCanvasView();
       return;
@@ -454,7 +512,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       selectedPlantId: null,
       placementFlashCanvasId: null,
       showRuler: true,
-      compactCanvasVisuals: false,
+      compactCanvasVisuals: true,
     });
     get().resetCanvasView();
   },
@@ -537,7 +595,30 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     set({
       selectedCanvasPlantId: canvasId,
       selectedPlantId: null,
+      plantPickStack: null,
     }),
+
+  pickCanvasPlantAtPoint: (x, y) => {
+    const s = get();
+    const visible = s.canvasPlants.filter(
+      (p) => !s.hiddenLayers.includes(p.canopy_layer),
+    );
+    const hits = findPlantsAtPoint(visible, x, y, {
+      compactVisuals: s.compactCanvasVisuals,
+      understoryFocus: s.canvasUnderstoryFocus,
+    });
+    if (!hits.length) return;
+
+    const sorted = sortPlantsForSelection(hits);
+    const stack = nextPlantPickStack(s.plantPickStack, x, y, sorted);
+    const pickedId = stack.ids[stack.index]!;
+
+    set({
+      selectedCanvasPlantId: pickedId,
+      selectedPlantId: null,
+      plantPickStack: stack.ids.length > 1 ? stack : null,
+    });
+  },
   openCanvasPlantProfile: (canvasId) =>
     set((s) => {
       const cp = s.canvasPlants.find((p) => p.canvasId === canvasId);
@@ -568,6 +649,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       selectedPlantId: null,
       selectedCanvasPlantId: null,
       activeZoneId: null,
+      plantPickStack: null,
     }),
 
   undo: () => {
@@ -622,6 +704,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
     })),
 
   setCompactCanvasVisuals: (compactCanvasVisuals) => set({ compactCanvasVisuals }),
+  setCanvasUnderstoryFocus: (canvasUnderstoryFocus) =>
+    set({ canvasUnderstoryFocus }),
 
   setDesignerState: (designerState) => {
     saveDesignerState(designerState);
@@ -701,6 +785,9 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       mobileToolsOpen: false,
       buildResultsReady: false,
       gardenPlanPlacedOnCanvas: false,
+      enhanceResultsReady: false,
+      enhancePlacedOnCanvas: false,
+      pendingEnhancePlan: null,
     }),
 
   setSpaceListZoneId: (spaceListZoneId) => {
@@ -791,6 +878,117 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       sidebarMode: "build",
       buildForMeSession: s.buildForMeSession + 1,
     })),
+
+  applyEnhancePlan: (plan) => {
+    const meta: Record<string, RecommendedPlantMeta> = {};
+    for (const r of plan.recommendations) {
+      meta[r.plant_id] = r;
+    }
+    set({
+      pendingEnhancePlan: plan,
+      enhanceResultsReady: true,
+      enhancePlacedOnCanvas: false,
+      sidebarMode: "enhance",
+      showingRecommendations: true,
+      recommendedPlantIds: plan.recommendations.map((r) => r.plant_id),
+      recommendationMeta: meta,
+      gardenProfile: {
+        name: plan.profile.name,
+        description: plan.profile.description,
+        philosophy:
+          plan.result.message ??
+          "Understory layers matched to your existing fruit trees.",
+        planting_sequence: [
+          "Keep your existing trees — they stay locked in place.",
+          "Place nitrogen fixers and dynamic accumulators near tree drip lines.",
+          "Fill paths and open ground with herbs and groundcovers.",
+          "Mulch and water through the first dry season while roots establish.",
+        ],
+        first_year_focus:
+          "Let new understory plants establish without crowding your trees.",
+        avoid_mistakes: [
+          "Don't plant another full-size fruit tree in the same bed.",
+          "Leave walking paths — dense is good, cramped is hard to maintain.",
+        ],
+      },
+      gardenVision: {
+        name: plan.profile.name,
+        description: plan.profile.description,
+        philosophy:
+          plan.result.message ??
+          "Completing the guild around your existing trees.",
+      },
+      activeZoneId: plan.zoneId,
+      spaceListZoneId: plan.zoneId,
+    });
+  },
+
+  resetEnhanceGuild: () =>
+    set((s) => ({
+      pendingEnhancePlan: null,
+      enhanceResultsReady: false,
+      enhancePlacedOnCanvas: false,
+      showingRecommendations: false,
+      recommendedPlantIds: null,
+      recommendationMeta: {},
+      gardenProfile: null,
+      gardenVision: null,
+      sidebarMode: "enhance",
+      enhanceSession: s.enhanceSession + 1,
+    })),
+
+  placeEnhanceOnCanvas: async () => {
+    const s = get();
+    const plan = s.pendingEnhancePlan;
+    if (!plan) return;
+
+    focusDesignerCanvas();
+    set({ placingEnhanceOnCanvas: true });
+
+    try {
+      const zone = s.zones.find((z) => z.id === plan.zoneId);
+      if (!zone) {
+        throw new Error("Select a garden bed on the canvas first.");
+      }
+
+      const { placements } = await layoutEnhancePlan(
+        plan,
+        zone,
+        s.zones,
+        s.canvasPlants,
+        s.designerState,
+      );
+
+      if (!placements.length) {
+        throw new Error(
+          "No plants fit in the open space — try roomy density or a larger bed.",
+        );
+      }
+
+      get().applyAutoPopulate(placements, {
+        zone,
+        fillZoneId: zone.id,
+        mergeIntoZone: true,
+        mergeWithExisting: false,
+        gardenVision: s.gardenVision,
+      });
+
+      set({
+        enhancePlacedOnCanvas: true,
+        placingEnhanceOnCanvas: false,
+        sidebarMode: "browse",
+        mobileSidebarOpen: false,
+        mobileToolsOpen: false,
+        compactCanvasVisuals: true,
+      });
+      if (isMobileDesignerLayout()) {
+        get().requestCanvasFit();
+      }
+    } catch (e) {
+      set({ placingEnhanceOnCanvas: false });
+      throw e;
+    }
+  },
 
   placeRecommendedOnCanvas: async () => {
     const s = get();

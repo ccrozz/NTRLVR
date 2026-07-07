@@ -191,6 +191,24 @@ const KITCHEN_HERBS = compactSeeds([
   { id: "moringa-oleifera-ext", name: "Moringa (Drumstick Tree)", sci: "Moringa oleifera", cat: "Tropical Fruit", layer: "Understory", zones: ["9b", "10a", "10b"], k: true, h: [15, 25], s: [8, 12], guild: ["Food Producer", "Dynamic Accumulator"] },
 ]);
 
+const MEDICINAL_HERBS = compactSeeds([
+  { id: "echinacea", name: "Echinacea", sci: "Echinacea purpurea", cat: "Herb", layer: "Herbaceous", zones: ["8a", "8b", "9a", "9b"], k: true, h: [3, 4], s: [2, 3], guild: ["Pollinator Attractor", "Medicinal"], tags: ["medicinal", "pollinator"], note: "Best north and central FL; purple coneflower." },
+  { id: "licorice", name: "Licorice", sci: "Glycyrrhiza glabra", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a"], k: true, h: [3, 4], s: [2, 3], guild: ["Medicinal"], tags: ["medicinal"], note: "Root harvest; prefers north FL and afternoon shade in warm sites." },
+  { id: "marshmallow", name: "Marshmallow", sci: "Althaea officinalis", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [4, 6], s: [2, 3], guild: ["Medicinal"], tags: ["medicinal"], note: "Moist soil; roots and leaves used in teas." },
+  { id: "nettle-leaf", name: "Nettle Leaf", sci: "Urtica dioica", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b"], k: true, h: [3, 5], s: [2, 3], guild: ["Dynamic Accumulator", "Medicinal"], tags: ["medicinal"], note: "Wear gloves when handling; best in cooler north FL pockets." },
+  { id: "hibiscus-herb", name: "Hibiscus", sci: "Hibiscus sabdariffa", cat: "Herb", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], k: true, h: [4, 7], s: [3, 4], guild: ["Medicinal", "Pollinator Attractor"], tags: ["medicinal", "pollinator"], note: "Roselle calyxes for tea and home remedies." },
+  { id: "yarrow", name: "Yarrow", sci: "Achillea millefolium", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [2, 3], s: [2, 3], guild: ["Pollinator Attractor", "Medicinal"], tags: ["medicinal", "pollinator"] },
+  { id: "mullein", name: "Mullein", sci: "Verbascum thapsus", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b"], k: true, h: [4, 6], s: [2, 3], guild: ["Medicinal"], tags: ["medicinal"], note: "Biennial; rosette first year, flower spike second." },
+  { id: "valerian", name: "Valerian", sci: "Valeriana officinalis", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b"], k: true, h: [3, 5], s: [2, 3], guild: ["Medicinal"], tags: ["medicinal"], note: "Moist, partly shaded edges; root used in teas." },
+  { id: "mint-spearmint", name: "Spearmint", sci: "Mentha spicata", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a", "10b"], k: true, h: [1, 2], s: [2, 4], guild: ["Medicinal", "Food Producer"], tags: ["medicinal"], note: "Contain in pots or buried barriers." },
+  { id: "mint-peppermint", name: "Peppermint", sci: "Mentha × piperita", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a", "10b"], k: true, h: [1, 2], s: [2, 4], guild: ["Medicinal", "Food Producer"], tags: ["medicinal"] },
+  { id: "anise-hyssop", name: "Anise Hyssop", sci: "Agastache foeniculum", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [2, 4], s: [2, 3], guild: ["Pollinator Attractor", "Medicinal"], tags: ["medicinal", "pollinator"] },
+  { id: "holy-basil", name: "Holy Basil (Tulsi)", sci: "Ocimum tenuiflorum", cat: "Herb", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 3], s: [1.5, 2], guild: ["Pollinator Attractor", "Medicinal"], tags: ["medicinal", "pollinator", "ifas"] },
+  { id: "sage-garden", name: "Sage", sci: "Salvia officinalis", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [1, 2.5], s: [1, 2], guild: ["Medicinal", "Food Producer"], tags: ["medicinal"] },
+  { id: "oregano", name: "Oregano", sci: "Origanum vulgare", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [1, 2], s: [1, 2], guild: ["Medicinal", "Food Producer"], tags: ["medicinal"] },
+  { id: "lemon-balm", name: "Lemon Balm", sci: "Melissa officinalis", cat: "Herb", layer: "Herbaceous", zones: ["8b", "9a", "9b", "10a"], k: true, h: [2, 3], s: [2, 3], guild: ["Medicinal", "Food Producer"], tags: ["medicinal"] },
+]);
+
 const VEGETABLES_PERENNIALS = compactSeeds([
   { id: "tomato-everglades", name: "Everglades Tomato", sci: "Solanum pimpinellifolium", cat: "Vegetable", layer: "Herbaceous", zones: ["9b", "10a", "10b", "11a"], nat: true, k: true, h: [3, 6], s: [3, 5], note: "Florida native currant tomato; not in VH021 cultivar list." },
   { id: "eggplant", name: "Eggplant", sci: "Solanum melongena", cat: "Vegetable", layer: "Herbaceous", zones: ["9a", "9b", "10a", "10b"], k: true, h: [2, 4], s: [2, 3] },
@@ -285,6 +303,7 @@ export const FL_FOOD_FOREST_COMPREHENSIVE = [
   ...CITRUS,
   ...BERRIES_AND_SMALL_FRUIT,
   ...KITCHEN_HERBS,
+  ...MEDICINAL_HERBS,
   ...VEGETABLES_PERENNIALS,
   ...LEGUMES,
   ...FLOWERS_POLLINATORS,

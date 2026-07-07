@@ -221,6 +221,10 @@ export function CanvasToolbar({
   const setCompactCanvasVisuals = useDesignerStore(
     (s) => s.setCompactCanvasVisuals,
   );
+  const canvasUnderstoryFocus = useDesignerStore((s) => s.canvasUnderstoryFocus);
+  const setCanvasUnderstoryFocus = useDesignerStore(
+    (s) => s.setCanvasUnderstoryFocus,
+  );
 
   function setExpanded(next: boolean) {
     setDockExpanded(next);
@@ -288,6 +292,15 @@ export function CanvasToolbar({
         label={compactCanvasVisuals ? "Full plant rings" : "Simple plant dots"}
         active={compactCanvasVisuals}
         onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
+      />
+      <PopoverItem
+        label={
+          canvasUnderstoryFocus
+            ? "Show all canopy layers"
+            : "Focus shrubs & herbs"
+        }
+        active={canvasUnderstoryFocus}
+        onClick={() => setCanvasUnderstoryFocus(!canvasUnderstoryFocus)}
       />
       <PopoverItem
         label={

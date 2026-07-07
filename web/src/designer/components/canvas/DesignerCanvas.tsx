@@ -11,6 +11,7 @@ import { Stage, Layer, Image as KonvaImage } from "react-konva";
 import type Konva from "konva";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { CANOPY_LAYER_ORDER } from "../../lib/canopy-colors";
+import { LARGE_CANOPY_LAYERS } from "../../lib/canvas-plant-hit";
 import { radiusPx } from "../../lib/canvas-utils";
 import { plantOutsideOwnedZone } from "../../lib/zone-geometry";
 import { ZoneLayer } from "./ZoneLayer";
@@ -43,11 +44,12 @@ export type DesignerCanvasHandle = {
   centerOnContent: () => void;
 };
 
-/** Permaculture z-order, then smaller radii within a layer; hover/selection on top. */
+/** Permaculture z-order, then smaller radii within a layer; selection on top. */
 export function sortPlantsForRender(
   plants: CanvasPlant[],
-  hoveredId: string | null,
+  _hoveredId: string | null,
   selectedId: string | null,
+  understoryFocus = false,
 ): CanvasPlant[] {
   const sorted = [...plants].sort((a, b) => {
     const layerDiff =
@@ -58,6 +60,16 @@ export function sortPlantsForRender(
     );
   });
 
+  if (understoryFocus) {
+    const understory = sorted.filter(
+      (p) => !LARGE_CANOPY_LAYERS.includes(p.canopy_layer),
+    );
+    const canopy = sorted.filter((p) =>
+      LARGE_CANOPY_LAYERS.includes(p.canopy_layer),
+    );
+    sorted.splice(0, sorted.length, ...canopy, ...understory);
+  }
+
   const bringToFront = (id: string | null) => {
     if (!id) return;
     const idx = sorted.findIndex((p) => p.canvasId === id);
@@ -66,8 +78,17 @@ export function sortPlantsForRender(
     sorted.push(plant);
   };
 
-  bringToFront(selectedId);
-  bringToFront(hoveredId);
+  if (understoryFocus && selectedId) {
+    const selected = sorted.find((p) => p.canvasId === selectedId);
+    if (
+      selected &&
+      !LARGE_CANOPY_LAYERS.includes(selected.canopy_layer)
+    ) {
+      bringToFront(selectedId);
+    }
+  } else {
+    bringToFront(selectedId);
+  }
   return sorted;
 }
 
@@ -92,11 +113,16 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const canvasMode = useDesignerStore((s) => s.canvasMode);
     const showRuler = useDesignerStore((s) => s.showRuler);
     const dismissCanvasFocus = useDesignerStore((s) => s.dismissCanvasFocus);
-    const selectCanvasPlant = useDesignerStore((s) => s.selectCanvasPlant);
     const placementFlashCanvasId = useDesignerStore(
       (s) => s.placementFlashCanvasId,
     );
     const compactCanvasVisuals = useDesignerStore((s) => s.compactCanvasVisuals);
+    const canvasUnderstoryFocus = useDesignerStore(
+      (s) => s.canvasUnderstoryFocus,
+    );
+    const pickCanvasPlantAtPoint = useDesignerStore(
+      (s) => s.pickCanvasPlantAtPoint,
+    );
     const movePlant = useDesignerStore((s) => s.movePlant);
     const setZoom = useDesignerStore((s) => s.setZoom);
     const setStagePos = useDesignerStore((s) => s.setStagePos);
@@ -123,8 +149,9 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           canvasPlants,
           hoveredCanvasPlantId,
           selectedCanvasPlantId,
+          canvasUnderstoryFocus,
         ),
-      [canvasPlants, hoveredCanvasPlantId, selectedCanvasPlantId],
+      [canvasPlants, hoveredCanvasPlantId, selectedCanvasPlantId, canvasUnderstoryFocus],
     );
 
     const plantLabelLayouts = useMemo(() => {
@@ -451,11 +478,15 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
                 layerDimmed={hiddenLayers.includes(cp.canopy_layer)}
                 placementFlash={placementFlashCanvasId === cp.canvasId}
                 compactVisuals={compactCanvasVisuals}
+                understoryFocus={canvasUnderstoryFocus}
                 labelLayout={plantLabelLayouts.get(cp.canvasId)}
                 onHover={(hovering) =>
                   setHoveredCanvasPlantId(hovering ? cp.canvasId : null)
                 }
-                onSelect={() => selectCanvasPlant(cp.canvasId)}
+                onSelect={() => {
+                  const pt = pointerInStage();
+                  pickCanvasPlantAtPoint(pt?.x ?? cp.x, pt?.y ?? cp.y);
+                }}
                 onOpenProfile={() => openCanvasPlantProfile(cp.canvasId)}
                 draggable={workspaceTool !== "draw-zone"}
                 dragDistance={isMobile ? (selectedCanvasPlantId === cp.canvasId ? 6 : 28) : 3}
