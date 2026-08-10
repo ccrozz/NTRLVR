@@ -18,7 +18,7 @@ import {
 } from "../../lib/canopy-colors";
 import { createCanvasPlantTapHandlers } from "../../lib/canvas-plant-tap";
 import {
-  LARGE_CANOPY_LAYERS,
+  isCanvasTreeHost,
   plantCenterDotPx,
   plantHitRadiusPx,
 } from "../../lib/canvas-plant-hit";
@@ -88,11 +88,15 @@ export function PlantCircle({
   const colors = canopyColor(canopy_layer);
   const r = radiusPx(canvas_radius_feet, 1);
   const active = selected || hovered;
-  const isLargeCanopy = LARGE_CANOPY_LAYERS.includes(canopy_layer);
+  const isTreeHost = isCanvasTreeHost({
+    canopy_layer,
+    canvas_radius_feet,
+    category,
+  });
   const isOverstory = canopy_layer === "Overstory";
   const ringStrength =
     compactVisuals && !active
-      ? isLargeCanopy
+      ? isTreeHost
         ? 0.4
         : 0.42
       : active
@@ -100,18 +104,18 @@ export function PlantCircle({
         : isOverstory
           ? 0.52
           : 0.62;
-  const showCanopyRing = isLargeCanopy || !compactVisuals || active;
+  const showCanopyRing = isTreeHost || !compactVisuals || active;
   const showNameLabel = Boolean(labelLayout?.show);
   const spreadFeet = Math.max(2, Math.round(canvas_radius_feet * 2));
-  const showSpreadLabel = showCanopyRing && (isLargeCanopy || active);
+  const showSpreadLabel = showCanopyRing && (isTreeHost || active);
   const isVine = canopy_layer === "Vine";
   const dotRatio = CENTER_DOT_RATIO[canopy_layer];
   const dotR = plantCenterDotPx(canvas_radius_feet, canopy_layer);
   const largeCanopyMuted =
-    understoryFocus && isLargeCanopy && !active;
+    understoryFocus && isTreeHost && !active;
   const groupOpacity = layerDimmed ? 0.1 : largeCanopyMuted ? 0.38 : 1;
   const hitR = plantHitRadiusPx(
-    { canvas_radius_feet, canopy_layer },
+    { canvas_radius_feet, canopy_layer, category },
     { active, compactVisuals, understoryFocus },
   );
   const interactionDisabled = hitR <= 0;
@@ -425,11 +429,11 @@ export function PlantCircle({
         <Text
           y={isVine ? r * 0.55 + 2 : r + 2}
           text={`${spreadFeet}′ spread`}
-          fontSize={isLargeCanopy ? 10 : active ? 10 : 9}
-          fontStyle={isLargeCanopy || active ? "bold" : "normal"}
+          fontSize={isTreeHost ? 10 : active ? 10 : 9}
+          fontStyle={isTreeHost || active ? "bold" : "normal"}
           fill={hexToRgba(
-            active ? "#e8f5dc" : isLargeCanopy ? "#d4e8c8" : colors.stroke,
-            active ? 0.95 : isLargeCanopy ? 0.88 : 0.72,
+            active ? "#e8f5dc" : isTreeHost ? "#d4e8c8" : colors.stroke,
+            active ? 0.95 : isTreeHost ? 0.88 : 0.72,
           )}
           align="center"
           width={Math.max(r * 2, 48)}

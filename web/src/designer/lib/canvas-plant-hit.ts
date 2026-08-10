@@ -1,11 +1,34 @@
 import type Konva from "konva";
-import type { CanopyLayer } from "../../types";
+import type { CanopyLayer, PlantCategory } from "../../types";
 import type { CanvasPlant } from "../types";
 import { CENTER_DOT_RATIO } from "./canopy-colors";
 import { CANOPY_LAYER_ORDER } from "./canopy-colors";
 import { CANVAS_MAX_CENTER_DOT_PX, radiusPx } from "./canvas-utils";
 
 export const LARGE_CANOPY_LAYERS: CanopyLayer[] = ["Overstory", "Understory"];
+
+const TREE_LIKE_CATEGORIES: PlantCategory[] = [
+  "Fruit Tree",
+  "Citrus",
+  "Tropical Fruit",
+  "Palm",
+];
+
+/** Minimum canvas spread (ft) for shrub-sized plants to use tree-style labels. */
+const TREE_HOST_MIN_SPREAD_FT = 3.5;
+
+export type CanvasTreeHostFields = Pick<
+  CanvasPlant,
+  "canopy_layer" | "canvas_radius_feet" | "category"
+>;
+
+/** Tree-style canvas treatment: centered name, always-visible spread ring. */
+export function isCanvasTreeHost(plant: CanvasTreeHostFields): boolean {
+  if (LARGE_CANOPY_LAYERS.includes(plant.canopy_layer)) return true;
+  if (plant.canvas_radius_feet >= TREE_HOST_MIN_SPREAD_FT) return true;
+  if (TREE_LIKE_CATEGORIES.includes(plant.category)) return true;
+  return false;
+}
 
 export type PlantHitOptions = {
   active?: boolean;
@@ -25,7 +48,7 @@ export function plantCenterDotPx(
 
 /** Match PlantCircle hit target so geometry picks align with clicks. */
 export function plantHitRadiusPx(
-  plant: Pick<CanvasPlant, "canvas_radius_feet" | "canopy_layer">,
+  plant: Pick<CanvasPlant, "canvas_radius_feet" | "canopy_layer" | "category">,
   options: PlantHitOptions = {},
 ): number {
   const { active = false, compactVisuals = false, understoryFocus = false } =
@@ -33,16 +56,12 @@ export function plantHitRadiusPx(
   const r = radiusPx(plant.canvas_radius_feet, 1);
   const dotR = plantCenterDotPx(plant.canvas_radius_feet, plant.canopy_layer);
 
-  if (
-    understoryFocus &&
-    LARGE_CANOPY_LAYERS.includes(plant.canopy_layer)
-  ) {
+  if (understoryFocus && isCanvasTreeHost(plant)) {
     return 0;
   }
 
-  const isLargeCanopy = LARGE_CANOPY_LAYERS.includes(plant.canopy_layer);
-  const centerOnly =
-    isLargeCanopy && !active && (compactVisuals || !active);
+  const treeHost = isCanvasTreeHost(plant);
+  const centerOnly = treeHost && !active && (compactVisuals || !active);
 
   if (centerOnly) {
     return dotR + 12;

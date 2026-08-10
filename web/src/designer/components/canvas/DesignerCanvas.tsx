@@ -12,7 +12,7 @@ import type Konva from "konva";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { CANOPY_LAYER_ORDER } from "../../lib/canopy-colors";
 import {
-  LARGE_CANOPY_LAYERS,
+  isCanvasTreeHost,
   plantCenterDotPx,
 } from "../../lib/canvas-plant-hit";
 import { radiusPx } from "../../lib/canvas-utils";
@@ -64,12 +64,8 @@ export function sortPlantsForRender(
   });
 
   if (understoryFocus) {
-    const understory = sorted.filter(
-      (p) => !LARGE_CANOPY_LAYERS.includes(p.canopy_layer),
-    );
-    const canopy = sorted.filter((p) =>
-      LARGE_CANOPY_LAYERS.includes(p.canopy_layer),
-    );
+    const understory = sorted.filter((p) => !isCanvasTreeHost(p));
+    const canopy = sorted.filter((p) => isCanvasTreeHost(p));
     sorted.splice(0, sorted.length, ...canopy, ...understory);
   }
 
@@ -85,7 +81,7 @@ export function sortPlantsForRender(
     const selected = sorted.find((p) => p.canvasId === selectedId);
     if (
       selected &&
-      !LARGE_CANOPY_LAYERS.includes(selected.canopy_layer)
+      !isCanvasTreeHost(selected)
     ) {
       bringToFront(selectedId);
     }
@@ -164,7 +160,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       return layoutCanvasPlantLabels(
         visible.map((p) => {
           const radius = radiusPx(p.canvas_radius_feet, 1);
-          const centeredLabel = LARGE_CANOPY_LAYERS.includes(p.canopy_layer);
+          const centeredLabel = isCanvasTreeHost(p);
           return {
             canvasId: p.canvasId,
             x: p.x,
