@@ -6,10 +6,14 @@ export type PlantLabelInput = {
   name: string;
   /** Higher priority labels are placed first and kept when space is tight. */
   priority: number;
+  /** Pin name on the center marker (fruit trees, large canopy). */
+  labelMode?: "offset" | "center";
+  centerDotPx?: number;
 };
 
 export type PlantLabelLayout = {
   show: boolean;
+  placement: "offset" | "center";
   offsetX: number;
   offsetY: number;
   align: "center" | "left" | "right";
@@ -125,33 +129,56 @@ function labelTypography(
   options: LayoutCanvasPlantLabelsOptions,
 ): { text: string; fontSize: number; width: number; height: number } {
   const active = plant.priority >= 50;
-  const compact = options.compact && !active;
-  const fontSize = compact
-    ? options.isMobile
-      ? 9
-      : 10
-    : active && options.isMobile
-      ? 12
-      : active
-        ? 13
-        : options.isMobile
-          ? 10
-          : 11;
-  const maxChars = compact
-    ? options.isMobile
-      ? 14
-      : 18
-    : options.isMobile && !active
-      ? options.zoom < 1.05
+  const centered = plant.labelMode === "center";
+  const compact = options.compact && !active && !centered;
+  const fontSize = centered
+    ? active
+      ? options.isMobile
+        ? 11
+        : 12
+      : options.isMobile
+        ? 10
+        : 11
+    : compact
+      ? options.isMobile
+        ? 9
+        : 10
+      : active && options.isMobile
+        ? 12
+        : active
+          ? 13
+          : options.isMobile
+            ? 10
+            : 11;
+  const maxChars = centered
+    ? active
+      ? options.isMobile
+        ? 22
+        : 28
+      : options.isMobile
         ? 16
-        : 20
-      : active
-        ? 32
-        : 26;
+        : 22
+    : compact
+      ? options.isMobile
+        ? 14
+        : 18
+      : options.isMobile && !active
+        ? options.zoom < 1.05
+          ? 16
+          : 20
+        : active
+          ? 32
+          : 26;
   const text = truncateLabel(plant.name, maxChars);
-  const width = estimateLabelWidth(text, fontSize, options.isMobile);
+  const width = centered
+    ? Math.min(options.isMobile ? 120 : 156, estimateLabelWidth(text, fontSize, options.isMobile))
+    : estimateLabelWidth(text, fontSize, options.isMobile);
   const height = estimateLabelHeight(fontSize);
   return { text, fontSize, width, height };
+}
+
+function centerLabelCandidate(height: number): LabelCandidate {
+  return { offsetX: 0, offsetY: -height / 2, align: "center" };
 }
 
 /** Greedy label placement with collision avoidance for canvas plant names. */
@@ -182,6 +209,28 @@ export function layoutCanvasPlantLabels(
 
   for (const plant of sorted) {
     const { text, fontSize, width, height } = labelTypography(plant, options);
+    const centered = plant.labelMode === "center";
+
+    if (centered) {
+      const candidate = centerLabelCandidate(height);
+      const rect = labelRect(plant.x, plant.y, candidate, width, height);
+      placedRects.push(rect);
+      result.set(plant.canvasId, {
+        show: true,
+        placement: "center",
+        offsetX: candidate.offsetX,
+        offsetY: candidate.offsetY,
+        align: candidate.align,
+        text,
+        fontSize,
+        width,
+        height,
+        leaderAnchorX: 0,
+        leaderAnchorY: 0,
+      });
+      continue;
+    }
+
     let chosen: { candidate: LabelCandidate; rect: Rect } | null = null;
 
     for (const candidate of candidates(plant.radiusPx, height)) {
@@ -213,6 +262,7 @@ export function layoutCanvasPlantLabels(
       const rect = labelRect(plant.x, plant.y, fallback, width, height);
       result.set(plant.canvasId, {
         show: false,
+        placement: "offset",
         offsetX: fallback.offsetX,
         offsetY: fallback.offsetY,
         align: fallback.align,
@@ -228,6 +278,7 @@ export function layoutCanvasPlantLabels(
     placedRects.push(chosen.rect);
     result.set(plant.canvasId, {
       show: true,
+      placement: "offset",
       offsetX: chosen.candidate.offsetX,
       offsetY: chosen.candidate.offsetY,
       align: chosen.candidate.align,
@@ -242,10 +293,29 @@ export function layoutCanvasPlantLabels(
   for (const plant of plants) {
     if (!result.has(plant.canvasId)) {
       const { text, fontSize, width, height } = labelTypography(plant, options);
+      const centered = plant.labelMode === "center";
+      if (centered) {
+        const candidate = centerLabelCandidate(height);
+        result.set(plant.canvasId, {
+          show: true,
+          placement: "center",
+          offsetX: candidate.offsetX,
+          offsetY: candidate.offsetY,
+          align: candidate.align,
+          text,
+          fontSize,
+          width,
+          height,
+          leaderAnchorX: 0,
+          leaderAnchorY: 0,
+        });
+        continue;
+      }
       const fallback = candidates(plant.radiusPx, height)[0]!;
       const rect = labelRect(plant.x, plant.y, fallback, width, height);
       result.set(plant.canvasId, {
         show: false,
+        placement: "offset",
         offsetX: fallback.offsetX,
         offsetY: fallback.offsetY,
         align: fallback.align,

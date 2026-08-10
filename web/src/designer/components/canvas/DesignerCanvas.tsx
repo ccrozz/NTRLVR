@@ -11,7 +11,10 @@ import { Stage, Layer, Image as KonvaImage } from "react-konva";
 import type Konva from "konva";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { CANOPY_LAYER_ORDER } from "../../lib/canopy-colors";
-import { LARGE_CANOPY_LAYERS } from "../../lib/canvas-plant-hit";
+import {
+  LARGE_CANOPY_LAYERS,
+  plantCenterDotPx,
+} from "../../lib/canvas-plant-hit";
 import { radiusPx } from "../../lib/canvas-utils";
 import { plantOutsideOwnedZone } from "../../lib/zone-geometry";
 import { ZoneLayer } from "./ZoneLayer";
@@ -161,20 +164,25 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       return layoutCanvasPlantLabels(
         visible.map((p) => {
           const radius = radiusPx(p.canvas_radius_feet, 1);
+          const centeredLabel = LARGE_CANOPY_LAYERS.includes(p.canopy_layer);
           return {
             canvasId: p.canvasId,
             x: p.x,
             y: p.y,
             radiusPx: radius,
             name: p.common_name,
+            labelMode: centeredLabel ? ("center" as const) : ("offset" as const),
+            centerDotPx: plantCenterDotPx(p.canvas_radius_feet, p.canopy_layer),
             priority:
+              (centeredLabel ? 300 : 0) +
               (p.canvasId === selectedCanvasPlantId
                 ? 100
                 : p.canvasId === hoveredCanvasPlantId
                   ? 50
                   : placementFlashCanvasId === p.canvasId
                     ? 60
-                    : 0) + Math.round(radius / 4),
+                    : 0) +
+              Math.round(radius / 4),
           };
         }),
         {

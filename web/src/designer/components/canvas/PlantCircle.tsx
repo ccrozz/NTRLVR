@@ -93,17 +93,17 @@ export function PlantCircle({
   const ringStrength =
     compactVisuals && !active
       ? isLargeCanopy
-        ? 0.28
+        ? 0.4
         : 0.42
       : active
         ? 1
         : isOverstory
-          ? 0.45
+          ? 0.52
           : 0.62;
-  const showCanopyRing = !compactVisuals || active || !isLargeCanopy;
+  const showCanopyRing = isLargeCanopy || !compactVisuals || active;
   const showNameLabel = Boolean(labelLayout?.show);
   const spreadFeet = Math.max(2, Math.round(canvas_radius_feet * 2));
-  const showSpreadLabel = active && showCanopyRing;
+  const showSpreadLabel = showCanopyRing && (isLargeCanopy || active);
   const isVine = canopy_layer === "Vine";
   const dotRatio = CENTER_DOT_RATIO[canopy_layer];
   const dotR = plantCenterDotPx(canvas_radius_feet, canopy_layer);
@@ -194,8 +194,10 @@ export function PlantCircle({
           : labelLayout.offsetX - labelLayout.width
       : 0;
   const labelBoxY = labelLayout?.offsetY ?? 0;
+  const centeredLabel = labelLayout?.placement === "center";
   const showLeader =
     Boolean(labelLayout?.show) &&
+    !centeredLabel &&
     Math.hypot(labelLayout!.leaderAnchorX, labelLayout!.leaderAnchorY) >
       Math.max(dotR, 10) + 6;
 
@@ -343,8 +345,8 @@ export function PlantCircle({
           {dotRatio > 0 && (
             <Circle
               radius={dotR}
-              fill={hexToRgba(colors.fill, active ? 0.62 : 0.48)}
-              stroke={hexToRgba(colors.stroke, 0.85)}
+              fill={hexToRgba(colors.fill, active ? 0.62 : showNameLabel && centeredLabel ? 0.2 : 0.48)}
+              stroke={hexToRgba(colors.stroke, showNameLabel && centeredLabel ? 0.35 : 0.85)}
               strokeWidth={2}
               listening={false}
             />
@@ -391,7 +393,7 @@ export function PlantCircle({
         </Group>
       )}
 
-      {!photoImg && dotRatio > 0 && illusImg && (
+      {!photoImg && dotRatio > 0 && illusImg && !(showNameLabel && centeredLabel) && (
         <KonvaImage
           image={illusImg}
           x={-dotR}
@@ -402,7 +404,7 @@ export function PlantCircle({
         />
       )}
 
-      {!photoImg && dotRatio > 0 && !illusImg && (
+      {!photoImg && dotRatio > 0 && !illusImg && !(showNameLabel && centeredLabel) && (
         <Group scale={{ x: illScale, y: illScale }} listening={false}>
           {ill.paths.map((d, i) => (
             <Path
@@ -423,9 +425,12 @@ export function PlantCircle({
         <Text
           y={isVine ? r * 0.55 + 2 : r + 2}
           text={`${spreadFeet}′ spread`}
-          fontSize={active ? 10 : 9}
-          fontStyle={active ? "bold" : "normal"}
-          fill={hexToRgba(active ? "#e8f5dc" : colors.stroke, active ? 0.95 : 0.72)}
+          fontSize={isLargeCanopy ? 10 : active ? 10 : 9}
+          fontStyle={isLargeCanopy || active ? "bold" : "normal"}
+          fill={hexToRgba(
+            active ? "#e8f5dc" : isLargeCanopy ? "#d4e8c8" : colors.stroke,
+            active ? 0.95 : isLargeCanopy ? 0.88 : 0.72,
+          )}
           align="center"
           width={Math.max(r * 2, 48)}
           offsetX={Math.max(r, 24)}
@@ -445,32 +450,54 @@ export function PlantCircle({
 
       {showNameLabel && labelLayout && (
         <Group listening={false}>
+          {centeredLabel && (
+            <Circle
+              radius={Math.max(dotR + 4, labelLayout.width / 2 + 6, labelLayout.height / 2 + 4)}
+              fill="rgba(6, 16, 10, 0.88)"
+              stroke={hexToRgba(active ? "#7ec850" : colors.stroke, active ? 0.85 : 0.55)}
+              strokeWidth={active ? 2 : 1.5}
+              listening={false}
+            />
+          )}
           <Rect
             x={labelBoxX}
             y={labelBoxY}
             width={labelLayout.width}
             height={labelLayout.height}
-            fill={active ? "rgba(10, 24, 16, 0.94)" : "rgba(8, 20, 14, 0.9)"}
-            stroke={
-              active
-                ? "rgba(126, 200, 80, 0.72)"
-                : hexToRgba(colors.stroke, 0.42)
+            fill={
+              centeredLabel
+                ? active
+                  ? "rgba(8, 22, 14, 0.96)"
+                  : "rgba(6, 18, 11, 0.94)"
+                : active
+                  ? "rgba(10, 24, 16, 0.94)"
+                  : "rgba(8, 20, 14, 0.9)"
             }
-            strokeWidth={active ? 1.5 : 1.1}
-            cornerRadius={6}
+            stroke={
+              centeredLabel
+                ? active
+                  ? "rgba(184, 240, 112, 0.9)"
+                  : "rgba(126, 200, 80, 0.65)"
+                : active
+                  ? "rgba(126, 200, 80, 0.72)"
+                  : hexToRgba(colors.stroke, 0.42)
+            }
+            strokeWidth={centeredLabel ? (active ? 2 : 1.5) : active ? 1.5 : 1.1}
+            cornerRadius={centeredLabel ? 8 : 6}
             shadowColor="rgba(0, 0, 0, 0.55)"
-            shadowBlur={6}
+            shadowBlur={centeredLabel ? 10 : 6}
             shadowOffsetY={2}
             shadowOpacity={0.85}
           />
           <Text
             x={labelBoxX + 7}
-            y={labelBoxY + 5}
+            y={labelBoxY + (centeredLabel ? 4 : 5)}
             text={labelLayout.text}
             fontSize={labelLayout.fontSize}
-            fontStyle={active ? "bold" : "normal"}
-            fill={active ? "#f8fff4" : "#eef6ea"}
+            fontStyle={centeredLabel || active ? "bold" : "normal"}
+            fill={active ? "#f8fff4" : "#f0f8ec"}
             width={labelLayout.width - 14}
+            align={centeredLabel ? "center" : "left"}
             ellipsis
             listening={false}
           />
