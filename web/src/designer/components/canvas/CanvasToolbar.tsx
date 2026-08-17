@@ -14,6 +14,10 @@ import {
   saveToolbarExpanded,
 } from "../../lib/toolbar-dock-prefs";
 import { useDesignerStore } from "../../store/useDesignerStore";
+import {
+  LABEL_MODE_LABEL,
+  nextLabelMode,
+} from "../../lib/canvas-label-mode";
 
 function IconUndo() {
   return (
@@ -225,6 +229,8 @@ export function CanvasToolbar({
   const setCanvasUnderstoryFocus = useDesignerStore(
     (s) => s.setCanvasUnderstoryFocus,
   );
+  const canvasLabelMode = useDesignerStore((s) => s.canvasLabelMode);
+  const setCanvasLabelMode = useDesignerStore((s) => s.setCanvasLabelMode);
 
   function setExpanded(next: boolean) {
     setDockExpanded(next);
@@ -292,6 +298,11 @@ export function CanvasToolbar({
         label={compactCanvasVisuals ? "Full plant rings" : "Simple plant dots"}
         active={compactCanvasVisuals}
         onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
+      />
+      <PopoverItem
+        label={LABEL_MODE_LABEL[canvasLabelMode]}
+        active={canvasLabelMode !== "off"}
+        onClick={() => setCanvasLabelMode(nextLabelMode(canvasLabelMode))}
       />
       <PopoverItem
         label={

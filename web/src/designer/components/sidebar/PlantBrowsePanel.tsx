@@ -6,7 +6,7 @@ import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import { dedupePlantsById } from "@lib/plant-dedupe";
 import { usePlants } from "../../hooks/usePlants";
 import { FilterBar } from "./FilterBar";
-import { PlantCardDraggable } from "./PlantCardDraggable";
+import { PlantGridCard } from "./PlantGridCard";
 import { EvergreenInstallCta } from "../../../components/EvergreenInstallCta";
 import { LayerVisibilityPanel } from "./LayerVisibilityPanel";
 
@@ -71,7 +71,7 @@ export function PlantBrowsePanel() {
         <FilterBar />
       </div>
 
-      <div className="designer-plant-list" ref={listRef}>
+      <div className="designer-plant-list designer-plant-grid" ref={listRef}>
         {browseLoading && (
           <p className="designer-plant-list-status">Loading plants…</p>
         )}
@@ -79,7 +79,7 @@ export function PlantBrowsePanel() {
           <p className="designer-plant-list-status">No plants match.</p>
         )}
         {plants.map((plant) => (
-          <PlantCardDraggable
+          <PlantGridCard
             key={plant.id}
             plant={plant}
             selected={selectedPlantId === plant.id}
@@ -97,7 +97,7 @@ export function PlantBrowsePanel() {
         <EvergreenInstallCta compact className="designer-sidebar-evergreen" />
         {isMobile && (
           <p className="designer-mobile-drag-hint">
-            Hold the ⠿ grip, then drag onto the bed.
+            Tap “Place in garden”, then tap the spot — or hold ⠿ and drag.
           </p>
         )}
         <LayerVisibilityPanel />

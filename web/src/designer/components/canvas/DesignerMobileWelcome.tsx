@@ -5,12 +5,16 @@ export function DesignerMobileWelcome() {
   const zones = useDesignerStore((s) => s.zones);
   const mobileSidebarOpen = useDesignerStore((s) => s.mobileSidebarOpen);
   const mobileToolsOpen = useDesignerStore((s) => s.mobileToolsOpen);
+  const pendingPlacementPlant = useDesignerStore(
+    (s) => s.pendingPlacementPlant,
+  );
 
   if (
     canvasPlants.length > 0 ||
     zones.length > 0 ||
     mobileSidebarOpen ||
-    mobileToolsOpen
+    mobileToolsOpen ||
+    pendingPlacementPlant
   ) {
     return null;
   }

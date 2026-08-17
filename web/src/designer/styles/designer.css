@@ -8139,3 +8139,1067 @@ textarea.sidebar-build-notes {
   cursor: pointer;
   font-family: var(--font-body);
 }
+
+/* Planner studio — airy drafting canvas with floating dark tools */
+.designer-canvas-wrap {
+  background-color: #f2f0e8;
+  background-image:
+    radial-gradient(circle at 52% 38%, rgba(255, 255, 255, 0.75), transparent 52%),
+    linear-gradient(180deg, #f7f6f0 0%, #eeece4 100%);
+}
+
+.designer-edge-ruler-corner,
+.designer-edge-ruler {
+  background: rgba(247, 246, 240, 0.9);
+  border-color: rgba(45, 61, 49, 0.14);
+  backdrop-filter: blur(10px);
+}
+
+.designer-edge-ruler--top .designer-edge-ruler-tick::after,
+.designer-edge-ruler--left .designer-edge-ruler-tick {
+  background: rgba(51, 82, 59, 0.28);
+}
+
+.designer-edge-ruler--top .designer-edge-ruler-tick.is-major::after,
+.designer-edge-ruler--left .designer-edge-ruler-tick.is-major {
+  background: rgba(42, 92, 53, 0.58);
+}
+
+.designer-edge-ruler-label {
+  color: rgba(30, 47, 35, 0.78);
+  text-shadow: none;
+}
+
+.designer-desktop-add-plant,
+.designer-canvas-welcome,
+.designer-garden-check,
+.designer-garden-check-reopen {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .designer-root {
+    --studio-panel: rgba(28, 39, 31, 0.96);
+    --studio-panel-border: rgba(218, 232, 214, 0.14);
+    --studio-shadow: 0 18px 44px rgba(28, 42, 32, 0.2);
+  }
+
+  .designer-top-bar {
+    min-height: 3.1rem;
+    padding: 0.38rem 0.9rem;
+    background: #17231b;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .designer-top-brand {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .designer-top-bar .app-nav a {
+    min-height: 2.1rem;
+    padding: 0.38rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border-radius: 5px;
+  }
+
+  .designer-top-autofill,
+  .designer-header-evergreen {
+    min-height: 1.95rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.7rem;
+    border-radius: 5px;
+  }
+
+  .designer-top-help {
+    width: 1.95rem;
+    height: 1.95rem;
+    border-radius: 5px;
+  }
+
+  /* Region row stays in flow so it never covers the ruler */
+  .designer-state-switcher-wrap {
+    position: static;
+    display: flex;
+    align-items: center;
+    padding: 0.3rem 0.9rem;
+    background: #101a13;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .designer-state-switcher-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.09em;
+  }
+
+  .designer-state-switcher-chips {
+    gap: 0.18rem;
+  }
+
+  .designer-state-chip {
+    padding: 0.28rem 0.58rem;
+    font-size: 0.7rem;
+    border-radius: 4px;
+  }
+
+  .designer-layout {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .designer-sidebar {
+    position: absolute;
+    top: 0.75rem;
+    bottom: 4.45rem;
+    left: 0.75rem;
+    z-index: 36;
+    width: min(20rem, calc(100vw - 2rem));
+    height: auto;
+    border: 1px solid var(--studio-panel-border);
+    border-radius: 8px;
+    background: var(--studio-panel);
+    box-shadow: var(--studio-shadow);
+    backdrop-filter: blur(18px) saturate(1.05);
+    transform: translate3d(calc(-100% - 1.5rem), 0, 0);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease;
+  }
+
+  .designer-layout--sidebar-open .designer-sidebar {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .designer-sidebar-tabs-wrap {
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+
+  .designer-desktop-add-plant {
+    position: absolute;
+    left: 0.75rem;
+    bottom: 0.85rem;
+    z-index: 38;
+    display: inline-grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 7.75rem;
+    min-height: 2.55rem;
+    padding: 0.55rem 0.65rem;
+    color: var(--color-bg);
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: 7px;
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--color-accent) 28%, transparent);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      background 180ms ease,
+      transform 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .designer-desktop-add-plant:hover {
+    background: color-mix(in srgb, var(--color-accent) 86%, #ffffff);
+    transform: translateY(-1px);
+    box-shadow: 0 15px 32px color-mix(in srgb, var(--color-accent) 34%, transparent);
+  }
+
+  .designer-desktop-add-plant:active {
+    transform: translateY(1px);
+  }
+
+  .designer-desktop-add-plant.is-open {
+    color: var(--color-text);
+    background: var(--color-surface-2);
+    border-color: var(--studio-panel-border);
+    box-shadow: var(--studio-shadow);
+  }
+
+  .designer-desktop-add-plant-chevron {
+    transition: transform 180ms ease;
+  }
+
+  .designer-desktop-add-plant.is-open .designer-desktop-add-plant-chevron {
+    transform: rotate(180deg);
+  }
+
+  .designer-toolbar {
+    left: max(0.75rem, calc(var(--edge-ruler-left, 0px) + 0.5rem));
+  }
+
+  /* Scale marker sits bottom-center, clear of the Add plant button */
+  .designer-canvas-scale-legend {
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    align-items: center;
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(45, 61, 49, 0.16);
+    box-shadow: 0 6px 18px rgba(30, 43, 34, 0.12);
+  }
+
+  .designer-canvas-scale-bar {
+    background: linear-gradient(90deg, #2f6b3f, rgba(47, 107, 63, 0.45));
+  }
+
+  .designer-canvas-scale-label {
+    color: #24352a;
+  }
+
+  .designer-canvas-scale-note {
+    color: rgba(58, 78, 62, 0.75);
+  }
+
+  .designer-toolbar-trigger,
+  .designer-toolbar-strip {
+    border-color: var(--studio-panel-border);
+    border-radius: 7px;
+    background: var(--studio-panel);
+    box-shadow: var(--studio-shadow);
+  }
+
+  .designer-toolbar-trigger {
+    padding: 0.5rem 0.65rem;
+  }
+
+  .designer-toolbar-strip {
+    padding: 0.32rem;
+  }
+
+  .designer-toolbar-btn {
+    border-radius: 4px;
+  }
+
+  .designer-garden-trigger {
+    min-width: 12rem;
+    max-width: 14rem;
+    border-radius: 7px;
+    background: var(--studio-panel);
+    border-color: var(--studio-panel-border);
+    box-shadow: var(--studio-shadow);
+  }
+
+  .designer-garden-trigger:hover {
+    box-shadow: 0 20px 46px rgba(28, 42, 32, 0.24);
+  }
+
+  .designer-garden-trigger .designer-canvas-dock-icon {
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 5px;
+  }
+
+  .designer-garden-trigger-label {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .designer-garden-trigger-sub {
+    font-size: 0.66rem;
+  }
+
+  .garden-panel--floating,
+  .workspace-panel--floating {
+    border-radius: 8px;
+    background: var(--studio-panel);
+    border-color: var(--studio-panel-border);
+    box-shadow: var(--studio-shadow);
+  }
+
+  .garden-panel-backdrop {
+    background: transparent;
+    pointer-events: none;
+  }
+
+  /* Desktop empty plan prompt */
+  .designer-canvas-welcome {
+    position: absolute;
+    inset: 0;
+    z-index: 18;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    pointer-events: none;
+  }
+
+  .designer-canvas-welcome-card {
+    max-width: 30rem;
+    padding: 1.6rem 1.75rem 1.5rem;
+    border: 1px solid rgba(45, 61, 49, 0.14);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 20px 48px rgba(30, 43, 34, 0.14);
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+  }
+
+  .designer-canvas-welcome-eyebrow {
+    margin: 0 0 0.5rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: rgba(58, 84, 63, 0.72);
+  }
+
+  .designer-canvas-welcome-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: #1c2a20;
+    text-wrap: balance;
+  }
+
+  .designer-canvas-welcome-body {
+    margin: 0 0 1.15rem;
+    max-width: 34ch;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: rgba(48, 66, 52, 0.82);
+  }
+
+  .designer-canvas-welcome-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .designer-canvas-welcome-btn {
+    min-height: 2.35rem;
+    padding: 0.5rem 0.95rem;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #23342a;
+    background: #fff;
+    border: 1px solid rgba(45, 61, 49, 0.22);
+    border-radius: 6px;
+    cursor: pointer;
+    transition:
+      background 180ms ease,
+      border-color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .designer-canvas-welcome-btn:hover {
+    background: #f4f6f1;
+    border-color: rgba(45, 61, 49, 0.34);
+  }
+
+  .designer-canvas-welcome-btn:active {
+    transform: translateY(1px);
+  }
+
+  .designer-canvas-welcome-btn--primary {
+    color: var(--color-bg);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
+  .designer-canvas-welcome-btn--primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 86%, #ffffff);
+    border-color: var(--color-accent);
+  }
+
+  .designer-canvas-welcome-link {
+    padding: 0.5rem 0.35rem;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #2f6b3f;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .designer-canvas-welcome-link:hover {
+    color: #24522f;
+  }
+
+  /* Garden check — live design review docked top right */
+  .designer-garden-check {
+    position: absolute;
+    top: var(--designer-top-dock-offset);
+    right: 0.85rem;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    width: 15.5rem;
+    max-height: calc(100% - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.85rem 0.9rem 0.95rem;
+    border: 1px solid var(--studio-panel-border);
+    border-radius: 8px;
+    background: var(--studio-panel);
+    box-shadow: var(--studio-shadow);
+    backdrop-filter: blur(18px) saturate(1.05);
+    color: var(--color-text);
+  }
+
+  .designer-garden-check-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .designer-garden-check-head h2 {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(214, 232, 210, 0.62);
+  }
+
+  .designer-garden-check-close {
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    color: rgba(214, 232, 210, 0.62);
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .designer-garden-check-close:hover {
+    color: #f2f8ef;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .designer-garden-check-intro {
+    margin: -0.35rem 0 0;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    color: rgba(206, 224, 203, 0.78);
+  }
+
+  .designer-garden-check-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .designer-garden-check-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(214, 232, 210, 0.6);
+  }
+
+  .designer-garden-check-section h3.has-alert {
+    color: #f0c46a;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.78rem;
+  }
+
+  .designer-garden-check-badge {
+    min-width: 1.05rem;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+    color: #22331f;
+    background: #e6b455;
+    border-radius: 999px;
+  }
+
+  .designer-garden-check-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .designer-garden-check-row-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    color: rgba(158, 214, 106, 0.9);
+  }
+
+  .designer-garden-check-row-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #eaf3e6;
+  }
+
+  .designer-garden-check-set {
+    flex-shrink: 0;
+    padding: 0.24rem 0.5rem;
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #dff0d4;
+    background: rgba(126, 200, 80, 0.16);
+    border: 1px solid rgba(126, 200, 80, 0.32);
+    border-radius: 4px;
+    cursor: pointer;
+    transition:
+      background 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .designer-garden-check-set:hover {
+    background: rgba(126, 200, 80, 0.26);
+    border-color: rgba(126, 200, 80, 0.5);
+  }
+
+  .designer-garden-check-zones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .designer-garden-check-zone,
+  .designer-garden-check-zone-guess {
+    padding: 0.22rem 0.45rem;
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: rgba(226, 240, 222, 0.85);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    cursor: pointer;
+    transition:
+      background 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .designer-garden-check-zone:hover,
+  .designer-garden-check-zone-guess:hover {
+    background: rgba(126, 200, 80, 0.18);
+    border-color: rgba(126, 200, 80, 0.38);
+    color: #f0f8ec;
+  }
+
+  .designer-garden-check-zone.is-active {
+    color: #16240f;
+    background: #9ed66a;
+    border-color: #9ed66a;
+  }
+
+  .designer-garden-check-hint,
+  .designer-garden-check-note {
+    margin: 0;
+    font-size: 0.71rem;
+    line-height: 1.45;
+    color: rgba(200, 220, 198, 0.72);
+  }
+
+  .designer-garden-check-compass {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    margin: 0.15rem 0 0.1rem;
+  }
+
+  .designer-garden-check-compass-btn {
+    display: grid;
+    place-items: center;
+    min-height: 1.85rem;
+    padding: 0;
+    color: rgba(216, 234, 212, 0.7);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    cursor: pointer;
+    transition:
+      background 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .designer-garden-check-compass-btn:hover {
+    color: #f2f9ef;
+    background: rgba(126, 200, 80, 0.18);
+    border-color: rgba(126, 200, 80, 0.4);
+  }
+
+  .designer-garden-check-compass-btn:active {
+    transform: translateY(1px);
+  }
+
+  .designer-garden-check-compass-btn.is-active {
+    color: #16240f;
+    background: #6fbf49;
+    border-color: #7ec850;
+  }
+
+  .designer-garden-check-compass-center {
+    display: grid;
+    grid-auto-flow: column;
+    place-items: center;
+    gap: 0.1rem;
+    min-height: 1.85rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: rgba(226, 240, 222, 0.9);
+  }
+
+  .designer-garden-check-compass-center .is-muted {
+    color: rgba(200, 220, 198, 0.42);
+  }
+
+  .designer-garden-check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .designer-garden-check-list li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.45rem;
+    align-items: start;
+  }
+
+  .designer-garden-check-dot {
+    width: 0.42rem;
+    height: 0.42rem;
+    margin-top: 0.32rem;
+    border-radius: 50%;
+    background: rgba(200, 220, 198, 0.4);
+  }
+
+  .designer-garden-check-list li.is-ok .designer-garden-check-dot {
+    background: #7ec850;
+  }
+
+  .designer-garden-check-list li.is-warn .designer-garden-check-dot {
+    background: #e6b455;
+  }
+
+  .designer-garden-check-list li.is-todo .designer-garden-check-dot {
+    background: rgba(158, 190, 214, 0.85);
+  }
+
+  .designer-garden-check-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .designer-garden-check-item-text strong {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #eef6ea;
+  }
+
+  .designer-garden-check-item-text span {
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: rgba(200, 220, 198, 0.7);
+  }
+
+  .designer-garden-check-reopen {
+    position: absolute;
+    top: var(--designer-top-dock-offset);
+    right: 0.85rem;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.65rem;
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #eaf3e6;
+    background: var(--studio-panel);
+    border: 1px solid var(--studio-panel-border);
+    border-radius: 7px;
+    box-shadow: var(--studio-shadow);
+    backdrop-filter: blur(14px);
+    cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .designer-garden-check-reopen:hover {
+    border-color: rgba(126, 200, 80, 0.45);
+    transform: translateY(-1px);
+  }
+
+  .designer-garden-check-reopen-count {
+    min-width: 1.05rem;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.64rem;
+    line-height: 1.35;
+    text-align: center;
+    color: #22331f;
+    background: #e6b455;
+    border-radius: 999px;
+  }
+
+  /* Detail panel opens over the right edge — shift the check panel clear */
+  .designer-main--detail-open .designer-garden-check,
+  .designer-main--detail-open .designer-garden-check-reopen {
+    right: calc(var(--designer-detail-width, 340px) + 0.85rem);
+  }
+}
+
+/* ─── Plant library: photo grid cards + click-to-place ─── */
+
+.designer-plant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  align-content: start;
+  gap: 0.55rem;
+  padding: 0.6rem 0.65rem;
+}
+
+.designer-plant-grid .designer-plant-list-status,
+.designer-plant-grid .designer-list-sentinel {
+  grid-column: 1 / -1;
+}
+
+/* No overflow:hidden here — a scroll container as a grid item collapses to 0 height */
+.designer-plant-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.designer-plant-card:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.designer-plant-card.is-selected {
+  border-color: var(--color-accent);
+}
+
+.designer-plant-card.is-placing {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.designer-plant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 0 0.15rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: grab;
+}
+
+.designer-plant-card-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border-radius: 9px 9px 0 0;
+  overflow: hidden;
+}
+
+.designer-plant-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.designer-plant-card-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-display, inherit);
+  font-size: 1.75rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.designer-plant-card-layer {
+  position: absolute;
+  left: 0.35rem;
+  bottom: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.designer-plant-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.15rem 0.5rem 0;
+  min-width: 0;
+}
+
+.designer-plant-card-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-plant-card-scientific {
+  font-size: 0.66rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-plant-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.1rem 0.5rem 0;
+}
+
+.designer-plant-card-chip {
+  padding: 0.1rem 0.3rem;
+  font-size: 0.62rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  border-radius: 4px;
+}
+
+.designer-plant-card-chip.is-native {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.designer-plant-card-chip.is-warn {
+  color: var(--color-accent-warm);
+  background: color-mix(in srgb, var(--color-accent-warm) 16%, transparent);
+}
+
+.designer-plant-card-size {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.1rem 0.5rem 0.15rem;
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+}
+
+.designer-plant-card-place {
+  margin: 0.15rem 0.4rem 0.4rem;
+  padding: 0.38rem 0.4rem;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.designer-plant-card-place:hover {
+  background: color-mix(in srgb, var(--color-accent) 86%, #ffffff);
+  transform: translateY(-1px);
+}
+
+.designer-plant-card.is-placing .designer-plant-card-place {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface-2));
+}
+
+.designer-plant-card-grip {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-bg) 76%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.designer-canvas-wrap.is-placing-plant,
+.designer-canvas-wrap.is-placing-plant canvas {
+  cursor: copy;
+}
+
+.designer-canvas-place-hint {
+  position: absolute;
+  top: var(--designer-top-dock-offset, 0.85rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 34;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: min(24rem, calc(100% - 2rem));
+  padding: 0.45rem 0.5rem 0.45rem 0.7rem;
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  color: var(--color-text);
+  background: var(--studio-panel);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  border-radius: 7px;
+  box-shadow: var(--studio-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.designer-canvas-place-hint-text strong {
+  color: var(--color-accent);
+}
+
+.designer-canvas-place-hint-cancel {
+  flex-shrink: 0;
+  padding: 0.25rem 0.45rem;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  border: 1px solid var(--studio-panel-border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+@media (min-width: 769px) {
+  /* Two photo cards across without crowding the canvas */
+  .designer-sidebar {
+    width: min(30rem, calc(100vw - 2rem));
+  }
+}
+
+@media (max-width: 768px) {
+  .designer-plant-grid {
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  }
+}
+
+/* ─── Plant profile: stat grid + add action ─── */
+
+.designer-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.65rem;
+  padding: 0;
+}
+
+.designer-detail-stat {
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+}
+
+.designer-detail-stat dt {
+  margin: 0 0 0.1rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.designer-detail-stat dd {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+.designer-detail-add {
+  flex: 1;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.designer-detail-add:hover {
+  background: color-mix(in srgb, var(--color-accent) 86%, #ffffff);
+  transform: translateY(-1px);
+}

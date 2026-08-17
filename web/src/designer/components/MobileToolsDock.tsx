@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import type { DesignerCanvasHandle } from "./canvas/DesignerCanvas";
 import { useDesignerStore } from "../store/useDesignerStore";
+import { LABEL_MODE_LABEL, nextLabelMode } from "../lib/canvas-label-mode";
 
 function IconUndo() {
   return (
@@ -122,6 +123,8 @@ export function MobileToolsDock({
   const setCanvasUnderstoryFocus = useDesignerStore(
     (s) => s.setCanvasUnderstoryFocus,
   );
+  const canvasLabelMode = useDesignerStore((s) => s.canvasLabelMode);
+  const setCanvasLabelMode = useDesignerStore((s) => s.setCanvasLabelMode);
 
   useEffect(() => {
     if (!mobileToolsOpen) setMoreOpen(false);
@@ -226,6 +229,11 @@ export function MobileToolsDock({
             label={compactCanvasVisuals ? "Full plant rings" : "Simple dots"}
             active={compactCanvasVisuals}
             onClick={() => setCompactCanvasVisuals(!compactCanvasVisuals)}
+          />
+          <MoreBtn
+            label={LABEL_MODE_LABEL[canvasLabelMode]}
+            active={canvasLabelMode !== "off"}
+            onClick={() => setCanvasLabelMode(nextLabelMode(canvasLabelMode))}
           />
           <MoreBtn
             label={

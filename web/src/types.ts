@@ -50,6 +50,9 @@ export interface PlantSummary {
   tags: string[];
   data_source?: string;
   mature_height_feet?: [number, number];
+  mature_spread_feet?: [number, number];
+  sunlight?: string;
+  water_needs?: string;
 }
 
 export interface Plant extends PlantSummary {

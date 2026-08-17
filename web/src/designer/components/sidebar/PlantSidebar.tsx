@@ -10,7 +10,7 @@ export function PlantSidebar() {
   const enhanceSession = useDesignerStore((s) => s.enhanceSession);
 
   return (
-    <aside className="designer-sidebar">
+    <aside id="designer-plant-sidebar" className="designer-sidebar">
       <div className="designer-sidebar-tabs-wrap">
         <SidebarTabs />
       </div>

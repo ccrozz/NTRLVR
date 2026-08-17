@@ -16,6 +16,7 @@ import {
   nextZoneName,
 } from "./workspace-slice";
 import { clampStagePos } from "../lib/clamp-stage-pos";
+import type { CanvasLabelMode } from "../lib/canvas-label-mode";
 import {
   resizeRectangleZone,
   scalePlantsToZoneBounds,
@@ -58,6 +59,15 @@ import {
 import type { DesignerStateCode } from "@lib/designer-states";
 import { saveDesignerState } from "../lib/designer-state-prefs";
 import { loadDesignerState } from "../lib/designer-state-prefs";
+import type { ScreenDirection } from "../lib/garden-check";
+import {
+  loadGardenCheckOpen,
+  loadHardinessZone,
+  loadSunsetDirection,
+  saveGardenCheckOpen,
+  saveHardinessZone,
+  saveSunsetDirection,
+} from "../lib/garden-check-prefs";
 import {
   findPlantsAtPoint,
   nextPlantPickStack,
@@ -116,8 +126,14 @@ type DesignerState = {
   compactCanvasVisuals: boolean;
   /** Fade canopy trees and prioritize selecting shrubs & herbs underneath. */
   canvasUnderstoryFocus: boolean;
+  /** How many plant names to draw: trees only, everything, or none. */
+  canvasLabelMode: CanvasLabelMode;
+  setCanvasLabelMode: (mode: CanvasLabelMode) => void;
   /** Overlap stack when the user taps the same spot repeatedly. */
   plantPickStack: PlantPickStack | null;
+  /** Armed by "Place in garden": the next canvas click drops this plant. */
+  pendingPlacementPlant: PlantListItem | null;
+  armPlantPlacement: (plant: PlantListItem | null) => void;
   gardenVision: {
     name: string;
     description: string;
@@ -127,6 +143,15 @@ type DesignerState = {
   /** Active US state for catalog & Build For Me (FL, TN, CT). */
   designerState: DesignerStateCode;
   setDesignerState: (code: DesignerStateCode) => void;
+
+  /** Garden check — live design review docked beside the canvas. */
+  gardenCheckOpen: boolean;
+  setGardenCheckOpen: (open: boolean) => void;
+  /** Plan edge where the sun sets; fixes north for sun & shade checks. */
+  sunsetDirection: ScreenDirection | null;
+  setSunsetDirection: (dir: ScreenDirection | null) => void;
+  hardinessZone: string | null;
+  setHardinessZone: (zone: string | null) => void;
 
   sidebarMode: "browse" | "build" | "enhance";
   showingRecommendations: boolean;
@@ -355,10 +380,15 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   placementFlashCanvasId: null,
   compactCanvasVisuals: true,
   canvasUnderstoryFocus: false,
+  canvasLabelMode: "trees",
   plantPickStack: null,
+  pendingPlacementPlant: null,
   gardenVision: null,
 
   designerState: loadDesignerState(),
+  gardenCheckOpen: loadGardenCheckOpen(),
+  sunsetDirection: loadSunsetDirection(),
+  hardinessZone: loadHardinessZone(),
   sidebarMode: "browse",
   mobileSidebarOpen: false,
   mobileToolsOpen: false,
@@ -527,6 +557,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       // Placement only — profile opens on intentional tap (sidebar or canvas).
       selectedCanvasPlantId: null,
       selectedPlantId: null,
+      // Any placement route (click, drag, companion) ends placement mode.
+      pendingPlacementPlant: null,
     }));
   },
 
@@ -706,6 +738,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   setCompactCanvasVisuals: (compactCanvasVisuals) => set({ compactCanvasVisuals }),
   setCanvasUnderstoryFocus: (canvasUnderstoryFocus) =>
     set({ canvasUnderstoryFocus }),
+  setCanvasLabelMode: (canvasLabelMode) => set({ canvasLabelMode }),
+  armPlantPlacement: (pendingPlacementPlant) => set({ pendingPlacementPlant }),
 
   setDesignerState: (designerState) => {
     saveDesignerState(designerState);
@@ -723,6 +757,21 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       questionnaireDraft: null,
       buildForMeSession: get().buildForMeSession + 1,
     });
+  },
+
+  setGardenCheckOpen: (gardenCheckOpen) => {
+    saveGardenCheckOpen(gardenCheckOpen);
+    set({ gardenCheckOpen });
+  },
+
+  setSunsetDirection: (sunsetDirection) => {
+    saveSunsetDirection(sunsetDirection);
+    set({ sunsetDirection });
+  },
+
+  setHardinessZone: (hardinessZone) => {
+    saveHardinessZone(hardinessZone);
+    set({ hardinessZone });
   },
 
   setSidebarMode: (sidebarMode) => set({ sidebarMode }),

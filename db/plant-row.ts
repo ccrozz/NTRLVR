@@ -140,6 +140,9 @@ export function plantToSummary(plant: Plant): PlantSummary & {
     is_invasive_in_florida: plant.is_invasive_in_florida,
     data_source: plant.data_source,
     mature_height_feet: plant.mature_height_feet,
+    mature_spread_feet: plant.mature_spread_feet,
+    sunlight: plant.sunlight,
+    water_needs: plant.water_needs,
   };
 }
 

@@ -25,6 +25,7 @@ import {
 import { CanvasBottomStack } from "../components/canvas/CanvasBottomStack";
 import { DrawZoneDock } from "../components/workspace/DrawZoneDock";
 import { GardenPanel } from "../components/garden/GardenPanel";
+import { GardenCheckPanel } from "../components/canvas/GardenCheckPanel";
 import { WorkspacePanel } from "../components/workspace/WorkspacePanel";
 import { PlantDetailPanel } from "../components/detail/PlantDetailPanel";
 import { MobileDesignerBar } from "../components/MobileDesignerBar";
@@ -69,6 +70,8 @@ export function DesignerPage() {
   const mobileSidebarOpen = useDesignerStore((s) => s.mobileSidebarOpen);
   const setMobileSidebarOpen = useDesignerStore((s) => s.setMobileSidebarOpen);
   const setMobileToolsOpen = useDesignerStore((s) => s.setMobileToolsOpen);
+  const armPlantPlacement = useDesignerStore((s) => s.armPlantPlacement);
+  const setSidebarMode = useDesignerStore((s) => s.setSidebarMode);
   const setDesignerState = useDesignerStore((s) => s.setDesignerState);
   const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
 
@@ -239,6 +242,7 @@ export function DesignerPage() {
         onDragStart={(e) => {
           const plant = plantFromActive(e.active);
           if (!plant) return;
+          armPlantPlacement(null);
           setDragPlant(plant);
           if (!String(e.active.id).startsWith("plant-")) return;
           setPlantDragActive(true);
@@ -265,6 +269,45 @@ export function DesignerPage() {
             onClick={() => setMobileSidebarOpen(false)}
           />
           <PlantSidebar />
+          {!isMobile && (
+            <button
+              type="button"
+              className={`designer-desktop-add-plant${mobileSidebarOpen ? " is-open" : ""}`}
+              aria-expanded={mobileSidebarOpen}
+              aria-controls="designer-plant-sidebar"
+              onClick={() => {
+                if (!mobileSidebarOpen) setSidebarMode("browse");
+                setMobileSidebarOpen(!mobileSidebarOpen);
+              }}
+            >
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+                <path
+                  d="M10 4v12M4 10h12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span>{mobileSidebarOpen ? "Close plants" : "Add plant"}</span>
+              <svg
+                className="designer-desktop-add-plant-chevron"
+                viewBox="0 0 16 16"
+                width="14"
+                height="14"
+                aria-hidden
+              >
+                <path
+                  d="m5 6 3 3 3-3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
           <div
             className={`designer-main${detailOpen ? " designer-main--detail-open" : ""}${edgeRulersVisible ? " has-edge-rulers" : ""}`}
             style={
@@ -277,6 +320,7 @@ export function DesignerPage() {
             }
           >
             <GardenPanel />
+            {!isMobile && <GardenCheckPanel />}
             <WorkspacePanel />
             <DrawZoneDock />
             <CanvasToolbar canvasRef={canvasRef} />

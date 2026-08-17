@@ -110,6 +110,9 @@ export interface PlantSummary {
   growing_zones: string[];
   canvas_radius_feet: number;
   mature_height_feet?: [number, number];
+  mature_spread_feet?: [number, number];
+  sunlight?: SunlightNeeds;
+  water_needs?: WaterNeeds;
   image_url: string | null;
   tags: string[];
   data_source?: Plant["data_source"];

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useDesignerStore } from "../../store/useDesignerStore";
 import { usePlantDetail } from "../../hooks/useTreflePlant";
 import { useCompanionPlants } from "../../hooks/useCompanionPlants";
+import { useMatchMedia } from "../../hooks/useMatchMedia";
+import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import { canopyColor } from "../../lib/canopy-colors";
 import {
   hasExtraDetail,
@@ -13,6 +15,7 @@ import { isCompanionPlacedNearHost } from "../../lib/companion-placement";
 import { CompanionSuggestionRow } from "./CompanionSuggestionRow";
 import { DesignerPlantGuide } from "./DesignerPlantGuide";
 import { PlantCatalogProfile } from "./PlantCatalogProfile";
+import { PlantStats } from "./PlantStats";
 
 const MAX_COMPANIONS = 6;
 
@@ -26,6 +29,9 @@ export function PlantDetailPanel() {
   const deleteSelectedCanvasPlant = useDesignerStore(
     (s) => s.deleteSelectedCanvasPlant,
   );
+  const armPlantPlacement = useDesignerStore((s) => s.armPlantPlacement);
+  const setSidebarOpen = useDesignerStore((s) => s.setMobileSidebarOpen);
+  const isMobile = useMatchMedia(MOBILE_LAYOUT_QUERY);
 
   const canvasPlant = canvasPlants.find((p) => p.canvasId === selectedCanvasPlantId);
   const plantId = selectedPlantId;
@@ -155,6 +161,8 @@ export function PlantDetailPanel() {
               </button>
             </header>
 
+            <PlantStats plant={plant} />
+
             <DesignerPlantGuide plant={plant} stateCode={designerState} />
 
             {sparse && (
@@ -259,8 +267,8 @@ export function PlantDetailPanel() {
               </section>
             )}
 
-            {isOnCanvas && (
-              <footer className="designer-detail-footer">
+            <footer className="designer-detail-footer">
+              {isOnCanvas ? (
                 <button
                   type="button"
                   className="designer-detail-remove"
@@ -268,8 +276,20 @@ export function PlantDetailPanel() {
                 >
                   Remove from layout
                 </button>
-              </footer>
-            )}
+              ) : (
+                <button
+                  type="button"
+                  className="designer-detail-add"
+                  onClick={() => {
+                    armPlantPlacement(plant);
+                    closeDetailPanel();
+                    if (isMobile) setSidebarOpen(false);
+                  }}
+                >
+                  Add to garden
+                </button>
+              )}
+            </footer>
           </>
         )}
       </div>

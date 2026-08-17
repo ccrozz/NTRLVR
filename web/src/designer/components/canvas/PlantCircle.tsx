@@ -287,8 +287,8 @@ export function PlantCircle({
         <>
           <Circle
             radius={understoryR}
-            fill={hexToRgba("#7ec850", 0.2)}
-            stroke="#7ec850"
+            fill={hexToRgba("#7ec850", 0.16)}
+            stroke="#3f8f52"
             strokeWidth={2}
             dash={[6, 5]}
             listening={false}
@@ -297,7 +297,7 @@ export function PlantCircle({
             y={understoryR + 6}
             text="Understory zone — plant shrubs & herbs here"
             fontSize={10}
-            fill="#a8d878"
+            fill="#3c5442"
             align="center"
             width={understoryR * 4}
             offsetX={understoryR * 2}
@@ -346,6 +346,13 @@ export function PlantCircle({
             dash={[4, 5]}
             listening={false}
           />
+          {dotRatio > 0 && !isTreeHost && (
+            <Circle
+              radius={dotR + 1.5}
+              fill="rgba(255, 255, 255, 0.8)"
+              listening={false}
+            />
+          )}
           {dotRatio > 0 && (
             <Circle
               radius={dotR}
@@ -358,13 +365,20 @@ export function PlantCircle({
         </>
       ) : (
         dotRatio > 0 && (
-          <Circle
-            radius={dotR}
-            fill={hexToRgba(colors.fill, active ? 0.55 : 0.42)}
-            stroke={hexToRgba(colors.stroke, 0.75)}
-            strokeWidth={1.5}
-            listening={false}
-          />
+          <>
+            <Circle
+              radius={dotR + 1.5}
+              fill="rgba(255, 255, 255, 0.8)"
+              listening={false}
+            />
+            <Circle
+              radius={dotR}
+              fill={hexToRgba(colors.fill, active ? 0.55 : 0.42)}
+              stroke={hexToRgba(colors.stroke, 0.75)}
+              strokeWidth={1.5}
+              listening={false}
+            />
+          </>
         )
       )}
 
@@ -432,8 +446,8 @@ export function PlantCircle({
           fontSize={isTreeHost ? 10 : active ? 10 : 9}
           fontStyle={isTreeHost || active ? "bold" : "normal"}
           fill={hexToRgba(
-            active ? "#e8f5dc" : isTreeHost ? "#d4e8c8" : colors.stroke,
-            active ? 0.95 : isTreeHost ? 0.88 : 0.72,
+            active ? "#1c2a20" : "#3c5442",
+            active ? 0.95 : 0.7,
           )}
           align="center"
           width={Math.max(r * 2, 48)}
@@ -445,7 +459,7 @@ export function PlantCircle({
       {showNameLabel && labelLayout && showLeader && (
         <Line
           points={[0, 0, labelLayout.leaderAnchorX, labelLayout.leaderAnchorY]}
-          stroke={hexToRgba(active ? "#b8f070" : colors.stroke, active ? 0.75 : 0.45)}
+          stroke={hexToRgba(active ? "#2f6b3f" : colors.stroke, active ? 0.8 : 0.45)}
           strokeWidth={active ? 1.5 : 1}
           dash={[4, 4]}
           listening={false}
@@ -454,53 +468,32 @@ export function PlantCircle({
 
       {showNameLabel && labelLayout && (
         <Group listening={false}>
-          {centeredLabel && (
-            <Circle
-              radius={Math.max(dotR + 4, labelLayout.width / 2 + 6, labelLayout.height / 2 + 4)}
-              fill="rgba(6, 16, 10, 0.88)"
-              stroke={hexToRgba(active ? "#7ec850" : colors.stroke, active ? 0.85 : 0.55)}
-              strokeWidth={active ? 2 : 1.5}
-              listening={false}
-            />
-          )}
           <Rect
             x={labelBoxX}
             y={labelBoxY}
             width={labelLayout.width}
             height={labelLayout.height}
-            fill={
-              centeredLabel
-                ? active
-                  ? "rgba(8, 22, 14, 0.96)"
-                  : "rgba(6, 18, 11, 0.94)"
-                : active
-                  ? "rgba(10, 24, 16, 0.94)"
-                  : "rgba(8, 20, 14, 0.9)"
-            }
+            fill={active ? "#ffffff" : "rgba(255, 255, 255, 0.94)"}
             stroke={
-              centeredLabel
-                ? active
-                  ? "rgba(184, 240, 112, 0.9)"
-                  : "rgba(126, 200, 80, 0.65)"
-                : active
-                  ? "rgba(126, 200, 80, 0.72)"
-                  : hexToRgba(colors.stroke, 0.42)
+              active
+                ? "rgba(47, 107, 63, 0.85)"
+                : hexToRgba(colors.stroke, 0.42)
             }
-            strokeWidth={centeredLabel ? (active ? 2 : 1.5) : active ? 1.5 : 1.1}
-            cornerRadius={centeredLabel ? 8 : 6}
-            shadowColor="rgba(0, 0, 0, 0.55)"
-            shadowBlur={centeredLabel ? 10 : 6}
-            shadowOffsetY={2}
-            shadowOpacity={0.85}
+            strokeWidth={active ? 1.6 : 1}
+            cornerRadius={5}
+            shadowColor="rgba(28, 42, 32, 0.35)"
+            shadowBlur={active ? 8 : 4}
+            shadowOffsetY={1}
+            shadowOpacity={0.5}
           />
           <Text
-            x={labelBoxX + 7}
+            x={labelBoxX + 6}
             y={labelBoxY + (centeredLabel ? 4 : 5)}
             text={labelLayout.text}
             fontSize={labelLayout.fontSize}
             fontStyle={centeredLabel || active ? "bold" : "normal"}
-            fill={active ? "#f8fff4" : "#f0f8ec"}
-            width={labelLayout.width - 14}
+            fill={active ? "#16240f" : "#25352a"}
+            width={labelLayout.width - 12}
             align={centeredLabel ? "center" : "left"}
             ellipsis
             listening={false}

@@ -49,10 +49,10 @@ export function ScaleGridLayer({ bounds, visible }: ScaleGridLayerProps) {
           points={ln.points}
           stroke={
             ln.major
-              ? "rgba(126, 200, 80, 0.42)"
-              : "rgba(126, 200, 80, 0.16)"
+              ? "rgba(88, 111, 82, 0.24)"
+              : "rgba(94, 108, 88, 0.1)"
           }
-          strokeWidth={ln.major ? 1.25 : 0.75}
+          strokeWidth={ln.major ? 1 : 0.65}
           listening={false}
         />
       ))}

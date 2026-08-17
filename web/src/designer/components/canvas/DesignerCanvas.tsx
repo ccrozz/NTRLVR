@@ -38,6 +38,7 @@ import { mobileGardenFitZoom } from "../../lib/canvas-mobile-fit";
 import { layoutCanvasPlantLabels } from "../../lib/canvas-plant-labels";
 import { MobileCanvasZoomControls } from "./MobileCanvasZoomControls";
 import { DesignerMobileWelcome } from "./DesignerMobileWelcome";
+import { DesignerDesktopWelcome } from "./DesignerDesktopWelcome";
 import { MOBILE_LAYOUT_QUERY } from "../../lib/mobile-layout";
 import { useMatchMedia } from "../../hooks/useMatchMedia";
 import type { CanvasPlant } from "../../types";
@@ -46,6 +47,22 @@ export type DesignerCanvasHandle = {
   exportPng: () => string | null;
   centerOnContent: () => void;
 };
+
+/** Priority 0 drops the label entirely once the layout runs in onlyActive mode. */
+function labelPriority(input: {
+  centeredLabel: boolean;
+  radius: number;
+  mode: "trees" | "all" | "off";
+  active: number;
+}): number {
+  const { centeredLabel, radius, mode, active } = input;
+  const eligible =
+    mode === "all" || active > 0 || (mode === "trees" && centeredLabel);
+  if (!eligible) return 0;
+  return (
+    (centeredLabel ? 300 : 0) + active + Math.max(1, Math.round(radius / 4))
+  );
+}
 
 /** Permaculture z-order, then smaller radii within a layer; selection on top. */
 export function sortPlantsForRender(
@@ -119,6 +136,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const canvasUnderstoryFocus = useDesignerStore(
       (s) => s.canvasUnderstoryFocus,
     );
+    const canvasLabelMode = useDesignerStore((s) => s.canvasLabelMode);
     const pickCanvasPlantAtPoint = useDesignerStore(
       (s) => s.pickCanvasPlantAtPoint,
     );
@@ -137,6 +155,11 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
     const setDrawCursor = useDesignerStore((s) => s.setDrawCursor);
     const addDrawPoint = useDesignerStore((s) => s.addDrawPoint);
     const zoneDragOrigin = useDesignerStore((s) => s.zoneDragOrigin);
+    const addPlant = useDesignerStore((s) => s.addPlant);
+    const pendingPlacementPlant = useDesignerStore(
+      (s) => s.pendingPlacementPlant,
+    );
+    const armPlantPlacement = useDesignerStore((s) => s.armPlantPlacement);
 
     const [hoveredCanvasPlantId, setHoveredCanvasPlantId] = useState<
       string | null
@@ -169,23 +192,26 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
             name: p.common_name,
             labelMode: centeredLabel ? ("center" as const) : ("offset" as const),
             centerDotPx: plantCenterDotPx(p.canvas_radius_feet, p.canopy_layer),
-            priority:
-              (centeredLabel ? 300 : 0) +
-              (p.canvasId === selectedCanvasPlantId
-                ? 100
-                : p.canvasId === hoveredCanvasPlantId
-                  ? 50
-                  : placementFlashCanvasId === p.canvasId
-                    ? 60
-                    : 0) +
-              Math.round(radius / 4),
+            priority: labelPriority({
+              centeredLabel,
+              radius,
+              mode: canvasLabelMode,
+              active:
+                p.canvasId === selectedCanvasPlantId
+                  ? 100
+                  : p.canvasId === hoveredCanvasPlantId
+                    ? 50
+                    : placementFlashCanvasId === p.canvasId
+                      ? 60
+                      : 0,
+            }),
           };
         }),
         {
           isMobile,
           zoom,
           showAll: true,
-          onlyActive: false,
+          onlyActive: canvasLabelMode !== "all",
           compact: compactCanvasVisuals,
         },
       );
@@ -195,6 +221,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       isMobile,
       zoom,
       compactCanvasVisuals,
+      canvasLabelMode,
       selectedCanvasPlantId,
       hoveredCanvasPlantId,
       placementFlashCanvasId,
@@ -218,6 +245,15 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
       () => visibleStageBounds(size.w, size.h, stagePos, zoom, 100),
       [size.w, size.h, stagePos.x, stagePos.y, zoom],
     );
+
+    useEffect(() => {
+      if (!pendingPlacementPlant) return;
+      function onKeyDown(e: KeyboardEvent) {
+        if (e.key === "Escape") armPlantPlacement(null);
+      }
+      window.addEventListener("keydown", onKeyDown);
+      return () => window.removeEventListener("keydown", onKeyDown);
+    }, [pendingPlacementPlant, armPlantPlacement]);
 
     function pointerInStage(): { x: number; y: number } | null {
       const stage = stageRef.current;
@@ -363,7 +399,7 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           setNodeRef(node);
           wrapRef.current = node;
         }}
-        className={`designer-canvas-wrap${workspaceTool === "draw-zone" ? " is-draw-mode" : ""}`}
+        className={`designer-canvas-wrap${workspaceTool === "draw-zone" ? " is-draw-mode" : ""}${pendingPlacementPlant ? " is-placing-plant" : ""}`}
         style={{
           outline: isOver ? "2px solid var(--color-accent)" : undefined,
         }}
@@ -376,7 +412,22 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           visible={showScaleGrid}
         />
         {isMobile && !mobileToolsOpen && <MobileCanvasZoomControls />}
-        {isMobile && <DesignerMobileWelcome />}
+        {isMobile ? <DesignerMobileWelcome /> : <DesignerDesktopWelcome />}
+        {pendingPlacementPlant && (
+          <div className="designer-canvas-place-hint" role="status">
+            <span className="designer-canvas-place-hint-text">
+              Click the plan to place{" "}
+              <strong>{pendingPlacementPlant.common_name}</strong>
+            </span>
+            <button
+              type="button"
+              className="designer-canvas-place-hint-cancel"
+              onClick={() => armPlantPlacement(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {showScaleGrid && (
           <div className="designer-canvas-scale-legend" aria-hidden>
             <span className="designer-canvas-scale-bar" />
@@ -395,7 +446,9 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
           draggable={
             !isMobile &&
             workspaceTool !== "draw-zone" &&
-            !zoneDragOrigin
+            !zoneDragOrigin &&
+            // Panning would swallow the placement click on the slightest hand movement
+            !pendingPlacementPlant
           }
           onDragStart={(e) => {
             if (e.target === stageRef.current) {
@@ -423,7 +476,23 @@ export const DesignerCanvas = forwardRef<DesignerCanvasHandle>(
             setDrawCursor(null);
             setHoveredCanvasPlantId(null);
           }}
+          onTap={() => {
+            if (!pendingPlacementPlant || workspaceTool === "draw-zone") return;
+            const dropAt = pointerInStage();
+            if (!dropAt) return;
+            addPlant(pendingPlacementPlant, dropAt.x, dropAt.y);
+            armPlantPlacement(null);
+          }}
           onClick={(e) => {
+            const placing = pendingPlacementPlant;
+            if (placing && workspaceTool !== "draw-zone") {
+              const dropAt = pointerInStage();
+              if (dropAt) {
+                addPlant(placing, dropAt.x, dropAt.y);
+                armPlantPlacement(null);
+                return;
+              }
+            }
             if (e.target !== stageRef.current) return;
             const pt = pointerInStage();
             if (!pt) return;
