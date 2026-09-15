@@ -443,7 +443,7 @@ export async function listDesignerPlants(
   };
 }
 
-const CATALOG_GROUP_POOL = 14_000;
+const CATALOG_GROUP_POOL = 2_000;
 
 async function listCatalogPlantsByGroup(
   filters: PlantFilters,
@@ -468,15 +468,25 @@ async function listCatalogPlantsByGroup(
     tryAddCatalogItem(acc, seed, stateCode, requireState);
   }
 
-  const { data: rows } = await listPlants({
-    ...base,
-    limit: CATALOG_GROUP_POOL,
-    offset: 0,
-  });
-  for (const plant of rows) {
-    if (!plantMatchesFoodForestGroup(plant, group, stateCode)) continue;
-    if (!seedMatchesFilters(plant, filters)) continue;
-    tryAddCatalogItem(acc, plantToListItem(plant), stateCode, requireState);
+  // Scan the DB in batches (capped). Group matching is JS-side today.
+  const BATCH = 200;
+  let scanOffset = 0;
+  let scanned = 0;
+  while (scanned < CATALOG_GROUP_POOL) {
+    const { data: rows } = await listPlants({
+      ...base,
+      limit: BATCH,
+      offset: scanOffset,
+    });
+    if (!rows.length) break;
+    for (const plant of rows) {
+      if (!plantMatchesFoodForestGroup(plant, group, stateCode)) continue;
+      if (!seedMatchesFilters(plant, filters)) continue;
+      tryAddCatalogItem(acc, plantToListItem(plant), stateCode, requireState);
+    }
+    scanned += rows.length;
+    scanOffset += BATCH;
+    if (rows.length < BATCH) break;
   }
 
   const items = acc.items.sort((a, b) =>
@@ -490,6 +500,7 @@ async function listCatalogPlantsByGroup(
 
 /**
  * Public catalog browse — full ingested plant DB (Trefle scrape + FL seeds), not designer curation.
+ * Uses SQL LIMIT/OFFSET so we never materialize the whole catalog on every page view.
  */
 export async function listCatalogPlants(
   filters: PlantFilters,
@@ -527,39 +538,17 @@ export async function listCatalogPlants(
     return { data, total: data.length };
   }
 
-  if (search) {
-    return listCatalogPlantsSearch(filters, search);
-  }
-
-  const stateCode = filters.native_state;
-  const requireState = Boolean(filters.for_my_area && stateCode);
-  const all = await buildFullCatalogList(filters, { stateCode, requireState });
-  return {
-    data: all.slice(offset, offset + limit),
-    total: all.length,
+  // Paginate in the database — one COUNT + one page of rows.
+  const pageFilters: PlantFilters = {
+    ...filters,
+    search: search || filters.search,
+    limit,
+    offset,
   };
-}
-
-/** Search uses SQL pagination so cultivar-level results are not collapsed by species dedup. */
-async function listCatalogPlantsSearch(
-  filters: PlantFilters,
-  search: string,
-): Promise<{ data: PlantListItem[]; total: number }> {
-  const offset = filters.offset ?? 0;
-  const limit = filters.limit ?? 100;
-
-  const requireState = Boolean(filters.for_my_area && filters.native_state);
-  const stateCode = filters.native_state;
-  const all = await buildFullCatalogList(filters, {
-    stateCode,
-    requireState,
-    search,
-    skipSeeds: true,
-  });
-
+  const { data: rows, total } = await listPlants(pageFilters);
   return {
-    data: all.slice(offset, offset + limit),
-    total: all.length,
+    data: rows.map(plantToListItem),
+    total,
   };
 }
 

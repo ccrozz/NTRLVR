@@ -142,7 +142,7 @@ export function PlantDetailPage() {
     return (
       <div className="detail-loading">
         <span className="spinner" aria-hidden />
-        <p>Loading plant… may enrich from Trefle &amp; Wikipedia</p>
+        <p>Loading plant…</p>
         <DetailSkeleton />
       </div>
     );

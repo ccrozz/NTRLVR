@@ -18,6 +18,11 @@ export async function handlePlantListHttp(
     "../lib/plant-list-service.js"
   );
 
+  const headers = {
+    "Cache-Control":
+      "public, max-age=60, s-maxage=120, stale-while-revalidate=600",
+  };
+
   if (mode === "catalog") {
     filters.food_forest_only = undefined;
     // When a state is selected, filter to plants for that state unless client opts out.
@@ -25,31 +30,37 @@ export async function handlePlantListHttp(
       filters.for_my_area = Boolean(filters.native_state);
     }
     const { data, total } = await listCatalogPlants(filters, { trefleLive });
-    return Response.json({
-      data,
-      meta: {
-        pool: "catalog",
-        total,
-        limit,
-        offset,
-        has_more: offset + data.length < total,
+    return Response.json(
+      {
+        data,
+        meta: {
+          pool: "catalog",
+          total,
+          limit,
+          offset,
+          has_more: offset + data.length < total,
+        },
       },
-    });
+      { headers },
+    );
   }
 
   filters.exclude_invasive = true;
   if (!filters.native_state) filters.native_state = "FL";
   if (filters.for_my_area === undefined) filters.for_my_area = true;
   const { data, total } = await listDesignerPlants(filters, { search: filters.search });
-  return Response.json({
-    data,
-    meta: {
-      pool: "designer",
-      state: filters.native_state,
-      total,
-      limit,
-      offset,
-      has_more: offset + data.length < total,
+  return Response.json(
+    {
+      data,
+      meta: {
+        pool: "designer",
+        state: filters.native_state,
+        total,
+        limit,
+        offset,
+        has_more: offset + data.length < total,
+      },
     },
-  });
+    { headers },
+  );
 }

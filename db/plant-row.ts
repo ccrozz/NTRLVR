@@ -10,6 +10,7 @@ import {
   effectiveNativeStates,
 } from "../lib/plant-native-status.js";
 import { isRejectedPlantImageUrl } from "../lib/plant-image-quality.js";
+import { sanitizeNativeOriginLabel } from "../lib/native-origin.js";
 
 export type PlantRow = {
   id: string;
@@ -130,7 +131,7 @@ export function plantToSummary(plant: Plant): PlantSummary & {
     is_kitchen_essential: plant.is_kitchen_essential,
     is_edible: plant.is_edible,
     native_states: effectiveNativeStates(plant),
-    native_origin: plant.native_origin?.trim() || null,
+    native_origin: sanitizeNativeOriginLabel(plant.native_origin),
     growing_zones: plant.florida_hardiness_zones,
     canvas_radius_feet: plant.canvas_radius_feet,
     image_url: isRejectedPlantImageUrl(plant.image_url)

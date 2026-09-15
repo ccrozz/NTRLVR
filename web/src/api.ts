@@ -33,7 +33,6 @@ export async function fetchPlants(
   init?: { signal?: AbortSignal },
 ): Promise<PlantsResponse> {
   const res = await fetch(`${API_BASE}/api/plants?${toQuery(filters)}`, {
-    cache: "no-store",
     signal: init?.signal,
   });
   if (!res.ok) throw new Error(`Failed to load plants (${res.status})`);

@@ -10,15 +10,9 @@ import {
 import { enrichPlantFromWeb } from "../lib/enrich-plant.js";
 import { US_GROWING_ZONES } from "../lib/growing-zones.js";
 import { US_STATES } from "../lib/us-states.js";
-import {
-  applyFinalBenefits,
-  needsBenefitsEnrichment,
-  plantNeedsAnyEnrichment,
-} from "../lib/plant-enrichment.js";
 import { dbBackend } from "../db/db-config.js";
 import { hasDatabaseUrl } from "../db/supabase-config.js";
 import { applyDesignerProfile } from "../lib/designer-plant-profiles.js";
-import { isWikiDump } from "../lib/wiki-text.js";
 import {
   enrichSeedPlant,
   listPlantsWithTrefle,
@@ -176,12 +170,25 @@ app.get("/api/plants/enrich/:id", async (c) => {
 app.get("/api/plants/:id", async (c) => {
   const id = c.req.param("id");
   const numeric = /^\d+$/.test(id);
+  const forceEnrich = c.req.query("enrich") === "true";
+
+  /** Fast path: DB (or Trefle) read + in-memory profile. No scrapes, no upserts. */
+  const sendCached = (body: unknown, maxAgeSec = 300) => {
+    c.header(
+      "Cache-Control",
+      `public, max-age=${maxAgeSec}, s-maxage=${maxAgeSec}, stale-while-revalidate=86400`,
+    );
+    return c.json(body);
+  };
 
   if (numeric) {
     try {
       const detail = await getTreflePlant(parseInt(id, 10));
       const plant = applyDesignerProfile(mapTrefleDetailToPlant(detail));
-      return c.json({ data: plant, meta: { enriched: true, sources: ["trefle"] } });
+      return sendCached(
+        { data: plant, meta: { enriched: true, sources: ["trefle"] } },
+        600,
+      );
     } catch {
       return c.json({ error: `Trefle plant ${id} not found.` }, 404);
     }
@@ -193,35 +200,37 @@ app.get("/api/plants/:id", async (c) => {
     return c.json({ error: `Plant with id '${id}' not found.` }, 404);
   }
 
-  const forceEnrich = c.req.query("enrich") === "true";
-  const shouldEnrich = forceEnrich || plantNeedsAnyEnrichment(plant);
+  // Opt-in only — never enrich/upsert on ordinary page loads.
   let sources: string[] = [];
-
-  if (shouldEnrich && plant.data_source !== "trefle") {
-    const result = await enrichPlantFromWeb(plant);
-    plant = result.plant;
-    sources = result.sources;
-    await upsertPlant(plant);
-  } else if (needsBenefitsEnrichment(plant)) {
-    plant = applyFinalBenefits(plant);
-    await upsertPlant(plant);
+  if (forceEnrich && plant.data_source !== "trefle") {
+    c.header("Cache-Control", "no-store");
+    try {
+      const result = await enrichPlantFromWeb(plant);
+      plant = result.plant;
+      sources = result.sources;
+      await upsertPlant(plant);
+    } catch (e) {
+      return c.json(
+        {
+          error: e instanceof Error ? e.message : "Enrichment failed",
+        },
+        500,
+      );
+    }
   }
 
   const profiled = applyDesignerProfile(plant);
-  if (
-    isWikiDump(plant.native_origin ?? "") ||
-    isWikiDump(plant.care_summary ?? "") ||
-    profiled.native_origin !== plant.native_origin
-  ) {
-    await upsertPlant(profiled);
+
+  if (forceEnrich) {
+    return c.json({
+      data: profiled,
+      meta: { enriched: sources.length > 0, sources },
+    });
   }
 
-  return c.json({
+  return sendCached({
     data: profiled,
-    meta: {
-      enriched: sources.length > 0,
-      sources,
-    },
+    meta: { enriched: false, sources: [] },
   });
 });
 

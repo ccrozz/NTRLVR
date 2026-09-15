@@ -243,19 +243,32 @@ const CATEGORY_PROFILES: Record<PlantCategory, ProfilePatch> = {
 const GENUS_PROFILES: Record<string, ProfilePatch> = {
   mangifera: {
     companion_plants: ["Moringa", "Lemongrass", "Sweet Potato", "Pigeon Pea"],
-    benefits: ["Dense shade for understory guilds", "Mango fiber and vitamins A & C"],
+    benefits: [
+      "Mango flesh is rich in vitamins A and C — eat fresh, dried, or blended",
+      "Dense evergreen canopy casts deep shade for understory herbs",
+    ],
   },
   persea: {
     companion_plants: ["Mango", "Moringa", "Comfrey", "Lemongrass"],
-    benefits: ["Healthy fats and potassium from fruit", "Wide canopy cools the site"],
+    benefits: [
+      "Avocado fruit is packed with healthy fats and potassium",
+      "Broad canopy cools the yard and shelters shade-loving companions",
+    ],
   },
   citrus: {
     companion_plants: ["Comfrey", "Rosemary", "Lemongrass", "Pigeon Pea"],
     avoid_planting_near: ["Fennel"],
+    benefits: [
+      "Citrus fruit for juice, zest, and fresh eating through the cool season",
+      "Fragrant spring blossoms feed bees before the crop sets",
+    ],
   },
   carica: {
     companion_plants: ["Lemongrass", "Sweet Potato", "Comfrey"],
-    benefits: ["Fast fruiting within a year on good sites", "Enzyme-rich papaya for digestion"],
+    benefits: [
+      "Papaya fruit is enzyme-rich — papain aids digestion",
+      "Fruits within a year on warm south Florida sites",
+    ],
   },
   solanum: {
     companion_plants: [
@@ -313,7 +326,12 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
     companion_plants: ["Pigeon Pea", "Sweet Potato", "Lemongrass", "Comfrey"],
   },
   annona: {
+    companion_plants: ["Comfrey", "Sweet Potato", "Pigeon Pea"],
     guild_functions: ["Food Producer", "Pollinator Attractor"],
+    benefits: [
+      "Annona fruit is creamy and spoonable when ripe — classic tropical dessert",
+      "Understory trees that fit beneath taller mango and avocado canopies",
+    ],
   },
   passiflora: {
     companion_plants: ["Pigeon Pea", "Comfrey", "Lemongrass"],
@@ -370,6 +388,10 @@ const GENUS_PROFILES: Record<string, ProfilePatch> = {
   },
   pouteria: {
     companion_plants: ["Moringa", "Comfrey", "Lemongrass", "Sweet Potato", "Pigeon Pea"],
+    benefits: [
+      "Sapote-family fruit with rich custard flesh for fresh dessert eating",
+      "Evergreen tropical canopy for frost-free Florida yards",
+    ],
   },
   casimiroa: {
     companion_plants: ["Comfrey", "Avocado", "Mango", "Lemongrass"],
@@ -808,17 +830,28 @@ function resolveAvoidList(plant: Plant): string[] {
   );
 }
 
+/** Prefer species/genus/curated/seed benefits — never the shared category boilerplate. */
+function resolveBenefits(plant: Plant): string[] {
+  const sci = normalizeScientific(plant.scientific_name);
+  const genus = resolveGenusKey(plant);
+  const curated = curatedPatchForPlant(plant.scientific_name);
+  return pickStringList(
+    curated.benefits,
+    SPECIES_PROFILES[sci]?.benefits,
+    GENUS_PROFILES[genus]?.benefits,
+    plant.benefits,
+  );
+}
+
 /** Apply full designer profile to a plant (idempotent). */
 export function applyDesignerProfile(plant: Plant): Plant {
   const patches = collectPatches(plant);
 
   let uses = plant.uses ?? [];
-  let benefits = plant.benefits ?? [];
   let guild_functions = plant.guild_functions ?? [];
 
   for (const p of patches) {
     uses = mergeLists(uses, p.uses);
-    benefits = mergeLists(benefits, p.benefits);
     guild_functions = mergeGuild(guild_functions, p.guild_functions);
   }
 
@@ -843,6 +876,8 @@ export function applyDesignerProfile(plant: Plant): Plant {
           : ["Fresh eating", "Kitchen use"];
   }
 
+  const specificBenefits = resolveBenefits(plant);
+
   const merged: Plant = {
     ...plant,
     care_summary: buildCareSummary(plant, patches),
@@ -850,7 +885,7 @@ export function applyDesignerProfile(plant: Plant): Plant {
     companion_plants,
     avoid_planting_near,
     guild_functions,
-    benefits: [],
+    benefits: specificBenefits,
   };
 
   merged.benefits = finalizePlantBenefits(merged);

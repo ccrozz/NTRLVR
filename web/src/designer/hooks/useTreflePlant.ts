@@ -7,6 +7,7 @@ export function usePlantDetail(plantId: string | null) {
   return useQuery({
     queryKey: ["plant", plantId],
     enabled: Boolean(plantId),
+    staleTime: 5 * 60_000,
     queryFn: async (): Promise<Plant> => {
       const res = await fetch(`${API}/api/plants/${plantId}`);
       if (!res.ok) throw new Error("Plant not found");

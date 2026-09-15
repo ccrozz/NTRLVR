@@ -217,7 +217,7 @@ export async function getPlantByTrefleSlug(slug: string): Promise<Plant | null> 
   return row ? rowToPlant(row) : null;
 }
 
-type PgQueryParam = string | number | boolean | null;
+type PgQueryParam = string | number | boolean | null | string[];
 
 function pgJsonbAsArray(column: string): string {
   return `CASE
@@ -255,15 +255,9 @@ function buildListWhere(filters: PlantFilters): {
     const st = filters.native_state.toUpperCase();
     const state = stateByCode(st);
     if (state?.hardiness_zones.length) {
-      const zoneParts: string[] = [];
-      const zonesJson = pgJsonbAsArray("florida_hardiness_zones");
-      for (const z of state.hardiness_zones) {
-        n += 1;
-        zoneParts.push(
-          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${zonesJson}) z WHERE z.value = $${n})`,
-        );
-        params.push(z);
-      }
+      n += 1;
+      const zonesParam = n;
+      params.push(state.hardiness_zones);
       n += 1;
       const stateParam = n;
       params.push(st);
@@ -271,12 +265,17 @@ function buildListWhere(filters: PlantFilters): {
       n += 1;
       const tagParam = n;
       params.push(tag);
+      const zonesJson = pgJsonbAsArray("florida_hardiness_zones");
+      const zoneMatch = `EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(${zonesJson}) z
+        WHERE z.value = ANY($${zonesParam}::text[])
+      )`;
       const tagMatch = `EXISTS (SELECT 1 FROM jsonb_array_elements_text(${pgJsonbAsArray("tags")}) t WHERE LOWER(t.value) = LOWER($${tagParam}))`;
       const idPrefix =
         isDesignerStateCode(st) ? `OR id LIKE '${tag}-%'` : "";
       conditions.push(
         `(
-          (${zoneParts.join(" OR ")})
+          ${zoneMatch}
           OR ${pgJsonbArrayHasState("native_states", stateParam)}
           OR (
             $${stateParam} = 'FL'
@@ -395,6 +394,9 @@ function buildListWhere(filters: PlantFilters): {
   return { clause, params };
 }
 
+const COUNT_CACHE_TTL_MS = 5 * 60 * 1000;
+const countCache = new Map<string, { total: number; expiresAt: number }>();
+
 export async function listPlants(filters: PlantFilters = {}): Promise<{
   data: Plant[];
   total: number;
@@ -402,11 +404,26 @@ export async function listPlants(filters: PlantFilters = {}): Promise<{
   const sql = getSql();
   const { clause, params } = buildListWhere(filters);
 
-  const countRows = await sql.unsafe(
-    `SELECT COUNT(*)::int AS total FROM plants ${clause}`,
-    params,
-  );
-  const total = Number((countRows[0] as unknown as { total: number })?.total ?? 0);
+  const countKey = `${clause}::${JSON.stringify(params)}`;
+  let total: number;
+  const cachedCount = countCache.get(countKey);
+  if (cachedCount && cachedCount.expiresAt > Date.now()) {
+    total = cachedCount.total;
+  } else {
+    const countRows = await sql.unsafe(
+      `SELECT COUNT(*)::int AS total FROM plants ${clause}`,
+      params,
+    );
+    total = Number((countRows[0] as unknown as { total: number })?.total ?? 0);
+    countCache.set(countKey, {
+      total,
+      expiresAt: Date.now() + COUNT_CACHE_TTL_MS,
+    });
+    if (countCache.size > 64) {
+      const first = countCache.keys().next().value;
+      if (first) countCache.delete(first);
+    }
+  }
 
   const limit = filters.limit ?? 100;
   const offset = filters.offset ?? 0;
@@ -414,8 +431,24 @@ export async function listPlants(filters: PlantFilters = {}): Promise<{
   const limitIdx = params.length + 1;
   const offsetIdx = params.length + 2;
 
+  // Skip heavy blobs (trefle_json, care essays) — catalog cards only need summary fields.
   const rows = (await sql.unsafe(
-    `SELECT * FROM plants ${clause} ORDER BY common_name ASC LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    `SELECT
+      id, common_name, scientific_name, image_url,
+      trefle_id, trefle_slug, family, genus, edible_part, vegetable,
+      NULL::text AS observations, synonyms, NULL::text AS trefle_json,
+      category, canopy_layer, guild_functions,
+      is_florida_native, is_kitchen_essential, is_edible,
+      florida_hardiness_zones, native_states, native_origin,
+      grows_in_us, is_invasive_in_florida,
+      mature_height_min, mature_height_max,
+      mature_spread_min, mature_spread_max, canvas_radius_feet,
+      sunlight, water_needs, soil_preferences, best_planting_seasons,
+      growth_rate, '' AS care_summary, uses, benefits,
+      companion_plants, avoid_planting_near, tags, data_source, last_updated
+    FROM plants ${clause}
+    ORDER BY common_name ASC
+    LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     listParams,
   )) as PlantRow[];
 
