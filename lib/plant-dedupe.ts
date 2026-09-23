@@ -148,6 +148,11 @@ export function catalogDisplayDedupKey(common_name: string): string {
   return normalizePlantName(common_name);
 }
 
+/** Hyphen/space-insensitive title — "American beauty-berry" === "American Beautyberry". */
+export function compactCatalogName(common_name: string): string {
+  return normalizePlantName(common_name).replace(/[\s']/g, "");
+}
+
 /** Display title or species binomial — collapses genus-only dupes and cultivar dupes. */
 export function catalogDedupKeys(
   common_name: string,
@@ -155,6 +160,7 @@ export function catalogDedupKeys(
 ): string[] {
   const keys = new Set<string>();
   keys.add(`d:${catalogDisplayDedupKey(common_name)}`);
+  keys.add(`c:${compactCatalogName(common_name)}`);
   keys.add(`s:${speciesDedupKey(common_name, scientific_name)}`);
   return [...keys];
 }
@@ -282,4 +288,62 @@ export function dedupeDesignerCatalogPlants<T extends PlantLike>(
   }
 
   return out.sort((a, b) => a.common_name.localeCompare(b.common_name));
+}
+
+function hasBinomial(scientific_name?: string | null): boolean {
+  return (scientific_name?.trim().split(/\s+/).length ?? 0) >= 2;
+}
+
+/**
+ * State catalog browse: one card per visible title, keep named cultivars.
+ * Drops other-state `tn-`/`ct-` copies, Trefle rows that duplicate a curated
+ * binomial, and same-title twins (beautyberry / beauty-berry, seven "carex").
+ */
+export function dedupeAreaCatalogPlants<T extends PlantLike>(
+  plants: T[],
+  stateCode?: string,
+): T[] {
+  const st = stateCode?.trim().toUpperCase();
+  const scoped = plants.filter((p) => {
+    if (!st) return true;
+    if (st !== "TN" && p.id.startsWith("tn-")) return false;
+    if (st !== "CT" && p.id.startsWith("ct-")) return false;
+    return true;
+  });
+
+  const curatedBinomials = new Set<string>();
+  for (const p of scoped) {
+    if (p.id.startsWith("trefle-") || !hasBinomial(p.scientific_name)) continue;
+    curatedBinomials.add(speciesDedupKey(p.common_name, p.scientific_name));
+  }
+
+  const withoutTrefleDupes = scoped.filter((p) => {
+    if (!p.id.startsWith("trefle-") || !hasBinomial(p.scientific_name)) {
+      return true;
+    }
+    return !curatedBinomials.has(
+      speciesDedupKey(p.common_name, p.scientific_name),
+    );
+  });
+
+  const preferState =
+    st && isDesignerStateCode(st) ? st : undefined;
+  const byKey = new Map<string, T>();
+  const order: T[] = [];
+
+  for (const p of withoutTrefleDupes) {
+    const key = compactCatalogName(p.common_name);
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, p);
+      order.push(p);
+      continue;
+    }
+    const pick = preferCatalogPlant(prev, p, preferState);
+    const idx = order.findIndex((row) => row.id === prev.id);
+    if (idx >= 0) order[idx] = pick;
+    byKey.set(key, pick);
+  }
+
+  return order;
 }

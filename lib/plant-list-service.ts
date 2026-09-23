@@ -35,9 +35,11 @@ import {
 } from "./plant-native-status.js";
 import { plantMatchesCatalogForState } from "./plant-state-filter.js";
 import {
+  dedupeAreaCatalogPlants,
   dedupeCatalogPlants,
   dedupePlantsByName,
   findCatalogDuplicate,
+  isOtherStateDesignerId,
   preferCatalogPlant,
   registerCatalogKeys,
 } from "./plant-dedupe.js";
@@ -194,6 +196,13 @@ function tryAddCatalogItem(
   stateCode?: string,
   requireStateMatch = false,
 ): boolean {
+  if (
+    stateCode &&
+    isDesignerStateCode(stateCode) &&
+    isOtherStateDesignerId(candidate.id, stateCode)
+  ) {
+    return false;
+  }
   if (
     requireStateMatch &&
     stateCode &&
@@ -498,9 +507,40 @@ async function listCatalogPlantsByGroup(
   };
 }
 
+const CATALOG_AREA_FETCH_CAP = 20_000;
+
+async function listDedupedAreaCatalog(
+  filters: PlantFilters,
+  search: string | undefined,
+): Promise<{ data: PlantListItem[]; total: number }> {
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 100;
+  const stateCode = filters.native_state;
+  const cacheKey = catalogListCacheKey(filters, search);
+  let items = readCachedCatalogList(cacheKey);
+  if (!items) {
+    const { data: rows } = await listPlants({
+      ...filters,
+      search: search || filters.search,
+      limit: CATALOG_AREA_FETCH_CAP,
+      offset: 0,
+    });
+    items = dedupeAreaCatalogPlants(
+      rows.map(plantToListItem),
+      stateCode,
+    );
+    writeCachedCatalogList(cacheKey, items);
+  }
+  return {
+    data: items.slice(offset, offset + limit),
+    total: items.length,
+  };
+}
+
 /**
  * Public catalog browse — full ingested plant DB (Trefle scrape + FL seeds), not designer curation.
- * Uses SQL LIMIT/OFFSET so we never materialize the whole catalog on every page view.
+ * State (`for_my_area`) catalogs are fetched once, de-duplicated, then paginated from cache.
+ * The unfiltered 21k catalog still uses SQL LIMIT/OFFSET.
  */
 export async function listCatalogPlants(
   filters: PlantFilters,
@@ -536,6 +576,10 @@ export async function listCatalogPlants(
     const hits = await searchTrefle(search);
     const data = hits.slice(0, filters.limit ?? 50).map(summaryFromTrefle);
     return { data, total: data.length };
+  }
+
+  if (filters.for_my_area && filters.native_state) {
+    return listDedupedAreaCatalog(filters, search);
   }
 
   // Paginate in the database — one COUNT + one page of rows.

@@ -2,6 +2,7 @@ import type { Plant, PlantFilters } from "../schema.js";
 import { pgCatalogEdibleClause } from "../lib/infer-is-edible.js";
 import { stateByCode } from "../lib/us-states.js";
 import { isDesignerStateCode } from "../lib/designer-states.js";
+import { sqlExcludeOtherStateDesignerIds } from "../lib/plant-state-filter.js";
 import { getSql } from "./postgres.js";
 import {
   mergeTrefleIntoCatalogRow,
@@ -290,6 +291,8 @@ function buildListWhere(filters: PlantFilters): {
           ${idPrefix}
         )`,
       );
+      const excludeOther = sqlExcludeOtherStateDesignerIds(st);
+      if (excludeOther) conditions.push(excludeOther);
     }
   }
 

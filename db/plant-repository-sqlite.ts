@@ -1,7 +1,10 @@
 import type { Plant, PlantFilters } from "../schema.js";
 import { stateByCode } from "../lib/us-states.js";
 import { sqliteCatalogEdibleClause } from "../lib/infer-is-edible.js";
-import { sqliteStateTagClause } from "../lib/plant-state-filter.js";
+import {
+  sqlExcludeOtherStateDesignerIds,
+  sqliteStateTagClause,
+} from "../lib/plant-state-filter.js";
 import { getDb } from "./client.js";
 import type { PlantRow } from "./plant-row.js";
 import { rowToPlant } from "./plant-row.js";
@@ -290,6 +293,8 @@ export function listPlants(filters: PlantFilters = {}): {
       );
       params.for_my_area_state = st;
       Object.assign(params, tagExtra.params);
+      const excludeOther = sqlExcludeOtherStateDesignerIds(st);
+      if (excludeOther) conditions.push(excludeOther);
     }
   }
 

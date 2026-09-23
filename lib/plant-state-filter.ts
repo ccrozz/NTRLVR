@@ -41,7 +41,19 @@ export function plantMatchesCatalogForState(
   plant: Plant,
   stateCode: string,
 ): boolean {
+  const st = stateCode.toUpperCase();
+  if (st !== "TN" && plant.id.startsWith("tn-")) return false;
+  if (st !== "CT" && plant.id.startsWith("ct-")) return false;
   return plantMatchesStateCatalog(plant, stateCode);
+}
+
+/** AND-fragment that drops other states' curated copies (`tn-`, `ct-`). */
+export function sqlExcludeOtherStateDesignerIds(stateCode: string): string {
+  const st = stateCode.toUpperCase();
+  const parts: string[] = [];
+  if (st !== "TN") parts.push("id NOT LIKE 'tn-%'");
+  if (st !== "CT") parts.push("id NOT LIKE 'ct-%'");
+  return parts.join(" AND ");
 }
 
 /** Extra SQL fragment (sqlite @params) appended inside for_my_area parentheses. */
